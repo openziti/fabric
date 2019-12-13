@@ -57,6 +57,8 @@ github.com/netfoundry/ziti-foundation v0.0.0-20191213140847-b961be5acac5 h1:SEqF
 github.com/netfoundry/ziti-foundation v0.0.0-20191213140847-b961be5acac5/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
 github.com/netfoundry/ziti-foundation v0.0.0-20191213194042-85cddcdc2464 h1:GuczGkBli9uaX6dela/j6ExJHcpA6PMYxgOXqXEWzkk=
 github.com/netfoundry/ziti-foundation v0.0.0-20191213194042-85cddcdc2464/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
+github.com/netfoundry/ziti-foundation v0.0.0-20191213201903-e68267fe89e6 h1:6mEfpYgZurDpmv/uTRbTWS9AXc+CBDjyoLM5ugijYn4=
+github.com/netfoundry/ziti-foundation v0.0.0-20191213201903-e68267fe89e6/go.mod h1:27kvN9RZk7cpt2xba6owuXktNphq5hPK62CAiKnIS10=
 github.com/onsi/ginkgo v1.6.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/ginkgo v1.7.0/go.mod h1:lLunBs/Ym6LB5Z9jYTR76FiuTmxDTDusOGeTQH+WWjE=
 github.com/onsi/gomega v1.4.3/go.mod h1:ex+gbHU/CVuBBDIJjb2X0qEXbFg53c61hWP/1CpauHY=
