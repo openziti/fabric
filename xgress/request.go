@@ -142,11 +142,12 @@ func (si *SessionInfo) SendStartEgress() error {
 
 var authError = errors.New("unexpected failure while authenticating")
 
-func GetSession(ctrl CtrlChannel, ingressId string, serviceId string) (*SessionInfo, error) {
+func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, hints map[uint32][]byte) (*SessionInfo, error) {
 	log := pfxlog.Logger()
 	sessionRequest := &ctrl_pb.SessionRequest{
 		IngressId: ingressId,
 		ServiceId: serviceId,
+		EgressHints: hints,
 	}
 	bytes, err := proto.Marshal(sessionRequest)
 	if err != nil {
@@ -182,7 +183,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string) (*SessionI
 }
 
 func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHandler BindHandler, options *Options) *Response {
-	sessionInfo, err := GetSession(ctrl, request.Id, request.ServiceId)
+	sessionInfo, err := GetSession(ctrl, request.Id, request.ServiceId, nil)
 	if err != nil {
 		return &Response{Success: false, Message: err.Error()}
 	}

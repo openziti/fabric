@@ -265,7 +265,7 @@ func (network *Network) UnbindService(srcR *Router, token string, serviceId stri
 	return errors.New("invalid service")
 }
 
-func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, serviceId string) (*session, error) {
+func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, serviceId string, hints map[uint32][]byte) (*session, error) {
 	log := pfxlog.Logger()
 
 	// 1: Find Service
@@ -300,6 +300,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			}
 
 			// 5: Route Egress
+			rms[len(rms) - 1].Egress.Hints = hints
 			err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
 			if err != nil {
 				return nil, err
