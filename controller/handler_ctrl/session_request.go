@@ -50,7 +50,8 @@ func (h *sessionRequestHandler) HandleReceive(msg *channel2.Message, ch channel2
 		 * inside a ReceiveHandler (without parallel support).
 		 */
 		go func() {
-			if session, err := h.network.CreateSession(h.r, &identity.TokenId{Token: request.IngressId}, request.ServiceId, request.EgressHints); err == nil {
+			id := &identity.TokenId{Token: request.IngressId, Data: request.PeerData}
+			if session, err := h.network.CreateSession(h.r, id, request.ServiceId); err == nil {
 				responseMsg := ctrl_msg.NewSessionSuccessMsg(session.Id.Token, session.Circuit.IngressId)
 				responseMsg.ReplyTo(msg)
 				if startXgressSession, err := h.r.Control.SendAndWaitWithTimeout(responseMsg, time.Second*10); err != nil {
