@@ -28,6 +28,7 @@ const (
 	FieldServiceBinding  = "binding"
 	FieldServiceEndpoint = "endpoint"
 	FieldServiceEgress   = "egress"
+	FieldServicePubKey   = "pubkey"
 )
 
 func (service *Service) GetId() string {
@@ -42,12 +43,14 @@ func (service *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	service.Binding = bucket.GetStringWithDefault(FieldServiceBinding, "")
 	service.EndpointAddress = bucket.GetStringWithDefault(FieldServiceEndpoint, "")
 	service.Egress = bucket.GetStringWithDefault(FieldServiceEgress, "")
+	service.PubKey = bucket.GetStringWithDefault(FieldServicePubKey, "")
 }
 
 func (service *Service) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldServiceBinding, service.Binding)
 	ctx.SetString(FieldServiceEndpoint, service.EndpointAddress)
 	ctx.SetString(FieldServiceEgress, service.Egress)
+	ctx.SetString(FieldServicePubKey, service.PubKey)
 }
 
 func (service *Service) GetEntityType() string {

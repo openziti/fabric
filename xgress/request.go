@@ -198,12 +198,13 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func BindService(ctrl CtrlChannel, token string, serviceId string) error {
+func BindService(ctrl CtrlChannel, token string, serviceId string, pubKey string) error {
 	log := pfxlog.Logger()
 	hostRequest := &ctrl_pb.BindRequest{
 		BindType:  ctrl_pb.BindType_Bind,
 		Token:     token,
 		ServiceId: serviceId,
+		Pubkey:    pubKey,
 	}
 	bytes, err := proto.Marshal(hostRequest)
 	if err != nil {

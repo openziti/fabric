@@ -40,7 +40,7 @@ message BindRequest {
     BindType bindType = 1;
     string token = 2;
     string serviceId = 3;
-    bytes pubkey = 4;
+    string pubkey = 4;
 }
 
 message BindResponse {

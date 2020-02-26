@@ -27,6 +27,7 @@ type Service struct {
 	Binding         string
 	EndpointAddress string
 	Egress          string
+	PubKey          string
 }
 
 type serviceController struct {

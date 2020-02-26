@@ -243,12 +243,16 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) BindService(srcR *Router, token string, serviceId string) error {
+func (network *Network) BindService(srcR *Router, token string, serviceId string, pubKey string) error {
+	log := pfxlog.Logger()
+
 	// 1: Find Service
 	if svc, found := network.serviceController.get(serviceId); found {
 		svc.Egress = srcR.Id
 		svc.EndpointAddress = "hosted:" + token
+		svc.PubKey = pubKey
 
+		log.Debugf("binding service[%s] to session[%s] with pubkey[%s]", serviceId, token, pubKey)
 		return network.serviceController.update(svc)
 	}
 	return errors.New("invalid service")
@@ -259,6 +263,7 @@ func (network *Network) UnbindService(srcR *Router, token string, serviceId stri
 	if svc, found := network.serviceController.get(serviceId); found {
 		svc.Egress = network.nodeId.Token // TODO: can't set this to null, so setting it to the controller ID
 		svc.EndpointAddress = "hosted:unbound"
+		svc.PubKey = ""
 
 		return network.serviceController.update(svc)
 	}
