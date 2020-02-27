@@ -48,7 +48,7 @@ func (service *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 	hostDataBucket := bucket.GetBucket(FieldServiceHostData)
 	if hostDataBucket != nil {
 		service.HostData = make(map[uint32][]byte)
-		iter := bucket.Cursor()
+		iter := hostDataBucket.Cursor()
 		for k, v := iter.First(); k != nil; k,v = iter.Next() {
 			service.HostData[binary.LittleEndian.Uint32(k)] = v
 		}
