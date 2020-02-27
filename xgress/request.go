@@ -163,8 +163,17 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData m
 	}
 
 	if reply.ContentType == ctrl_msg.ContentTypeSessionSuccessType {
+		var address string
+
 		sessionId := &identity.TokenId{Token: string(reply.Body)}
-		address := string(reply.Headers[ctrl_msg.SessionSuccessAddressHeader])
+		sessionId.Data = make(map[uint32][]byte)
+		for k,v := range reply.Headers {
+			if k == ctrl_msg.SessionSuccessAddressHeader {
+				address = string(v)
+			} else {
+				sessionId.Data[uint32(k)] = v
+			}
+		}
 
 		log.Debugf("created new session [s/%s]", sessionId.Token)
 		return &SessionInfo{
