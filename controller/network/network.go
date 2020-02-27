@@ -243,14 +243,14 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) BindService(srcR *Router, token string, serviceId string, peerData map[uint32][]byte) error {
+func (network *Network) BindService(srcR *Router, token string, serviceId string, hostData map[uint32][]byte) error {
 	log := pfxlog.Logger()
 
 	// 1: Find Service
 	if svc, found := network.serviceController.get(serviceId); found {
 		svc.Egress = srcR.Id
 		svc.EndpointAddress = "hosted:" + token
-		svc.HostData = peerData
+		svc.HostData = hostData
 
 		log.Debugf("binding service[%s] to session[%s] with hostdata[%s]", serviceId, token, svc.HostData)
 		return network.serviceController.update(svc)
