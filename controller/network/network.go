@@ -252,7 +252,7 @@ func (network *Network) BindService(srcR *Router, token string, serviceId string
 		svc.EndpointAddress = "hosted:" + token
 		svc.HostData = hostData
 
-		log.Debugf("binding service[%s] to session[%s] with hostdata[%s]", serviceId, token, svc.HostData)
+		log.Debugf("binding service[%s] to session[%s] with hostdata[%v]", serviceId, token, svc.HostData)
 		return network.serviceController.update(svc)
 	}
 	return errors.New("invalid service")
