@@ -52,7 +52,7 @@ func (h *hostRequestHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 
 	var err error
 	if request.BindType == ctrl_pb.BindType_Bind {
-		err = h.network.BindService(h.r, request.Token, request.ServiceId, request.Pubkey)
+		err = h.network.BindService(h.r, request.Token, request.ServiceId, request.HostData)
 	} else if request.BindType == ctrl_pb.BindType_Unbind {
 		err = h.network.UnbindService(h.r, request.Token, request.ServiceId)
 	}

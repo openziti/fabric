@@ -165,6 +165,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData m
 	if reply.ContentType == ctrl_msg.ContentTypeSessionSuccessType {
 		sessionId := &identity.TokenId{Token: string(reply.Body)}
 		address := string(reply.Headers[ctrl_msg.SessionSuccessAddressHeader])
+
 		log.Debugf("created new session [s/%s]", sessionId.Token)
 		return &SessionInfo{
 			SessionId:   sessionId,
@@ -198,13 +199,13 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func BindService(ctrl CtrlChannel, token string, serviceId string, pubKey string) error {
+func BindService(ctrl CtrlChannel, token string, serviceId string, hostData map[uint32][]byte) error {
 	log := pfxlog.Logger()
 	hostRequest := &ctrl_pb.BindRequest{
 		BindType:  ctrl_pb.BindType_Bind,
 		Token:     token,
 		ServiceId: serviceId,
-		Pubkey:    pubKey,
+		HostData:  hostData,
 	}
 	bytes, err := proto.Marshal(hostRequest)
 	if err != nil {
