@@ -61,11 +61,13 @@ func (service *Service) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldServiceEgress, service.Egress)
 
 	_ = ctx.Bucket.DeleteBucket([]byte(FieldServiceHostData))
-	hostDataBucket := ctx.Bucket.GetOrCreateBucket(FieldServiceHostData)
-	for k, v := range service.HostData {
-		key := make([]byte, 4)
-		binary.LittleEndian.PutUint32(key, k)
-		hostDataBucket.PutValue(key, v)
+	if service.HostData != nil {
+		hostDataBucket := ctx.Bucket.GetOrCreateBucket(FieldServiceHostData)
+		for k, v := range service.HostData {
+			key := make([]byte, 4)
+			binary.LittleEndian.PutUint32(key, k)
+			hostDataBucket.PutValue(key, v)
+		}
 	}
 }
 
