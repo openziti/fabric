@@ -27,7 +27,7 @@ type Service struct {
 	Binding         string
 	EndpointAddress string
 	Egress          string
-	HostData        map[uint32][]byte
+	PeerData        map[uint32][]byte
 }
 
 type serviceController struct {

@@ -214,7 +214,7 @@ func BindService(ctrl CtrlChannel, token string, serviceId string, hostData map[
 		BindType:  ctrl_pb.BindType_Bind,
 		Token:     token,
 		ServiceId: serviceId,
-		HostData:  hostData,
+		PeerData:  hostData,
 	}
 	bytes, err := proto.Marshal(hostRequest)
 	if err != nil {
