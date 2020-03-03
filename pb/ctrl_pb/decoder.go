@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			meta["ingressId"] = sessionRequest.IngressId
 			meta["serviceId"] = sessionRequest.ServiceId
 			headers := make([]string, 0)
-			for k, _ := range sessionRequest.PeerData {
+			for k := range sessionRequest.PeerData {
 				headers = append(headers, strconv.Itoa(int(k)))
 			}
 			meta["peerData"] = strings.Join(headers, ",")
@@ -56,20 +56,15 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_BindRequestType):
-		bindRequest := &BindRequest{}
-		if err := proto.Unmarshal(msg.Body, bindRequest); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Bind Request")
-			meta["bindType"] = bindRequest.BindType
-			meta["serviceId"] = bindRequest.ServiceId
-			dataIds := make([]string, 0)
-			for k, _ := range bindRequest.PeerData {
-				dataIds = append(dataIds, strconv.Itoa(int(k)))
-			}
-			meta["peerData"] = strings.Join(dataIds, ",")
+	case int32(ContentType_CreateEndpointRequestType):
+		createEndpoint := &CreateEndpointRequest{}
+		if err := proto.Unmarshal(msg.Body, createEndpoint); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Create Endpoint Request")
+			meta["endpoint"] = endpointToString(createEndpoint)
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
 				return nil, true
 			}
 
@@ -80,15 +75,15 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_BindResponseType):
-		bindResponse := &BindResponse{}
-		if err := proto.Unmarshal(msg.Body, bindResponse); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Bind Request")
-			meta["success"] = bindResponse.Success
-			meta["message"] = bindResponse.Message
+	case int32(ContentType_RemoveEndpointRequestType):
+		removeEndpoint := &RemoveEndpointRequest{}
+		if err := proto.Unmarshal(msg.Body, removeEndpoint); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Remove Endpoint Request")
+			meta["endpointId"] = removeEndpoint.EndpointId
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
 				return nil, true
 			}
 
@@ -276,4 +271,8 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	}
 
 	return nil, false
+}
+
+func endpointToString(request *CreateEndpointRequest) string {
+	return fmt.Sprintf("{id=[%s]}", request.Id)
 }

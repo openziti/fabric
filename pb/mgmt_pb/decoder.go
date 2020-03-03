@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -133,6 +133,112 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
+		// endpoint messages
+	case int32(ContentType_ListEndpointsRequestType):
+		data, err := channel2.NewTraceMessageDecode(DECODER, "List Endpoints Request").MarshalTraceMessageDecode()
+		if err != nil {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+		return data, true
+
+	case int32(ContentType_ListEndpointsResponseType):
+		listEndpoints := &ListEndpointsResponse{}
+		if err := proto.Unmarshal(msg.Body, listEndpoints); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "List Endpoints Response")
+			meta["endpoints"] = len(listEndpoints.Endpoints)
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_CreateEndpointRequestType):
+		createEndpoint := &CreateEndpointRequest{}
+		if err := proto.Unmarshal(msg.Body, createEndpoint); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Create Endpoint Request")
+			meta["endpoint"] = endpointToString(createEndpoint.Endpoint)
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_RemoveEndpointRequestType):
+		removeEndpoint := &RemoveEndpointRequest{}
+		if err := proto.Unmarshal(msg.Body, removeEndpoint); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Remove Endpoint Request")
+			meta["endpointId"] = removeEndpoint.EndpointId
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_GetEndpointRequestType):
+		getEndpoint := &GetEndpointRequest{}
+		if err := proto.Unmarshal(msg.Body, getEndpoint); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Get Endpoint Request")
+			meta["endpointId"] = getEndpoint.EndpointId
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+	case int32(ContentType_GetEndpointResponseType):
+		getEndpoint := &GetEndpointResponse{}
+		if err := proto.Unmarshal(msg.Body, getEndpoint); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Get Endpoint Response")
+			meta["endpoint"] = endpointToString(getEndpoint.Endpoint)
+
+			data, err := meta.MarshalTraceMessageDecode()
+			if err != nil {
+				pfxlog.Logger().Errorf("unexpected error (%s)", err)
+				return nil, true
+			}
+
+			return data, true
+
+		} else {
+			pfxlog.Logger().Errorf("unexpected error (%s)", err)
+			return nil, true
+		}
+
+		// router messages
 	case int32(ContentType_ListRoutersRequestType):
 		data, err := channel2.NewTraceMessageDecode(DECODER, "List Routers Request").MarshalTraceMessageDecode()
 		if err != nil {
@@ -300,7 +406,11 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 }
 
 func serviceToString(service *Service) string {
-	return fmt.Sprintf("{id=[%s] binding=[%s] endpoint=[%s] egress=[%s]}", service.Id, service.Binding, service.EndpointAddress, service.Egress)
+	return fmt.Sprintf("{id=[%s]}", service.Id)
+}
+
+func endpointToString(endpoint *Endpoint) string {
+	return fmt.Sprintf("{id=[%s]}", endpoint.Id)
 }
 
 func routerToString(router *Router) string {

@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -167,7 +167,7 @@ func GetSession(ctrl CtrlChannel, ingressId string, serviceId string, peerData m
 
 		sessionId := &identity.TokenId{Token: string(reply.Body)}
 		sessionId.Data = make(map[uint32][]byte)
-		for k,v := range reply.Headers {
+		for k, v := range reply.Headers {
 			if k == ctrl_msg.SessionSuccessAddressHeader {
 				address = string(v)
 			} else {
@@ -208,93 +208,70 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func BindService(ctrl CtrlChannel, token string, serviceId string, peerData map[uint32][]byte) error {
+func AddEndpoint(ctrl CtrlChannel, endpointId string, serviceId string, binding string, address string, peerData map[uint32][]byte) error {
 	log := pfxlog.Logger()
-	hostRequest := &ctrl_pb.BindRequest{
-		BindType:  ctrl_pb.BindType_Bind,
-		Token:     token,
+	request := &ctrl_pb.CreateEndpointRequest{
+		Id:        endpointId,
 		ServiceId: serviceId,
+		Binding:   binding,
+		Address:   address,
 		PeerData:  peerData,
 	}
-	bytes, err := proto.Marshal(hostRequest)
+	bytes, err := proto.Marshal(request)
 	if err != nil {
-		log.Errorf("failed to marshal BindRequest message: (%v)", err)
+		log.Errorf("failed to marshal CreateEndpointRequest message: (%v)", err)
 		return authError
 	}
 
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_BindRequestType), bytes)
-	waitCh, err := ctrl.Channel().SendAndWait(msg)
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CreateEndpointRequestType), bytes)
+	responseMesg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send BindRequest message: (%v)", err)
+		log.Errorf("failed to send CreateEndpointRequest message: (%v)", err)
 		return authError
 	}
 
-	select {
-	case msg := <-waitCh:
-		if msg != nil && msg.ContentType == int32(ctrl_pb.ContentType_BindResponseType) {
-			bindResponse := &ctrl_pb.BindResponse{}
-			err := proto.Unmarshal(msg.Body, bindResponse)
-			if err != nil {
-				log.Errorf("failed to send un-marshall BindResponse message: (%v)", err)
-				return authError
-			}
-			if bindResponse.Success {
-				log.Debugf("successfully bound session [s/%s]", token)
-				return nil
-			}
-			log.Errorf("authentication failure: (%v)", bindResponse.Message)
-			return errors.New(bindResponse.Message)
-		} else {
-			log.Errorf("unexpected controller response, ContentType: (%v)", msg.ContentType)
-			return authError
+	if responseMesg != nil && responseMesg.ContentType == channel2.ContentTypeResultType {
+		result := channel2.UnmarshalResult(responseMesg)
+		if result.Success {
+			log.Debugf("successfully added service endpoint [s/%s] for service [%v]", endpointId, serviceId)
+			return nil
 		}
-
-	case <-time.After(5 * time.Second):
-		return errors.New("timeout while binding")
+		log.Errorf("authentication failure: (%v)", result.Message)
+		return errors.New(result.Message)
+	} else {
+		log.Errorf("unexpected controller response, ContentType: (%v)", responseMesg.ContentType)
+		return authError
 	}
 }
 
-func UnbindService(ctrl CtrlChannel, token string, serviceId string) error {
+func RemoveEndpoint(ctrl CtrlChannel, endpointId string) error {
 	log := pfxlog.Logger()
-	hostRequest := &ctrl_pb.BindRequest{
-		BindType:  ctrl_pb.BindType_Unbind,
-		Token:     token,
-		ServiceId: serviceId,
+	request := &ctrl_pb.RemoveEndpointRequest{
+		EndpointId: endpointId,
 	}
-	bytes, err := proto.Marshal(hostRequest)
+	bytes, err := proto.Marshal(request)
 	if err != nil {
-		log.Errorf("failed to marshal BindRequest message: (%v)", err)
+		log.Errorf("failed to marshal RemoveEndpointRequest message: (%v)", err)
 		return authError
 	}
 
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_BindRequestType), bytes)
-	waitCh, err := ctrl.Channel().SendAndWait(msg)
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RemoveEndpointRequestType), bytes)
+	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send HostRequest message: (%v)", err)
+		log.Errorf("failed to send RemoveEndpointRequest message: (%v)", err)
 		return authError
 	}
 
-	select {
-	case msg := <-waitCh:
-		if msg != nil && msg.ContentType == int32(ctrl_pb.ContentType_BindResponseType) {
-			bindResponse := &ctrl_pb.BindResponse{}
-			err := proto.Unmarshal(msg.Body, bindResponse)
-			if err != nil {
-				log.Errorf("failed to send un-marshall BindResponse message: (%v)", err)
-				return authError
-			}
-			if bindResponse.Success {
-				log.Debugf("successfully unbound session [s/%s]", token)
-				return nil
-			}
-			log.Errorf("authentication failure: (%v)", bindResponse.Message)
-			return errors.New(bindResponse.Message)
-		} else {
-			log.Errorf("unexpected controller response, ContentType: (%v)", msg.ContentType)
-			return authError
+	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
+		result := channel2.UnmarshalResult(responseMsg)
+		if result.Success {
+			log.Debugf("successfully removed service endpoint [s/%s]", endpointId)
+			return nil
 		}
-
-	case <-time.After(5 * time.Second):
-		return errors.New("timeout while unbinding")
+		log.Errorf("failure removing service endpoint: (%v)", result.Message)
+		return errors.New(result.Message)
+	} else {
+		log.Errorf("unexpected controller response, ContentType: (%v)", responseMsg.ContentType)
+		return authError
 	}
 }

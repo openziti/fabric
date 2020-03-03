@@ -18,6 +18,7 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
@@ -25,54 +26,54 @@ import (
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
-type getServiceHandler struct {
+type getEndpointHandler struct {
 	network *network.Network
 }
 
-func newGetServiceHandler(network *network.Network) *getServiceHandler {
-	return &getServiceHandler{network: network}
+func newGetEndpointHandler(network *network.Network) *getEndpointHandler {
+	return &getEndpointHandler{network: network}
 }
 
-func (h *getServiceHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_GetServiceRequestType)
+func (h *getEndpointHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_GetEndpointRequestType)
 }
 
-func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	rs := &mgmt_pb.GetServiceRequest{}
-	err := proto.Unmarshal(msg.Body, rs)
-
+func (h *getEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	rs := &mgmt_pb.GetEndpointRequest{}
+	if err := proto.Unmarshal(msg.Body, rs); err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+	response := &mgmt_pb.GetEndpointResponse{}
+	endpoint, err := h.network.Endpoints.Read(rs.EndpointId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	response := &mgmt_pb.GetServiceResponse{}
-	svc, err := h.network.Services.Read(rs.ServiceId)
-	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
-		return
-	}
-
-	response.Service = toApiService(svc)
+	response.Endpoint = toApiEndpoint(endpoint)
 	body, err := proto.Marshal(response)
 	if err == nil {
-		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
+		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetEndpointResponseType), body)
 		responseMsg.ReplyTo(msg)
 		ch.Send(responseMsg)
+
 	} else {
 		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}
 }
 
-func toApiService(s *network.Service) *mgmt_pb.Service {
-	var endpoints []*mgmt_pb.Endpoint
-	for _, endpoint := range s.Endpoints {
-		endpoints = append(endpoints, toApiEndpoint(endpoint))
+func toApiEndpoint(s *network.Endpoint) *mgmt_pb.Endpoint {
+	ts, err := ptypes.TimestampProto(s.CreatedAt)
+	if err != nil {
+		pfxlog.Logger().Warnf("unexpected bad timestamp conversion: %v", err)
 	}
-
-	return &mgmt_pb.Service{
-		Id:               s.Id,
-		EndpointStrategy: s.EndpointStrategy,
-		Endpoints:        endpoints,
+	return &mgmt_pb.Endpoint{
+		Id:        s.Id,
+		ServiceId: s.Service,
+		RouterId:  s.Router,
+		Binding:   s.Binding,
+		Address:   s.Address,
+		CreatedAt: ts,
 	}
 }

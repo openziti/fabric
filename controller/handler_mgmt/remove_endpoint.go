@@ -25,35 +25,35 @@ import (
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
-type removeServiceHandler struct {
+type removeEndpointHandler struct {
 	network *network.Network
 }
 
-func newRemoveServiceHandler(network *network.Network) *removeServiceHandler {
-	return &removeServiceHandler{network: network}
+func newRemoveEndpointHandler(network *network.Network) *removeEndpointHandler {
+	return &removeEndpointHandler{network: network}
 }
 
-func (h *removeServiceHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_RemoveServiceRequestType)
+func (h *removeEndpointHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_RemoveEndpointRequestType)
 }
 
-func (h *removeServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *removeEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	request := &mgmt_pb.RemoveServiceRequest{}
+	request := &mgmt_pb.RemoveEndpointRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	_, err := h.network.Services.Read(request.ServiceId)
+	_, err := h.network.Endpoints.Read(request.EndpointId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	if err := h.network.Services.Delete(request.ServiceId); err == nil {
-		log.Infof("removed service [s/%v]", request.ServiceId)
+	if err := h.network.Endpoints.Delete(request.EndpointId); err == nil {
+		log.Infof("removed endpoint [e/%s]", request.EndpointId)
 		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
