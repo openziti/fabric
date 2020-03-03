@@ -25,6 +25,7 @@ type session struct {
 	Id       *identity.TokenId
 	ClientId *identity.TokenId
 	Service  *Service
+	Endpoint *Endpoint
 	Circuit  *Circuit
 }
 

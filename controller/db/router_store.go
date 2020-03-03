@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -36,23 +36,23 @@ type Router struct {
 	Fingerprint string
 }
 
-func (router *Router) GetId() string {
-	return router.Id
+func (entity *Router) GetId() string {
+	return entity.Id
 }
 
-func (router *Router) SetId(id string) {
-	router.Id = id
+func (entity *Router) SetId(id string) {
+	entity.Id = id
 }
 
-func (router *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
-	router.Fingerprint = bucket.GetStringOrError(FieldRouterFingerprint)
+func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+	entity.Fingerprint = bucket.GetStringOrError(FieldRouterFingerprint)
 }
 
-func (router *Router) SetValues(ctx *boltz.PersistContext) {
-	ctx.SetString(FieldRouterFingerprint, router.Fingerprint)
+func (entity *Router) SetValues(ctx *boltz.PersistContext) {
+	ctx.SetString(FieldRouterFingerprint, entity.Fingerprint)
 }
 
-func (router *Router) GetEntityType() string {
+func (entity *Router) GetEntityType() string {
 	return EntityTypeRouters
 }
 
@@ -81,6 +81,10 @@ type routerStoreImpl struct {
 	baseStore
 }
 
+func (store *routerStoreImpl) initializeLinked() {
+	store.AddFkSetSymbol(EntityTypeEndpoints, store.stores.endpoint)
+}
+
 func (store *routerStoreImpl) NewStoreEntity() boltz.BaseEntity {
 	return &Router{}
 }
@@ -91,4 +95,14 @@ func (store *routerStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Router, err
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (store *routerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
+	endpointIds := store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeEndpoints)
+	for _, endpointId := range endpointIds {
+		if err := store.stores.endpoint.DeleteById(ctx, endpointId); err != nil {
+			return err
+		}
+	}
+	return store.BaseStore.DeleteById(ctx, id)
 }

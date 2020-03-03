@@ -44,12 +44,7 @@ func (h *listServicesHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 		svcs, err := h.network.AllServices()
 		if err == nil {
 			for _, s := range svcs {
-				response.Services = append(response.Services, &mgmt_pb.Service{
-					Id:              s.Id,
-					Binding:         s.Binding,
-					EndpointAddress: s.EndpointAddress,
-					Egress:          s.Egress,
-				})
+				response.Services = append(response.Services, toApiService(s))
 			}
 
 			body, err := proto.Marshal(response)

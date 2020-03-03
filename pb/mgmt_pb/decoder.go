@@ -300,7 +300,7 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 }
 
 func serviceToString(service *Service) string {
-	return fmt.Sprintf("{id=[%s] binding=[%s] endpoint=[%s] egress=[%s]}", service.Id, service.Binding, service.EndpointAddress, service.Egress)
+	return fmt.Sprintf("{id=[%s]}", service.Id)
 }
 
 func routerToString(router *Router) string {

@@ -22,6 +22,7 @@ import (
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/netfoundry/ziti-foundation/transport"
+	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
 	"go.etcd.io/bbolt"
 )
@@ -32,6 +33,7 @@ type Router struct {
 	AdvertisedListener transport.Address
 	Control            channel2.Channel
 	CostFactor         int
+	Connected          concurrenz.AtomicBoolean
 }
 
 func (entity *Router) toBolt() *db.Router {
@@ -59,26 +61,28 @@ func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl c
 }
 
 type routerController struct {
-	connected cmap.ConcurrentMap // map[string]*Router
-	db        *db.Db
-	stores    *db.Stores
+	*env
+	cache     cmap.ConcurrentMap
+	connected cmap.ConcurrentMap
 	store     db.RouterStore
 }
 
-func newRouterController(db *db.Db, stores *db.Stores) *routerController {
+func newRouterController(env *env) *routerController {
 	return &routerController{
+		env:       env,
+		cache:     cmap.New(),
 		connected: cmap.New(),
-		db:        db,
-		stores:    stores,
-		store:     stores.Router,
+		store:     env.stores.Router,
 	}
 }
 
 func (c *routerController) markConnected(r *Router) {
+	r.Connected.Set(true)
 	c.connected.Set(r.Id, r)
 }
 
 func (c *routerController) markDisconnected(r *Router) {
+	r.Connected.Set(false)
 	c.connected.Remove(r.Id)
 }
 
@@ -94,7 +98,7 @@ func (c *routerController) getConnected(id string) (*Router, bool) {
 }
 
 func (c *routerController) allConnected() []*Router {
-	routers := make([]*Router, 0)
+	var routers []*Router
 	for i := range c.connected.IterBuffered() {
 		routers = append(routers, i.Val.(*Router))
 	}
@@ -106,24 +110,28 @@ func (c *routerController) connectedCount() int {
 }
 
 func (c *routerController) create(router *Router) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
+	err := c.db.Update(func(tx *bbolt.Tx) error {
 		return c.store.Create(boltz.NewMutateContext(tx), router.toBolt())
 	})
-}
-
-func (c *routerController) update(router *Router) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Update(boltz.NewMutateContext(tx), router.toBolt(), nil)
-	})
+	if err != nil {
+		c.cache.Set(router.Id, router)
+	}
+	return err
 }
 
 func (c *routerController) remove(id string) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
+	err := c.db.Update(func(tx *bbolt.Tx) error {
 		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
 	})
+	c.cache.Remove(id)
+	return err
 }
 
-func (c *routerController) loadOneById(id string) (*Router, error) {
+func (c *routerController) get(id string) (*Router, error) {
+	if t, found := c.cache.Get(id); found {
+		return t.(*Router), nil
+	}
+
 	var router *Router
 	err := c.db.View(func(tx *bbolt.Tx) error {
 		boltRouter, err := c.store.LoadOneById(tx, id)
@@ -139,6 +147,7 @@ func (c *routerController) loadOneById(id string) (*Router, error) {
 	if err != nil {
 		return nil, err
 	}
+	c.cache.Set(id, router)
 	return router, err
 }
 

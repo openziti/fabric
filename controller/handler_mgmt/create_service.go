@@ -39,16 +39,19 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	cs := &mgmt_pb.CreateServiceRequest{}
 	err := proto.Unmarshal(msg.Body, cs)
 	if err == nil {
-		binding := "transport"
-		if cs.Service.Binding != "" {
-			binding = cs.Service.Binding
+		service := &network.Service{
+			Id:               cs.Service.Id,
+			EndpointStrategy: cs.Service.EndpointStrategy,
 		}
-		if err = h.network.CreateService(&network.Service{
-			Id:              cs.Service.Id,
-			Binding:         binding,
-			EndpointAddress: cs.Service.EndpointAddress,
-			Egress:          cs.Service.Egress,
-		}); err == nil {
+		for _, endpoint := range cs.Service.Endpoints {
+			modelEndpoint, err := toModelEndpoint(h.network, endpoint)
+			if err != nil {
+				sendFailure(msg, ch, err.Error())
+				return
+			}
+			service.Endpoints = append(service.Endpoints, modelEndpoint)
+		}
+		if err = h.network.CreateService(service); err == nil {
 			sendSuccess(msg, ch, "")
 		} else {
 			sendFailure(msg, ch, err.Error())

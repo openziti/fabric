@@ -14,17 +14,29 @@
 	limitations under the License.
 */
 
-package db
+package network
 
-import (
-	"github.com/netfoundry/ziti-foundation/storage/boltz"
-)
+import "github.com/netfoundry/ziti-fabric/controller/db"
 
-type store interface {
-	boltz.CrudStore
+type env struct {
+	db        *db.Db
+	stores    *db.Stores
+	endpoints *endpointController
+	routers   *routerController
+	services  *serviceController
 }
 
-type baseStore struct {
-	stores *stores
-	*boltz.BaseStore
+func (e *env) getDb() *db.Db {
+	return e.db
+}
+
+func initEnv(db *db.Db, stores *db.Stores) *env {
+	result := &env{
+		db:     db,
+		stores: stores,
+	}
+	result.endpoints = newEndpointController(result)
+	result.routers = newRouterController(result)
+	result.services = newServiceController(result)
+	return result
 }

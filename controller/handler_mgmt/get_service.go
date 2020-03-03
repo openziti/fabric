@@ -42,13 +42,7 @@ func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 	if err == nil {
 		response := &mgmt_pb.GetServiceResponse{}
 		if svc, found := h.network.GetService(rs.ServiceId); found {
-			response.Service = &mgmt_pb.Service{
-				Id:              svc.Id,
-				Binding:         svc.Binding,
-				EndpointAddress: svc.EndpointAddress,
-				Egress:          svc.Egress,
-			}
-
+			response.Service = toApiService(svc)
 			body, err := proto.Marshal(response)
 			if err == nil {
 				responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
@@ -64,5 +58,18 @@ func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 		}
 	} else {
 		sendFailure(msg, ch, err.Error())
+	}
+}
+
+func toApiService(s *network.Service) *mgmt_pb.Service {
+	var endpoints []*mgmt_pb.Endpoint
+	for _, endpoint := range s.Endpoints {
+		endpoints = append(endpoints, toApiEndpoint(endpoint))
+	}
+
+	return &mgmt_pb.Service{
+		Id:               s.Id,
+		EndpointStrategy: s.EndpointStrategy,
+		Endpoints:        endpoints,
 	}
 }

@@ -26,42 +26,58 @@ import (
 )
 
 type Service struct {
-	Id              string
-	Binding         string
-	EndpointAddress string
-	Egress          string
-	PeerData        map[uint32][]byte
+	Id               string
+	EndpointStrategy string
+	Endpoints        []*Endpoint
 }
 
 func (entity *Service) toBolt() *db.Service {
 	return &db.Service{
-		Id:              entity.Id,
-		Binding:         entity.Binding,
-		EndpointAddress: entity.EndpointAddress,
-		Egress:          entity.Egress,
-		PeerData:        entity.PeerData,
+		Id:               entity.Id,
+		EndpointStrategy: entity.EndpointStrategy,
 	}
 }
 
 type serviceController struct {
-	cache  cmap.ConcurrentMap
-	db     *db.Db
-	stores *db.Stores
-	store  db.ServiceStore
+	*env
+	cache cmap.ConcurrentMap
+	store db.ServiceStore
 }
 
-func newServiceController(db *db.Db, stores *db.Stores) *serviceController {
-	return &serviceController{
-		cache:  cmap.New(),
-		db:     db,
-		stores: stores,
-		store:  stores.Service,
+func newServiceController(env *env) *serviceController {
+	result := &serviceController{
+		env:   env,
+		cache: cmap.New(),
+		store: env.stores.Service,
 	}
+
+	env.stores.Endpoint.On(boltz.EventDelete, func(params ...interface{}) {
+		if len(params) < 1 {
+			return
+		}
+		entity, ok := params[0].(*db.Endpoint)
+		if !ok {
+			return
+		}
+		result.RemoveFromCache(entity.Service)
+	})
+
+	return result
 }
 
 func (c *serviceController) create(s *Service) error {
 	err := c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Create(boltz.NewMutateContext(tx), s.toBolt())
+		ctx := boltz.NewMutateContext(tx)
+		if err := c.store.Create(ctx, s.toBolt()); err != nil {
+			return err
+		}
+		for _, endpoint := range s.Endpoints {
+			endpoint.Service = s.Id
+			if err := c.endpoints.createInTx(ctx, endpoint); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err != nil {
 		return err
@@ -84,7 +100,6 @@ func (c *serviceController) update(s *Service) error {
 func (c *serviceController) get(id string) (*Service, bool) {
 	if t, found := c.cache.Get(id); found {
 		return t.(*Service), true
-
 	}
 	var svc *Service
 	err := c.db.View(func(tx *bbolt.Tx) error {
@@ -96,6 +111,13 @@ func (c *serviceController) get(id string) (*Service, bool) {
 			return fmt.Errorf("missing service '%s'", id)
 		}
 		svc = c.fromBolt(boltSvc)
+
+		endpointIds := c.store.GetRelatedEntitiesIdList(tx, id, db.EntityTypeEndpoints)
+		for _, endpointId := range endpointIds {
+			if endpoint, _ := c.endpoints.get(endpointId); endpoint != nil {
+				svc.Endpoints = append(svc.Endpoints, endpoint)
+			}
+		}
 		return nil
 	})
 	if err != nil {
@@ -144,10 +166,7 @@ func (c *serviceController) RemoveFromCache(id string) {
 
 func (c *serviceController) fromBolt(entity *db.Service) *Service {
 	return &Service{
-		Id:              entity.Id,
-		Binding:         entity.Binding,
-		EndpointAddress: entity.EndpointAddress,
-		Egress:          entity.Egress,
-		PeerData:        entity.PeerData,
+		Id:               entity.Id,
+		EndpointStrategy: entity.EndpointStrategy,
 	}
 }
