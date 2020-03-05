@@ -257,48 +257,6 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) BindService(srcR *Router, token string, serviceId string, peerData map[uint32][]byte) error {
-	log := pfxlog.Logger()
-
-	// TODO: Consider how we might replace this with a create endpoint ctrl handler, similar to the mgmt one
-
-	// 1: Find Service
-	if service := network.serviceController.get(serviceId); service != nil {
-		endpoint := &Endpoint{
-			Id:        token,
-			Service:   serviceId,
-			Router:    srcR,
-			Binding:   "edge",
-			Address:   "hosted:" + token,
-			CreatedAt: time.Now(),
-			PeerData:  peerData,
-		}
-
-		log.Debugf("binding service[%s] to session[%s] with hostdata[%v]", serviceId, token, endpoint.PeerData)
-		return network.endpointController.create(endpoint)
-	}
-	return errors.New("invalid service")
-}
-
-func (network *Network) UnbindService(srcR *Router, token string, serviceId string) error {
-	// 1: Find endpoint
-	if endpoint, found := network.endpointController.get(token); found {
-		// 2: Verify service matches
-		if endpoint.Service != serviceId {
-			return fmt.Errorf("failed to unbind endpoint %v. service %v did not match expected: %v",
-				token, serviceId, endpoint.Service)
-		}
-		// 3: Verify router matches
-		if endpoint.Router.Id != srcR.Id {
-			return fmt.Errorf("failed to unbind endpoint %v. router %v did not match expected: %v",
-				token, srcR.Id, endpoint.Router.Id)
-		}
-
-		return network.endpointController.remove(token)
-	}
-	return fmt.Errorf("invalid endpoint: %v", token)
-}
-
 func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, serviceId string) (*session, error) {
 	log := pfxlog.Logger()
 

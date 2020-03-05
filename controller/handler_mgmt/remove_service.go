@@ -18,6 +18,7 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -41,14 +42,14 @@ func (h *removeServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	if err == nil {
 		if svc := h.network.GetService(rs.ServiceId); svc != nil {
 			if err := h.network.RemoveService(svc.Id); err != nil {
-				sendFailure(msg, ch, err.Error())
+				handler_common.SendFailure(msg, ch, err.Error())
 			} else {
-				sendSuccess(msg, ch, "")
+				handler_common.SendSuccess(msg, ch, "")
 			}
 		} else {
-			sendFailure(msg, ch, "no such service")
+			handler_common.SendFailure(msg, ch, "no such service")
 		}
 	} else {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

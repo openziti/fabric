@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -56,12 +57,12 @@ func (h *listServicesHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 				}
 
 			} else {
-				sendFailure(msg, ch, err.Error())
+				handler_common.SendFailure(msg, ch, err.Error())
 			}
 		} else {
-			sendFailure(msg, ch, err.Error())
+			handler_common.SendFailure(msg, ch, err.Error())
 		}
 	} else {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

@@ -74,6 +74,7 @@ message Endpoint {
     string binding = 4;
     string address = 5;
     google.protobuf.Timestamp createdAt = 6;
+    map<uint32, bytes> peerData = 7;
 }
 
 message ListServicesRequest {

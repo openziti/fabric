@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -40,7 +41,7 @@ func (h *getEndpointHandler) ContentType() int32 {
 func (h *getEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	rs := &mgmt_pb.GetEndpointRequest{}
 	if err := proto.Unmarshal(msg.Body, rs); err != nil {
-		sendFailure(msg, ch, err.Error())
+		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 	response := &mgmt_pb.GetEndpointResponse{}
@@ -56,7 +57,7 @@ func (h *getEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 			pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 		}
 	} else {
-		sendFailure(msg, ch, "no such endpoint")
+		handler_common.SendFailure(msg, ch, "no such endpoint")
 	}
 }
 

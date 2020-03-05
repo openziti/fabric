@@ -14,66 +14,50 @@
 	limitations under the License.
 */
 
-package handler_mgmt
+package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
-	"github.com/pkg/errors"
-	"time"
 )
 
 type createEndpointHandler struct {
+	router  *network.Router
 	network *network.Network
 }
 
-func newCreateEndpointHandler(network *network.Network) *createEndpointHandler {
-	return &createEndpointHandler{network: network}
+func newCreateEndpointHandler(network *network.Network, router *network.Router) *createEndpointHandler {
+	return &createEndpointHandler{
+		network: network,
+		router:  router,
+	}
 }
 
 func (h *createEndpointHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_CreateEndpointRequestType)
+	return int32(ctrl_pb.ContentType_CreateEndpointRequestType)
 }
 
 func (h *createEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	cs := &mgmt_pb.CreateEndpointRequest{}
-	if err := proto.Unmarshal(msg.Body, cs); err != nil {
+	request := &ctrl_pb.CreateEndpointRequest{}
+	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	endpoint, err := toModelEndpoint(h.network, cs.Endpoint)
-	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
-		return
+	endpoint := &network.Endpoint{
+		Id:       request.Id,
+		Service:  request.ServiceId,
+		Router:   h.router,
+		Binding:  request.Binding,
+		Address:  request.Address,
+		PeerData: request.PeerData,
 	}
-	if err = h.network.CreateEndpoint(endpoint); err == nil {
+
+	if err := h.network.CreateEndpoint(endpoint); err == nil {
 		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}
-}
-
-func toModelEndpoint(n *network.Network, e *mgmt_pb.Endpoint) (*network.Endpoint, error) {
-	router, _ := n.GetRouter(e.RouterId)
-	if router == nil {
-		return nil, errors.Errorf("invalid router id %v", e.RouterId)
-	}
-
-	binding := "transport"
-	if e.Binding != "" {
-		binding = e.Binding
-	}
-
-	return &network.Endpoint{
-		Id:        e.Id,
-		Service:   e.ServiceId,
-		Router:    router,
-		Binding:   binding,
-		Address:   e.Address,
-		CreatedAt: time.Now(),
-		PeerData:  e.PeerData,
-	}, nil
 }

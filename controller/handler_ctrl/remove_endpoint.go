@@ -14,13 +14,13 @@
 	limitations under the License.
 */
 
-package handler_mgmt
+package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
@@ -33,11 +33,11 @@ func newRemoveEndpointHandler(network *network.Network) *removeEndpointHandler {
 }
 
 func (h *removeEndpointHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_RemoveEndpointRequestType)
+	return int32(ctrl_pb.ContentType_RemoveEndpointRequestType)
 }
 
 func (h *removeEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	rs := &mgmt_pb.RemoveEndpointRequest{}
+	rs := &ctrl_pb.RemoveEndpointRequest{}
 	if err := proto.Unmarshal(msg.Body, rs); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
