@@ -74,15 +74,16 @@ func newRouterStore(stores *stores) *routerStoreImpl {
 	}
 	store.InitImpl(store)
 	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
+	store.endpointsSymbol = store.AddFkSetSymbol(EntityTypeEndpoints, stores.endpoint)
 	return store
 }
 
 type routerStoreImpl struct {
 	baseStore
+	endpointsSymbol boltz.EntitySetSymbol
 }
 
 func (store *routerStoreImpl) initializeLinked() {
-	store.AddFkSetSymbol(EntityTypeEndpoints, store.stores.endpoint)
 }
 
 func (store *routerStoreImpl) NewStoreEntity() boltz.BaseEntity {

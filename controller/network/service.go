@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -17,11 +17,11 @@
 package network
 
 import (
-	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/orcaman/concurrent-map"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 )
 
@@ -97,38 +97,45 @@ func (c *serviceController) update(s *Service) error {
 	return nil
 }
 
-func (c *serviceController) get(id string) (*Service, bool) {
+func (c *serviceController) get(id string) *Service {
 	if t, found := c.cache.Get(id); found {
-		return t.(*Service), true
+		return t.(*Service)
 	}
 	var svc *Service
 	err := c.db.View(func(tx *bbolt.Tx) error {
-		boltSvc, err := c.store.LoadOneById(tx, id)
-		if err != nil {
-			return err
-		}
-		if boltSvc == nil {
-			return fmt.Errorf("missing service '%s'", id)
-		}
-		svc = c.fromBolt(boltSvc)
-
-		endpointIds := c.store.GetRelatedEntitiesIdList(tx, id, db.EntityTypeEndpoints)
-		for _, endpointId := range endpointIds {
-			if endpoint, _ := c.endpoints.get(endpointId); endpoint != nil {
-				svc.Endpoints = append(svc.Endpoints, endpoint)
-			}
-		}
+		svc = c.loadInTx(tx, id)
 		return nil
 	})
 	if err != nil {
 		pfxlog.Logger().Errorf("failed loading service (%s)", err)
-		return nil, false
+		return nil
 	}
-	if svc != nil {
-		c.cache.Set(svc.Id, svc)
-		return svc, true
+	return svc
+}
+
+func (c *serviceController) getInTx(tx *bbolt.Tx, id string) *Service {
+	if t, found := c.cache.Get(id); found {
+		return t.(*Service)
 	}
-	return nil, false
+	return c.loadInTx(tx, id)
+}
+
+func (c *serviceController) loadInTx(tx *bbolt.Tx, id string) *Service {
+	boltSvc, err := c.store.LoadOneById(tx, id)
+	if err != nil || boltSvc == nil {
+		return nil
+	}
+	svc := c.fromBolt(boltSvc)
+
+	endpointIds := c.store.GetRelatedEntitiesIdList(tx, id, db.EntityTypeEndpoints)
+	for _, endpointId := range endpointIds {
+		if endpoint, _ := c.endpoints.get(endpointId); endpoint != nil {
+			svc.Endpoints = append(svc.Endpoints, endpoint)
+		}
+	}
+
+	c.cache.Set(svc.Id, svc)
+	return svc
 }
 
 func (c *serviceController) all() ([]*Service, error) {
@@ -139,11 +146,11 @@ func (c *serviceController) all() ([]*Service, error) {
 			return err
 		}
 		for _, id := range ids {
-			service, err := c.store.LoadOneById(tx, id)
-			if err != nil {
-				return err
+			service := c.getInTx(tx, id)
+			if service == nil {
+				return errors.Errorf("unable to load service with id %v", id)
 			}
-			services = append(services, c.fromBolt(service))
+			services = append(services, service)
 		}
 		return nil
 	})

@@ -32,7 +32,7 @@ const (
 	FieldEndpointBinding   = "binding"
 	FieldEndpointAddress   = "address"
 	FieldEndpointCreatedAt = "createdAt"
-	FieldServerPeerData    = "peerdata"
+	FieldServerPeerData    = "peerData"
 	// FieldEndpointStrategyInputs = "strategyInputs"
 )
 
@@ -107,18 +107,25 @@ func newEndpointStore(stores *stores) *endpointStoreImpl {
 	store := &endpointStoreImpl{
 		baseStore: baseStore{
 			stores:    stores,
-			BaseStore: boltz.NewBaseStore(nil, EntityTypeServices, notFoundErrorFactory, boltz.RootBucket),
+			BaseStore: boltz.NewBaseStore(nil, EntityTypeEndpoints, notFoundErrorFactory, boltz.RootBucket),
 		},
 	}
 	store.InitImpl(store)
 	store.AddSymbol(FieldEndpointBinding, ast.NodeTypeString)
 	store.AddSymbol(FieldEndpointAddress, ast.NodeTypeString)
 	store.AddSymbol(FieldEndpointCreatedAt, ast.NodeTypeDatetime)
+
+	store.serviceSymbol = store.AddFkSymbol(FieldEndpointService, store.stores.service)
+	store.routerSymbol = store.AddFkSymbol(FieldEndpointRouter, store.stores.router)
+
 	return store
 }
 
 type endpointStoreImpl struct {
 	baseStore
+
+	serviceSymbol boltz.EntitySymbol
+	routerSymbol  boltz.EntitySymbol
 }
 
 func (store *endpointStoreImpl) NewStoreEntity() boltz.BaseEntity {
@@ -126,8 +133,8 @@ func (store *endpointStoreImpl) NewStoreEntity() boltz.BaseEntity {
 }
 
 func (store *endpointStoreImpl) initializeLinked() {
-	store.AddFkSymbol(FieldEndpointService, store.stores.service)
-	store.AddFkSymbol(FieldEndpointRouter, store.stores.router)
+	store.AddFkIndex(store.serviceSymbol, store.stores.service.endpointsSymbol)
+	store.AddFkIndex(store.routerSymbol, store.stores.router.endpointsSymbol)
 }
 
 func (store *endpointStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Endpoint, error) {

@@ -71,15 +71,16 @@ func newServiceStore(stores *stores) *serviceStoreImpl {
 	}
 	store.InitImpl(store)
 	store.AddSymbol(FieldServiceEndpointStrategy, ast.NodeTypeString)
+	store.endpointsSymbol = store.AddFkSetSymbol(EntityTypeEndpoints, stores.endpoint)
 	return store
 }
 
 type serviceStoreImpl struct {
 	baseStore
+	endpointsSymbol boltz.EntitySetSymbol
 }
 
 func (store *serviceStoreImpl) initializeLinked() {
-	store.AddFkSetSymbol(EntityTypeEndpoints, store.stores.endpoint)
 }
 
 func (store *serviceStoreImpl) NewStoreEntity() boltz.BaseEntity {

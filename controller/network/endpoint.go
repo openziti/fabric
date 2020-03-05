@@ -18,6 +18,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -66,6 +67,9 @@ func (c *endpointController) create(s *Endpoint) error {
 }
 
 func (c *endpointController) createInTx(ctx boltz.MutateContext, e *Endpoint) error {
+	if e.Id == "" {
+		e.Id = uuid.New().String()
+	}
 	if e.Binding == "" {
 		return errors.Errorf("binding is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
 	}
@@ -108,7 +112,7 @@ func (c *endpointController) get(id string) (*Endpoint, bool) {
 		pfxlog.Logger().Errorf("failed loading endpoint (%s)", err)
 		return nil, false
 	}
-	return entity, false
+	return entity, true
 }
 
 func (c *endpointController) list(serviceId, routerId string) ([]*Endpoint, error) {

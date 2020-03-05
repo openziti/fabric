@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ func (h *removeServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	rs := &mgmt_pb.RemoveServiceRequest{}
 	err := proto.Unmarshal(msg.Body, rs)
 	if err == nil {
-		if svc, found := h.network.GetService(rs.ServiceId); found {
+		if svc := h.network.GetService(rs.ServiceId); svc != nil {
 			if err := h.network.RemoveService(svc.Id); err != nil {
 				sendFailure(msg, ch, err.Error())
 			} else {

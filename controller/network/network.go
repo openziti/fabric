@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -146,7 +146,7 @@ func (network *Network) CreateService(service *Service) error {
 	return network.serviceController.create(service)
 }
 
-func (network *Network) GetService(serviceId string) (*Service, bool) {
+func (network *Network) GetService(serviceId string) *Service {
 	return network.serviceController.get(serviceId)
 }
 
@@ -263,7 +263,7 @@ func (network *Network) BindService(srcR *Router, token string, serviceId string
 	// TODO: Consider how we might replace this with a create endpoint ctrl handler, similar to the mgmt one
 
 	// 1: Find Service
-	if _, found := network.serviceController.get(serviceId); found {
+	if service := network.serviceController.get(serviceId); service != nil {
 		endpoint := &Endpoint{
 			Id:        token,
 			Service:   serviceId,
@@ -303,7 +303,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	log := pfxlog.Logger()
 
 	// 1: Find Service
-	if svc, found := network.serviceController.get(serviceId); found {
+	if svc := network.serviceController.get(serviceId); svc != nil {
 		// 2: Allocate Session Identifier
 		sessionIdHash, err := network.sequence.NextHash()
 		if err != nil {

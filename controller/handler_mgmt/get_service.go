@@ -1,5 +1,5 @@
 /*
-	Copyright 2019 NetFoundry, Inc.
+	Copyright 2020 NetFoundry, Inc.
 
 	Licensed under the Apache License, Version 2.0 (the "License");
 	you may not use this file except in compliance with the License.
@@ -41,7 +41,7 @@ func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 	err := proto.Unmarshal(msg.Body, rs)
 	if err == nil {
 		response := &mgmt_pb.GetServiceResponse{}
-		if svc, found := h.network.GetService(rs.ServiceId); found {
+		if svc := h.network.GetService(rs.ServiceId); svc != nil {
 			response.Service = toApiService(svc)
 			body, err := proto.Marshal(response)
 			if err == nil {
