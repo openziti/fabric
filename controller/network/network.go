@@ -38,16 +38,12 @@ import (
 )
 
 type Network struct {
+	*Controllers
 	nodeId                     *identity.TokenId
-	db                         *db.Db
 	options                    *Options
-	stores                     *db.Stores
-	endpointController         *endpointController
-	routerController           *routerController
 	routerChanged              chan *Router
 	linkController             *linkController
 	linkChanged                chan *Link
-	serviceController          *serviceController
 	sessionController          *sessionController
 	sequence                   *sequence.Sequence
 	metricsEventController     metrics.EventController
@@ -63,19 +59,15 @@ type Network struct {
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database *db.Db, metricsCfg *metrics.Config) (*Network, error) {
 	stores := db.InitStores()
-	env := initEnv(database, stores)
+	controllers := NewControllers(database, stores)
 
 	network := &Network{
+		Controllers:                controllers,
 		nodeId:                     nodeId,
-		db:                         database,
 		options:                    options,
-		stores:                     stores,
-		endpointController:         env.endpoints,
-		routerController:           env.routers,
 		routerChanged:              make(chan *Router),
 		linkController:             newLinkController(),
 		linkChanged:                make(chan *Link),
-		serviceController:          env.services,
 		sessionController:          newSessionController(),
 		sequence:                   sequence.NewSequence(),
 		metricsEventController:     metrics.NewEventController(metricsCfg),
@@ -102,60 +94,65 @@ func (network *Network) GetStores() *db.Stores {
 	return network.stores
 }
 
-func (network *Network) CreateRouter(router *Router) error {
-	return network.routerController.create(router)
+func (network *Network) GetControllers() *Controllers {
+	return network.Controllers
 }
 
-func (network *Network) GetConnectedRouter(routerId string) (*Router, bool) {
-	return network.routerController.getConnected(routerId)
+func (network *Network) CreateRouter(router *Router) error {
+	return network.Routers.Create(router)
+}
+
+func (network *Network) GetConnectedRouter(routerId string) *Router {
+	return network.Routers.getConnected(routerId)
 }
 
 func (network *Network) GetRouter(routerId string) (*Router, error) {
-	return network.routerController.get(routerId)
+	return network.Routers.get(routerId)
 }
 
 func (network *Network) AllRouters() ([]*Router, error) {
-	return network.routerController.all()
+	return network.Routers.all()
 }
 
 func (network *Network) AllConnectedRouters() []*Router {
-	return network.routerController.allConnected()
+	return network.Routers.allConnected()
 }
 
 func (network *Network) RemoveRouter(router *Router) error {
-	return network.routerController.remove(router.Id)
+	return network.Routers.Delete(router.Id)
 }
 
 func (network *Network) CreateEndpoint(endpoint *Endpoint) error {
-	return network.endpointController.create(endpoint)
+	_, err := network.Endpoints.Create(endpoint)
+	return err
 }
 
 func (network *Network) ListEndpoints(serviceId, routerId string) ([]*Endpoint, error) {
-	return network.endpointController.list(serviceId, routerId)
+	return network.Endpoints.list(serviceId, routerId)
 }
 
 func (network *Network) RemoveEndpoint(id string) error {
-	return network.endpointController.remove(id)
+	return network.Endpoints.Delete(id)
 }
 
 func (network *Network) GetEndpoint(endpointId string) (*Endpoint, bool) {
-	return network.endpointController.get(endpointId)
+	return network.Endpoints.get(endpointId)
 }
 
 func (network *Network) CreateService(service *Service) error {
-	return network.serviceController.create(service)
+	return network.Services.Create(service)
 }
 
 func (network *Network) GetService(serviceId string) *Service {
-	return network.serviceController.get(serviceId)
+	return network.Services.get(serviceId)
 }
 
 func (network *Network) AllServices() ([]*Service, error) {
-	return network.serviceController.all()
+	return network.Services.all()
 }
 
 func (network *Network) RemoveService(id string) error {
-	return network.serviceController.remove(id)
+	return network.Services.Delete(id)
 }
 
 func (network *Network) GetLink(linkId *identity.TokenId) (*Link, bool) {
@@ -199,11 +196,11 @@ func (network *Network) RouterChanged(r *Router) {
 }
 
 func (network *Network) ConnectedRouter(id string) bool {
-	return network.routerController.isConnected(id)
+	return network.Routers.isConnected(id)
 }
 
 func (network *Network) KnownRouter(id string) (*Router, error) {
-	r, err := network.routerController.get(id)
+	r, err := network.Routers.get(id)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +208,7 @@ func (network *Network) KnownRouter(id string) (*Router, error) {
 }
 
 func (network *Network) ConnectRouter(r *Router) {
-	network.routerController.markConnected(r)
+	network.Routers.markConnected(r)
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
@@ -226,7 +223,7 @@ func (network *Network) DisconnectRouter(r *Router) {
 		network.LinkChanged(l)
 	}
 	// 2: remove Router
-	network.routerController.markDisconnected(r)
+	network.Routers.markDisconnected(r)
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
@@ -261,75 +258,80 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	log := pfxlog.Logger()
 
 	// 1: Find Service
-	if svc := network.serviceController.get(serviceId); svc != nil {
-		// 2: Allocate Session Identifier
-		sessionIdHash, err := network.sequence.NextHash()
-		if err != nil {
-			return nil, err
-		}
-		sessionId := &identity.TokenId{Token: sessionIdHash}
-
-		if len(svc.Endpoints) == 0 {
-			return nil, errors2.Errorf("service %v has no endpoints", serviceId)
-		}
-
-		// 3: select endpoint
-		endpoint := svc.Endpoints[0]
-
-		// 4: Get Egress Router
-		er := endpoint.Router
-
-		// 5: Create Circuit
-		circuit, err := network.CreateCircuit(srcR, er)
-		if err != nil {
-			return nil, err
-		}
-		circuit.Binding = "transport"
-		if endpoint.Binding != "" {
-			circuit.Binding = endpoint.Binding
-		} else if strings.HasPrefix(endpoint.Address, "hosted") {
-			circuit.Binding = "edge"
-		} else if strings.HasPrefix(endpoint.Address, "udp") {
-			circuit.Binding = "udp"
-		}
-
-		// 5a: Create Route Messages
-		rms, err := circuit.CreateRouteMessages(sessionId, endpoint.Address)
-		if err != nil {
-			return nil, err
-		}
-
-		// 6: Route Egress
-		rms[len(rms)-1].Egress.PeerData = clientId.Data
-		err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
-		if err != nil {
-			return nil, err
-		}
-
-		// 7: Create Intermediate Routes
-		for i := 0; i < len(circuit.Path)-1; i++ {
-			err = sendRoute(circuit.Path[i], rms[i])
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		// 8: Create Session Object
-		ss := &session{
-			Id:       sessionId,
-			ClientId: clientId,
-			Service:  svc,
-			Circuit:  circuit,
-			Endpoint: endpoint,
-		}
-		network.sessionController.add(ss)
-		network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
-
-		log.Infof("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
-
-		return ss, nil
+	svc := network.Services.get(serviceId)
+	if svc == nil {
+		return nil, errors.New("invalid service")
 	}
-	return nil, errors.New("invalid service")
+
+	// 2: Allocate Session Identifier
+	sessionIdHash, err := network.sequence.NextHash()
+	if err != nil {
+		return nil, err
+	}
+	sessionId := &identity.TokenId{Token: sessionIdHash}
+
+	if len(svc.Endpoints) == 0 {
+		return nil, errors2.Errorf("service %v has no Endpoints", serviceId)
+	}
+
+	// 3: select endpoint
+	endpoint := svc.Endpoints[0]
+
+	// 4: Get Egress Router
+	er := network.Routers.getConnected(endpoint.Router)
+	if er == nil {
+		return nil, errors2.Errorf("invalid terminating router %v for service %v", endpoint.Router, svc.Id)
+	}
+
+	// 5: Create Circuit
+	circuit, err := network.CreateCircuit(srcR, er)
+	if err != nil {
+		return nil, err
+	}
+	circuit.Binding = "transport"
+	if endpoint.Binding != "" {
+		circuit.Binding = endpoint.Binding
+	} else if strings.HasPrefix(endpoint.Address, "hosted") {
+		circuit.Binding = "edge"
+	} else if strings.HasPrefix(endpoint.Address, "udp") {
+		circuit.Binding = "udp"
+	}
+
+	// 5a: Create Route Messages
+	rms, err := circuit.CreateRouteMessages(sessionId, endpoint.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	// 6: Route Egress
+	rms[len(rms)-1].Egress.PeerData = clientId.Data
+	err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
+	if err != nil {
+		return nil, err
+	}
+
+	// 7: Create Intermediate Routes
+	for i := 0; i < len(circuit.Path)-1; i++ {
+		err = sendRoute(circuit.Path[i], rms[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// 8: Create Session Object
+	ss := &session{
+		Id:       sessionId,
+		ClientId: clientId,
+		Service:  svc,
+		Circuit:  circuit,
+		Endpoint: endpoint,
+	}
+	network.sessionController.add(ss)
+	network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
+
+	log.Infof("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
+
+	return ss, nil
 }
 
 func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) error {
@@ -544,7 +546,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 func (network *Network) AcceptMetrics(metrics *ctrl_pb.MetricsMessage) {
 	log := pfxlog.Logger()
 
-	router, err := network.routerController.get(metrics.SourceId)
+	router, err := network.Routers.get(metrics.SourceId)
 	if err != nil {
 		log.Warnf("could not find router [r/%s] while processing metrics", metrics.SourceId)
 		return
@@ -565,7 +567,7 @@ func (network *Network) AcceptMetrics(metrics *ctrl_pb.MetricsMessage) {
 }
 
 func sendRoute(r *Router, createMsg *ctrl_pb.Route) error {
-	pfxlog.Logger().Debugf("sending create route message to [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
+	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
 
 	body, err := proto.Marshal(createMsg)
 	if err != nil {
@@ -628,7 +630,7 @@ func (network *Network) showOptions() {
 }
 
 func (network *Network) GetServiceCache() Cache {
-	return network.serviceController
+	return network.Services
 }
 
 type Cache interface {

@@ -18,6 +18,7 @@ package network
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/orcaman/concurrent-map"
@@ -38,34 +39,35 @@ func (entity *Service) toBolt() *db.Service {
 	}
 }
 
-type serviceController struct {
-	*env
+type ServiceController struct {
+	*Controllers
 	cache cmap.ConcurrentMap
 	store db.ServiceStore
 }
 
-func newServiceController(env *env) *serviceController {
-	result := &serviceController{
-		env:   env,
-		cache: cmap.New(),
-		store: env.stores.Service,
+func newServiceController(env *Controllers) *ServiceController {
+	result := &ServiceController{
+		Controllers: env,
+		cache:       cmap.New(),
+		store:       env.stores.Service,
 	}
 
-	env.stores.Endpoint.On(boltz.EventDelete, func(params ...interface{}) {
-		if len(params) < 1 {
-			return
-		}
-		entity, ok := params[0].(*db.Endpoint)
-		if !ok {
-			return
-		}
-		result.RemoveFromCache(entity.Service)
-	})
+	env.stores.Endpoint.On(boltz.EventCreate, result.endpointChanged)
+	env.stores.Endpoint.On(boltz.EventUpdate, result.endpointChanged)
+	env.stores.Endpoint.On(boltz.EventDelete, result.endpointChanged)
 
 	return result
 }
 
-func (c *serviceController) create(s *Service) error {
+func (c *ServiceController) endpointChanged(params ...interface{}) {
+	if len(params) > 0 {
+		if entity, ok := params[0].(*db.Endpoint); ok {
+			c.RemoveFromCache(entity.Service)
+		}
+	}
+}
+
+func (c *ServiceController) Create(s *Service) error {
 	err := c.db.Update(func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		if err := c.store.Create(ctx, s.toBolt()); err != nil {
@@ -73,7 +75,7 @@ func (c *serviceController) create(s *Service) error {
 		}
 		for _, endpoint := range s.Endpoints {
 			endpoint.Service = s.Id
-			if err := c.endpoints.createInTx(ctx, endpoint); err != nil {
+			if _, err := c.Endpoints.createInTx(ctx, endpoint); err != nil {
 				return err
 			}
 		}
@@ -86,7 +88,7 @@ func (c *serviceController) create(s *Service) error {
 	return nil
 }
 
-func (c *serviceController) update(s *Service) error {
+func (c *ServiceController) Update(s *Service) error {
 	err := c.db.Update(func(tx *bbolt.Tx) error {
 		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
 	})
@@ -97,7 +99,7 @@ func (c *serviceController) update(s *Service) error {
 	return nil
 }
 
-func (c *serviceController) get(id string) *Service {
+func (c *ServiceController) get(id string) *Service {
 	if t, found := c.cache.Get(id); found {
 		return t.(*Service)
 	}
@@ -113,14 +115,14 @@ func (c *serviceController) get(id string) *Service {
 	return svc
 }
 
-func (c *serviceController) getInTx(tx *bbolt.Tx, id string) *Service {
+func (c *ServiceController) getInTx(tx *bbolt.Tx, id string) *Service {
 	if t, found := c.cache.Get(id); found {
 		return t.(*Service)
 	}
 	return c.loadInTx(tx, id)
 }
 
-func (c *serviceController) loadInTx(tx *bbolt.Tx, id string) *Service {
+func (c *ServiceController) loadInTx(tx *bbolt.Tx, id string) *Service {
 	boltSvc, err := c.store.LoadOneById(tx, id)
 	if err != nil || boltSvc == nil {
 		return nil
@@ -129,7 +131,7 @@ func (c *serviceController) loadInTx(tx *bbolt.Tx, id string) *Service {
 
 	endpointIds := c.store.GetRelatedEntitiesIdList(tx, id, db.EntityTypeEndpoints)
 	for _, endpointId := range endpointIds {
-		if endpoint, _ := c.endpoints.get(endpointId); endpoint != nil {
+		if endpoint, _ := c.Endpoints.get(endpointId); endpoint != nil {
 			svc.Endpoints = append(svc.Endpoints, endpoint)
 		}
 	}
@@ -138,7 +140,7 @@ func (c *serviceController) loadInTx(tx *bbolt.Tx, id string) *Service {
 	return svc
 }
 
-func (c *serviceController) all() ([]*Service, error) {
+func (c *ServiceController) all() ([]*Service, error) {
 	var services []*Service
 	err := c.db.View(func(tx *bbolt.Tx) error {
 		ids, _, err := c.store.QueryIds(tx, "true")
@@ -160,18 +162,17 @@ func (c *serviceController) all() ([]*Service, error) {
 	return services, nil
 }
 
-func (c *serviceController) remove(id string) error {
+func (c *ServiceController) Delete(id string) error {
+	err := controllers.DeleteEntityById(c.store, c.db, id)
 	c.cache.Remove(id)
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
+	return err
 }
 
-func (c *serviceController) RemoveFromCache(id string) {
+func (c *ServiceController) RemoveFromCache(id string) {
 	c.cache.Remove(id)
 }
 
-func (c *serviceController) fromBolt(entity *db.Service) *Service {
+func (c *ServiceController) fromBolt(entity *db.Service) *Service {
 	return &Service{
 		Id:               entity.Id,
 		EndpointStrategy: entity.EndpointStrategy,

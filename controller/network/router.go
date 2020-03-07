@@ -18,6 +18,7 @@ package network
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
@@ -60,44 +61,44 @@ func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl c
 	}
 }
 
-type routerController struct {
-	*env
+type RouterController struct {
+	*Controllers
 	cache     cmap.ConcurrentMap
 	connected cmap.ConcurrentMap
 	store     db.RouterStore
 }
 
-func newRouterController(env *env) *routerController {
-	return &routerController{
-		env:       env,
-		cache:     cmap.New(),
-		connected: cmap.New(),
-		store:     env.stores.Router,
+func newRouterController(env *Controllers) *RouterController {
+	return &RouterController{
+		Controllers: env,
+		cache:       cmap.New(),
+		connected:   cmap.New(),
+		store:       env.stores.Router,
 	}
 }
 
-func (c *routerController) markConnected(r *Router) {
+func (c *RouterController) markConnected(r *Router) {
 	r.Connected.Set(true)
 	c.connected.Set(r.Id, r)
 }
 
-func (c *routerController) markDisconnected(r *Router) {
+func (c *RouterController) markDisconnected(r *Router) {
 	r.Connected.Set(false)
 	c.connected.Remove(r.Id)
 }
 
-func (c *routerController) isConnected(id string) bool {
+func (c *RouterController) isConnected(id string) bool {
 	return c.connected.Has(id)
 }
 
-func (c *routerController) getConnected(id string) (*Router, bool) {
+func (c *RouterController) getConnected(id string) *Router {
 	if t, found := c.connected.Get(id); found {
-		return t.(*Router), true
+		return t.(*Router)
 	}
-	return nil, false
+	return nil
 }
 
-func (c *routerController) allConnected() []*Router {
+func (c *RouterController) allConnected() []*Router {
 	var routers []*Router
 	for i := range c.connected.IterBuffered() {
 		routers = append(routers, i.Val.(*Router))
@@ -105,11 +106,11 @@ func (c *routerController) allConnected() []*Router {
 	return routers
 }
 
-func (c *routerController) connectedCount() int {
+func (c *RouterController) connectedCount() int {
 	return c.connected.Count()
 }
 
-func (c *routerController) create(router *Router) error {
+func (c *RouterController) Create(router *Router) error {
 	err := c.db.Update(func(tx *bbolt.Tx) error {
 		return c.store.Create(boltz.NewMutateContext(tx), router.toBolt())
 	})
@@ -119,15 +120,13 @@ func (c *routerController) create(router *Router) error {
 	return err
 }
 
-func (c *routerController) remove(id string) error {
-	err := c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
+func (c *RouterController) Delete(id string) error {
+	err := controllers.DeleteEntityById(c.store, c.db, id)
 	c.cache.Remove(id)
 	return err
 }
 
-func (c *routerController) get(id string) (*Router, error) {
+func (c *RouterController) get(id string) (*Router, error) {
 	if t, found := c.cache.Get(id); found {
 		return t.(*Router), nil
 	}
@@ -151,7 +150,7 @@ func (c *routerController) get(id string) (*Router, error) {
 	return router, err
 }
 
-func (c *routerController) all() ([]*Router, error) {
+func (c *RouterController) all() ([]*Router, error) {
 	var routers []*Router
 	err := c.db.View(func(tx *bbolt.Tx) error {
 		ids, _, err := c.store.QueryIds(tx, "true")
@@ -173,7 +172,7 @@ func (c *routerController) all() ([]*Router, error) {
 	return routers, nil
 }
 
-func (c *routerController) fromBolt(entity *db.Router) *Router {
+func (c *RouterController) fromBolt(entity *db.Router) *Router {
 	return &Router{
 		Id:          entity.Id,
 		Fingerprint: entity.Fingerprint,

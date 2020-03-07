@@ -47,7 +47,7 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 			log.Infof("got [%d] routers", len(routers))
 			for _, r := range routers {
 				connected := false
-				if connR, found := h.network.GetConnectedRouter(r.Id); found {
+				if connR := h.network.GetConnectedRouter(r.Id); connR != nil {
 					connected = true
 					r.AdvertisedListener = connR.AdvertisedListener
 				}

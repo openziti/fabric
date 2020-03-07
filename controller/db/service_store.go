@@ -83,7 +83,7 @@ type serviceStoreImpl struct {
 func (store *serviceStoreImpl) initializeLinked() {
 }
 
-func (store *serviceStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *serviceStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Service{}
 }
 

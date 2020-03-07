@@ -86,7 +86,7 @@ type routerStoreImpl struct {
 func (store *routerStoreImpl) initializeLinked() {
 }
 
-func (store *routerStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *routerStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Router{}
 }
 

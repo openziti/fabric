@@ -69,7 +69,7 @@ func toApiEndpoint(s *network.Endpoint) *mgmt_pb.Endpoint {
 	return &mgmt_pb.Endpoint{
 		Id:        s.Id,
 		ServiceId: s.Service,
-		RouterId:  s.Router.Id,
+		RouterId:  s.Router,
 		Binding:   s.Binding,
 		Address:   s.Address,
 		CreatedAt: ts,

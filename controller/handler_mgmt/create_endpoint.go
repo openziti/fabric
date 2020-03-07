@@ -23,7 +23,6 @@ import (
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/pkg/errors"
-	"time"
 )
 
 type createEndpointHandler struct {
@@ -68,12 +67,14 @@ func toModelEndpoint(n *network.Network, e *mgmt_pb.Endpoint) (*network.Endpoint
 	}
 
 	return &network.Endpoint{
-		Id:        e.Id,
-		Service:   e.ServiceId,
-		Router:    router,
-		Binding:   binding,
-		Address:   e.Address,
-		CreatedAt: time.Now(),
-		PeerData:  e.PeerData,
+		BaseEntity: network.BaseEntity{
+			Id:   e.Id,
+			Tags: nil,
+		},
+		Service:  e.ServiceId,
+		Router:   router.Id,
+		Binding:  binding,
+		Address:  e.Address,
+		PeerData: e.PeerData,
 	}, nil
 }

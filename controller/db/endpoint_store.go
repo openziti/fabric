@@ -22,45 +22,34 @@ import (
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
-	"time"
 )
 
 const (
-	EntityTypeEndpoints    = "endpoints"
-	FieldEndpointService   = "service"
-	FieldEndpointRouter    = "router"
-	FieldEndpointBinding   = "binding"
-	FieldEndpointAddress   = "address"
-	FieldEndpointCreatedAt = "createdAt"
-	FieldServerPeerData    = "peerData"
+	EntityTypeEndpoints  = "endpoints"
+	FieldEndpointService = "service"
+	FieldEndpointRouter  = "router"
+	FieldEndpointBinding = "binding"
+	FieldEndpointAddress = "address"
+	FieldServerPeerData  = "peerData"
 	// FieldEndpointStrategyInputs = "strategyInputs"
 )
 
 type Endpoint struct {
-	Id        string
-	Service   string
-	Router    string
-	Binding   string
-	Address   string
-	CreatedAt time.Time
-	PeerData  map[uint32][]byte
+	boltz.BaseExtEntity
+	Service  string
+	Router   string
+	Binding  string
+	Address  string
+	PeerData map[uint32][]byte
 	// StrategyInputs interface{}
 }
 
-func (entity *Endpoint) GetId() string {
-	return entity.Id
-}
-
-func (entity *Endpoint) SetId(id string) {
-	entity.Id = id
-}
-
 func (entity *Endpoint) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
 	entity.Service = bucket.GetStringOrError(FieldEndpointService)
 	entity.Router = bucket.GetStringOrError(FieldEndpointRouter)
 	entity.Binding = bucket.GetStringOrError(FieldEndpointBinding)
 	entity.Address = bucket.GetStringWithDefault(FieldEndpointAddress, "")
-	entity.CreatedAt = bucket.GetTimeOrError(FieldEndpointCreatedAt)
 
 	data := bucket.GetBucket(FieldServerPeerData)
 	if data != nil {
@@ -73,11 +62,11 @@ func (entity *Endpoint) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket)
 }
 
 func (entity *Endpoint) SetValues(ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldEndpointService, entity.Service)
 	ctx.SetString(FieldEndpointRouter, entity.Router)
 	ctx.SetString(FieldEndpointBinding, entity.Binding)
 	ctx.SetString(FieldEndpointAddress, entity.Address)
-	ctx.SetTimeP(FieldEndpointCreatedAt, &entity.CreatedAt)
 
 	_ = ctx.Bucket.DeleteBucket([]byte(FieldServerPeerData))
 	if entity.PeerData != nil {
@@ -111,9 +100,9 @@ func newEndpointStore(stores *stores) *endpointStoreImpl {
 		},
 	}
 	store.InitImpl(store)
+	store.AddExtEntitySymbols()
 	store.AddSymbol(FieldEndpointBinding, ast.NodeTypeString)
 	store.AddSymbol(FieldEndpointAddress, ast.NodeTypeString)
-	store.AddSymbol(FieldEndpointCreatedAt, ast.NodeTypeDatetime)
 
 	store.serviceSymbol = store.AddFkSymbol(FieldEndpointService, store.stores.service)
 	store.routerSymbol = store.AddFkSymbol(FieldEndpointRouter, store.stores.router)
@@ -128,7 +117,7 @@ type endpointStoreImpl struct {
 	routerSymbol  boltz.EntitySymbol
 }
 
-func (store *endpointStoreImpl) NewStoreEntity() boltz.BaseEntity {
+func (store *endpointStoreImpl) NewStoreEntity() boltz.Entity {
 	return &Endpoint{}
 }
 

@@ -47,9 +47,11 @@ func (h *createEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2
 		return
 	}
 	endpoint := &network.Endpoint{
-		Id:       request.Id,
+		BaseEntity: network.BaseEntity{
+			Id: request.Id,
+		},
 		Service:  request.ServiceId,
-		Router:   h.router,
+		Router:   h.router.Id,
 		Binding:  request.Binding,
 		Address:  request.Address,
 		PeerData: request.PeerData,

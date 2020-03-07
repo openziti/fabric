@@ -20,82 +20,122 @@ import (
 	"fmt"
 	"github.com/google/uuid"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/controllers"
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
+	"reflect"
 	"time"
 )
 
 type Endpoint struct {
-	Id        string
-	Service   string
-	Router    *Router
-	Binding   string
-	Address   string
-	CreatedAt time.Time
-	PeerData  map[uint32][]byte
+	BaseEntity
+	Service  string
+	Router   string
+	Binding  string
+	Address  string
+	PeerData map[uint32][]byte
+}
+
+func (entity *Endpoint) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltEndpoint, ok := boltEntity.(*db.Endpoint)
+	if !ok {
+		return errors.Errorf("unexpected type %v when filling model endpoint", reflect.TypeOf(boltEntity))
+	}
+	entity.Service = boltEndpoint.Service
+	entity.Router = boltEndpoint.Id
+	entity.Binding = boltEndpoint.Binding
+	entity.Address = boltEndpoint.Address
+	entity.PeerData = boltEndpoint.PeerData
+	entity.FillCommon(boltEndpoint)
+	return nil
 }
 
 func (entity *Endpoint) toBolt() *db.Endpoint {
 	return &db.Endpoint{
-		Id:       entity.Id,
-		Service:  entity.Service,
-		Router:   entity.Router.Id,
-		Binding:  entity.Binding,
-		Address:  entity.Address,
-		PeerData: entity.PeerData,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Service:       entity.Service,
+		Router:        entity.Router,
+		Binding:       entity.Binding,
+		Address:       entity.Address,
+		PeerData:      entity.PeerData,
 	}
 }
 
-type endpointController struct {
-	*env
+func newEndpointController(ctrls *Controllers) *EndpointController {
+	result := &EndpointController{
+		baseController: baseController{
+			Controllers: ctrls,
+		},
+		store: ctrls.stores.Endpoint,
+	}
+	result.impl = result
+	return result
+}
+
+type EndpointController struct {
+	baseController
 	store db.EndpointStore
 }
 
-func newEndpointController(env *env) *endpointController {
-	return &endpointController{
-		env:   env,
-		store: env.stores.Endpoint,
-	}
+func (c *EndpointController) getStore() boltz.CrudStore {
+	return c.store
 }
 
-func (c *endpointController) create(s *Endpoint) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.createInTx(boltz.NewMutateContext(tx), s)
+func (c *EndpointController) newModelEntity() boltEntitySink {
+	return &Endpoint{}
+}
+
+func (c *EndpointController) Create(s *Endpoint) (string, error) {
+	var id string
+	var err error
+	err = c.db.Update(func(tx *bbolt.Tx) error {
+		id, err = c.createInTx(boltz.NewMutateContext(tx), s)
+		return err
 	})
+	return id, err
 }
 
-func (c *endpointController) createInTx(ctx boltz.MutateContext, e *Endpoint) error {
+func (c *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint) (string, error) {
 	if e.Id == "" {
 		e.Id = uuid.New().String()
 	}
 	if e.Binding == "" {
-		return errors.Errorf("binding is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
+		return "", errors.Errorf("binding is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
 	}
 	if e.Address == "" {
-		return errors.Errorf("address is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
+		return "", errors.Errorf("address is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
 	}
 	if !c.stores.Service.IsEntityPresent(ctx.Tx(), e.Service) {
-		return errors.Errorf("invalid service %v for new endpoint %v", e.Service, e.Id)
+		return "", errors.Errorf("invalid service %v for new endpoint %v", e.Service, e.Id)
 	}
-	if e.Router == nil {
-		return errors.Errorf("router is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
+	if e.Router == "" {
+		return "", errors.Errorf("router is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
 	}
-	if !c.stores.Router.IsEntityPresent(ctx.Tx(), e.Router.Id) {
-		return errors.Errorf("invalid router %v for new endpoint %v", e.Router.Id, e.Id)
+	if !c.stores.Router.IsEntityPresent(ctx.Tx(), e.Router) {
+		return "", errors.Errorf("invalid router %v for new endpoint %v", e.Router, e.Id)
 	}
 	e.CreatedAt = time.Now()
-	return c.store.Create(ctx, e.toBolt())
+	if err := c.store.Create(ctx, e.toBolt()); err != nil {
+		return "", err
+	}
+	return e.Id, nil
 }
 
-func (c *endpointController) update(s *Endpoint) error {
+func (c *EndpointController) Update(s *Endpoint) error {
 	return c.db.Update(func(tx *bbolt.Tx) error {
 		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
 	})
 }
 
-func (c *endpointController) get(id string) (*Endpoint, bool) {
+func (c *EndpointController) Patch(s *Endpoint, checker boltz.FieldChecker) error {
+	return c.db.Update(func(tx *bbolt.Tx) error {
+		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), checker)
+	})
+}
+
+func (c *EndpointController) get(id string) (*Endpoint, bool) {
 	var entity *Endpoint
 	err := c.db.View(func(tx *bbolt.Tx) error {
 		boltEntity, err := c.store.LoadOneById(tx, id)
@@ -105,8 +145,8 @@ func (c *endpointController) get(id string) (*Endpoint, bool) {
 		if boltEntity == nil {
 			return fmt.Errorf("missing endpoint '%s'", id)
 		}
-		entity, err = c.fromBolt(boltEntity)
-		return err
+		entity = c.fromBolt(boltEntity)
+		return nil
 	})
 	if err != nil {
 		pfxlog.Logger().Errorf("failed loading endpoint (%s)", err)
@@ -115,7 +155,7 @@ func (c *endpointController) get(id string) (*Endpoint, bool) {
 	return entity, true
 }
 
-func (c *endpointController) list(serviceId, routerId string) ([]*Endpoint, error) {
+func (c *EndpointController) list(serviceId, routerId string) ([]*Endpoint, error) {
 	var results []*Endpoint
 	err := c.db.View(func(tx *bbolt.Tx) error {
 		query := ""
@@ -140,10 +180,7 @@ func (c *endpointController) list(serviceId, routerId string) ([]*Endpoint, erro
 			if err != nil {
 				return err
 			}
-			entity, err := c.fromBolt(boltEntity)
-			if err != nil {
-				return err
-			}
+			entity := c.fromBolt(boltEntity)
 			results = append(results, entity)
 		}
 		return nil
@@ -154,23 +191,18 @@ func (c *endpointController) list(serviceId, routerId string) ([]*Endpoint, erro
 	return results, nil
 }
 
-func (c *endpointController) remove(id string) error {
-	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.DeleteById(boltz.NewMutateContext(tx), id)
-	})
+func (c *EndpointController) Delete(id string) error {
+	return controllers.DeleteEntityById(c.store, c.db, id)
 }
 
-func (c *endpointController) fromBolt(entity *db.Endpoint) (*Endpoint, error) {
-	router, err := c.routers.get(entity.Router)
-	if err != nil {
-		return nil, err
-	}
-	return &Endpoint{
-		Id:       entity.Id,
+func (c *EndpointController) fromBolt(entity *db.Endpoint) *Endpoint {
+	result := &Endpoint{
 		Service:  entity.Service,
-		Router:   router,
+		Router:   entity.Router,
 		Binding:  entity.Binding,
 		Address:  entity.Address,
 		PeerData: entity.PeerData,
-	}, nil
+	}
+	result.FillCommon(entity)
+	return result
 }
