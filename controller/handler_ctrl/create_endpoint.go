@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -47,7 +48,7 @@ func (h *createEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2
 		return
 	}
 	endpoint := &network.Endpoint{
-		BaseEntity: network.BaseEntity{
+		BaseEntity: models.BaseEntity{
 			Id: request.Id,
 		},
 		Service:  request.ServiceId,

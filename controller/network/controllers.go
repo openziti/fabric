@@ -18,6 +18,7 @@ package network
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -46,21 +47,21 @@ func NewControllers(db *db.Db, stores *db.Stores) *Controllers {
 }
 
 type Controller interface {
-	EntityLoader
-	EntityLister
+	models.EntityLoader
+	models.EntityLister
 
 	newModelEntity() boltEntitySink
 	readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error
 }
 
 type boltEntitySink interface {
-	Entity
+	models.Entity
 	fillFrom(controller Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error
 }
 
 func newController(ctrls *Controllers, store boltz.CrudStore) baseController {
 	return baseController{
-		BaseController: BaseController{
+		BaseController: models.BaseController{
 			Store: store,
 		},
 		Controllers: ctrls,
@@ -68,12 +69,12 @@ func newController(ctrls *Controllers, store boltz.CrudStore) baseController {
 }
 
 type baseController struct {
-	BaseController
+	models.BaseController
 	*Controllers
 	impl Controller
 }
 
-func (ctrl *baseController) BaseLoad(id string) (Entity, error) {
+func (ctrl *baseController) BaseLoad(id string) (models.Entity, error) {
 	entity := ctrl.impl.newModelEntity()
 	if err := ctrl.readEntity(id, entity); err != nil {
 		return nil, err
@@ -81,7 +82,7 @@ func (ctrl *baseController) BaseLoad(id string) (Entity, error) {
 	return entity, nil
 }
 
-func (ctrl *baseController) BaseLoadInTx(tx *bbolt.Tx, id string) (Entity, error) {
+func (ctrl *baseController) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity, error) {
 	entity := ctrl.impl.newModelEntity()
 	if err := ctrl.readEntityInTx(tx, id, entity); err != nil {
 		return nil, err
@@ -108,8 +109,8 @@ func (ctrl *baseController) readEntityInTx(tx *bbolt.Tx, id string, modelEntity 
 	return modelEntity.fillFrom(ctrl.impl, tx, boltEntity)
 }
 
-func (ctrl *baseController) BaseList(query string) (*EntityListResult, error) {
-	result := &EntityListResult{Loader: ctrl}
+func (ctrl *baseController) BaseList(query string) (*models.EntityListResult, error) {
+	result := &models.EntityListResult{Loader: ctrl}
 	err := ctrl.list(query, result.Collect)
 	if err != nil {
 		return nil, err
@@ -117,7 +118,7 @@ func (ctrl *baseController) BaseList(query string) (*EntityListResult, error) {
 	return result, nil
 }
 
-func (ctrl *baseController) list(queryString string, resultHandler ListResultHandler) error {
+func (ctrl *baseController) list(queryString string, resultHandler models.ListResultHandler) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.ListWithTx(tx, queryString, resultHandler)
 	})

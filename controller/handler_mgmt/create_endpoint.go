@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -67,7 +68,7 @@ func toModelEndpoint(n *network.Network, e *mgmt_pb.Endpoint) (*network.Endpoint
 	}
 
 	return &network.Endpoint{
-		BaseEntity: network.BaseEntity{
+		BaseEntity: models.BaseEntity{
 			Id:   e.Id,
 			Tags: nil,
 		},

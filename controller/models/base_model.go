@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package models
 
 import (
 	"github.com/netfoundry/ziti-foundation/storage/ast"
