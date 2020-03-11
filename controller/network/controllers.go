@@ -46,9 +46,9 @@ func NewControllers(db *db.Db, stores *db.Stores) *Controllers {
 }
 
 type Controller interface {
-	BaseLoad(id string) (Entity, error)
+	EntityLoader
+	EntityLister
 
-	getStore() boltz.CrudStore
 	newModelEntity() boltEntitySink
 	readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error
 }
@@ -58,7 +58,17 @@ type boltEntitySink interface {
 	fillFrom(controller Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error
 }
 
+func newController(ctrls *Controllers, store boltz.CrudStore) baseController {
+	return baseController{
+		BaseController: BaseController{
+			Store: store,
+		},
+		Controllers: ctrls,
+	}
+}
+
 type baseController struct {
+	BaseController
 	*Controllers
 	impl Controller
 }
@@ -71,6 +81,14 @@ func (ctrl *baseController) BaseLoad(id string) (Entity, error) {
 	return entity, nil
 }
 
+func (ctrl *baseController) BaseLoadInTx(tx *bbolt.Tx, id string) (Entity, error) {
+	entity := ctrl.impl.newModelEntity()
+	if err := ctrl.readEntityInTx(tx, id, entity); err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
 func (ctrl *baseController) readEntity(id string, modelEntity boltEntitySink) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.readEntityInTx(tx, id, modelEntity)
@@ -78,14 +96,29 @@ func (ctrl *baseController) readEntity(id string, modelEntity boltEntitySink) er
 }
 
 func (ctrl *baseController) readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error {
-	boltEntity := ctrl.impl.getStore().NewStoreEntity()
-	found, err := ctrl.impl.getStore().BaseLoadOneById(tx, id, boltEntity)
+	boltEntity := ctrl.impl.GetStore().NewStoreEntity()
+	found, err := ctrl.impl.GetStore().BaseLoadOneById(tx, id, boltEntity)
 	if err != nil {
 		return err
 	}
 	if !found {
-		return boltz.NewNotFoundError(ctrl.impl.getStore().GetSingularEntityType(), "id", id)
+		return boltz.NewNotFoundError(ctrl.impl.GetStore().GetSingularEntityType(), "id", id)
 	}
 
 	return modelEntity.fillFrom(ctrl.impl, tx, boltEntity)
+}
+
+func (ctrl *baseController) BaseList(query string) (*EntityListResult, error) {
+	result := &EntityListResult{Loader: ctrl}
+	err := ctrl.list(query, result.Collect)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (ctrl *baseController) list(queryString string, resultHandler ListResultHandler) error {
+	return ctrl.db.View(func(tx *bbolt.Tx) error {
+		return ctrl.ListWithTx(tx, queryString, resultHandler)
+	})
 }

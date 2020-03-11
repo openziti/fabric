@@ -65,10 +65,8 @@ func (entity *Endpoint) toBolt() *db.Endpoint {
 
 func newEndpointController(ctrls *Controllers) *EndpointController {
 	result := &EndpointController{
-		baseController: baseController{
-			Controllers: ctrls,
-		},
-		store: ctrls.stores.Endpoint,
+		baseController: newController(ctrls, ctrls.stores.Endpoint),
+		store:          ctrls.stores.Endpoint,
 	}
 	result.impl = result
 	return result
@@ -77,10 +75,6 @@ func newEndpointController(ctrls *Controllers) *EndpointController {
 type EndpointController struct {
 	baseController
 	store db.EndpointStore
-}
-
-func (c *EndpointController) getStore() boltz.CrudStore {
-	return c.store
 }
 
 func (c *EndpointController) newModelEntity() boltEntitySink {
@@ -117,7 +111,7 @@ func (c *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint) (s
 		return "", errors.Errorf("invalid router %v for new endpoint %v", e.Router, e.Id)
 	}
 	e.CreatedAt = time.Now()
-	if err := c.store.Create(ctx, e.toBolt()); err != nil {
+	if err := c.GetStore().Create(ctx, e.toBolt()); err != nil {
 		return "", err
 	}
 	return e.Id, nil
@@ -125,13 +119,13 @@ func (c *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint) (s
 
 func (c *EndpointController) Update(s *Endpoint) error {
 	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
+		return c.GetStore().Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
 	})
 }
 
 func (c *EndpointController) Patch(s *Endpoint, checker boltz.FieldChecker) error {
 	return c.db.Update(func(tx *bbolt.Tx) error {
-		return c.store.Update(boltz.NewMutateContext(tx), s.toBolt(), checker)
+		return c.GetStore().Update(boltz.NewMutateContext(tx), s.toBolt(), checker)
 	})
 }
 
@@ -171,7 +165,7 @@ func (c *EndpointController) list(serviceId, routerId string) ([]*Endpoint, erro
 		if query == "" {
 			query = "true"
 		}
-		ids, _, err := c.store.QueryIds(tx, query)
+		ids, _, err := c.GetStore().QueryIds(tx, query)
 		if err != nil {
 			return err
 		}
@@ -192,7 +186,7 @@ func (c *EndpointController) list(serviceId, routerId string) ([]*Endpoint, erro
 }
 
 func (c *EndpointController) Delete(id string) error {
-	return controllers.DeleteEntityById(c.store, c.db, id)
+	return controllers.DeleteEntityById(c.GetStore(), c.db, id)
 }
 
 func (c *EndpointController) fromBolt(entity *db.Endpoint) *Endpoint {
