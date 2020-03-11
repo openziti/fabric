@@ -45,19 +45,21 @@ func (h *getEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 		return
 	}
 	response := &mgmt_pb.GetEndpointResponse{}
-	if endpoint, found := h.network.GetEndpoint(rs.EndpointId); found {
-		response.Endpoint = toApiEndpoint(endpoint)
-		body, err := proto.Marshal(response)
-		if err == nil {
-			responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetEndpointResponseType), body)
-			responseMsg.ReplyTo(msg)
-			ch.Send(responseMsg)
+	endpoint, err := h.network.Endpoints.Read(rs.EndpointId)
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
 
-		} else {
-			pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
-		}
+	response.Endpoint = toApiEndpoint(endpoint)
+	body, err := proto.Marshal(response)
+	if err == nil {
+		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetEndpointResponseType), body)
+		responseMsg.ReplyTo(msg)
+		ch.Send(responseMsg)
+
 	} else {
-		handler_common.SendFailure(msg, ch, "no such endpoint")
+		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}
 }
 

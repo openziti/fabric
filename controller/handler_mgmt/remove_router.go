@@ -40,19 +40,21 @@ func (h *removeRouterHandler) ContentType() int32 {
 func (h *removeRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
-	remove := &mgmt_pb.RemoveRouterRequest{}
-	if err := proto.Unmarshal(msg.Body, remove); err == nil {
-		router, err := h.network.GetRouter(remove.RouterId)
-		if err == nil {
-			if err := h.network.RemoveRouter(router); err == nil {
-				log.Infof("removed router [r/%s]", remove.RouterId)
-				handler_common.SendSuccess(msg, ch, "")
-			} else {
-				handler_common.SendFailure(msg, ch, err.Error())
-			}
-		} else {
-			handler_common.SendFailure(msg, ch, err.Error())
-		}
+	request := &mgmt_pb.RemoveRouterRequest{}
+	if err := proto.Unmarshal(msg.Body, request); err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	_, err := h.network.Routers.Read(request.RouterId)
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	if err := h.network.Routers.Delete(request.RouterId); err == nil {
+		log.Infof("removed router [r/%v]", request.RouterId)
+		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}

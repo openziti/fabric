@@ -49,6 +49,7 @@ func NewControllers(db *db.Db, stores *db.Stores) *Controllers {
 type Controller interface {
 	models.EntityLoader
 	models.EntityLister
+	getControllers() *Controllers
 
 	newModelEntity() boltEntitySink
 	readEntityInTx(tx *bbolt.Tx, id string, modelEntity boltEntitySink) error
@@ -59,12 +60,12 @@ type boltEntitySink interface {
 	fillFrom(controller Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error
 }
 
-func newController(ctrls *Controllers, store boltz.CrudStore) baseController {
+func newController(controllers *Controllers, store boltz.CrudStore) baseController {
 	return baseController{
 		BaseController: models.BaseController{
 			Store: store,
 		},
-		Controllers: ctrls,
+		Controllers: controllers,
 	}
 }
 
@@ -88,6 +89,10 @@ func (ctrl *baseController) BaseLoadInTx(tx *bbolt.Tx, id string) (models.Entity
 		return nil, err
 	}
 	return entity, nil
+}
+
+func (ctrl *baseController) getControllers() *Controllers {
+	return ctrl.Controllers
 }
 
 func (ctrl *baseController) readEntity(id string, modelEntity boltEntitySink) error {

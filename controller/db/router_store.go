@@ -32,23 +32,17 @@ const (
 )
 
 type Router struct {
-	Id          string
+	boltz.BaseExtEntity
 	Fingerprint string
 }
 
-func (entity *Router) GetId() string {
-	return entity.Id
-}
-
-func (entity *Router) SetId(id string) {
-	entity.Id = id
-}
-
 func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
 	entity.Fingerprint = bucket.GetStringOrError(FieldRouterFingerprint)
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldRouterFingerprint, entity.Fingerprint)
 }
 

@@ -107,52 +107,11 @@ func (network *Network) GetConnectedRouter(routerId string) *Router {
 }
 
 func (network *Network) GetRouter(routerId string) (*Router, error) {
-	return network.Routers.get(routerId)
-}
-
-func (network *Network) AllRouters() ([]*Router, error) {
-	return network.Routers.all()
+	return network.Routers.Read(routerId)
 }
 
 func (network *Network) AllConnectedRouters() []*Router {
 	return network.Routers.allConnected()
-}
-
-func (network *Network) RemoveRouter(router *Router) error {
-	return network.Routers.Delete(router.Id)
-}
-
-func (network *Network) CreateEndpoint(endpoint *Endpoint) error {
-	_, err := network.Endpoints.Create(endpoint)
-	return err
-}
-
-func (network *Network) ListEndpoints(serviceId, routerId string) ([]*Endpoint, error) {
-	return network.Endpoints.list(serviceId, routerId)
-}
-
-func (network *Network) RemoveEndpoint(id string) error {
-	return network.Endpoints.Delete(id)
-}
-
-func (network *Network) GetEndpoint(endpointId string) (*Endpoint, bool) {
-	return network.Endpoints.get(endpointId)
-}
-
-func (network *Network) CreateService(service *Service) error {
-	return network.Services.Create(service)
-}
-
-func (network *Network) GetService(serviceId string) *Service {
-	return network.Services.get(serviceId)
-}
-
-func (network *Network) AllServices() ([]*Service, error) {
-	return network.Services.all()
-}
-
-func (network *Network) RemoveService(id string) error {
-	return network.Services.Delete(id)
 }
 
 func (network *Network) GetLink(linkId *identity.TokenId) (*Link, bool) {
@@ -197,14 +156,6 @@ func (network *Network) RouterChanged(r *Router) {
 
 func (network *Network) ConnectedRouter(id string) bool {
 	return network.Routers.isConnected(id)
-}
-
-func (network *Network) KnownRouter(id string) (*Router, error) {
-	r, err := network.Routers.get(id)
-	if err != nil {
-		return nil, err
-	}
-	return r, nil
 }
 
 func (network *Network) ConnectRouter(r *Router) {
@@ -258,9 +209,9 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	log := pfxlog.Logger()
 
 	// 1: Find Service
-	svc := network.Services.get(serviceId)
-	if svc == nil {
-		return nil, errors.New("invalid service")
+	svc, err := network.Services.Read(serviceId)
+	if err == nil {
+		return nil, err
 	}
 
 	// 2: Allocate Session Identifier
@@ -546,7 +497,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 func (network *Network) AcceptMetrics(metrics *ctrl_pb.MetricsMessage) {
 	log := pfxlog.Logger()
 
-	router, err := network.Routers.get(metrics.SourceId)
+	router, err := network.Routers.Read(metrics.SourceId)
 	if err != nil {
 		log.Warnf("could not find router [r/%s] while processing metrics", metrics.SourceId)
 		return

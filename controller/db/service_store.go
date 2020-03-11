@@ -29,23 +29,17 @@ const (
 )
 
 type Service struct {
-	Id               string
+	boltz.BaseExtEntity
 	EndpointStrategy string
 }
 
-func (entity *Service) GetId() string {
-	return entity.Id
-}
-
-func (entity *Service) SetId(id string) {
-	entity.Id = id
-}
-
 func (entity *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
+	entity.LoadBaseValues(bucket)
 	entity.EndpointStrategy = bucket.GetStringWithDefault(FieldServiceEndpointStrategy, "")
 }
 
 func (entity *Service) SetValues(ctx *boltz.PersistContext) {
+	entity.SetBaseValues(ctx)
 	ctx.SetString(FieldServiceEndpointStrategy, entity.EndpointStrategy)
 }
 

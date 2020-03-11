@@ -58,8 +58,8 @@ func (h *createEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2
 		PeerData: request.PeerData,
 	}
 
-	if err := h.network.CreateEndpoint(endpoint); err == nil {
-		handler_common.SendSuccess(msg, ch, "")
+	if id, err := h.network.Endpoints.Create(endpoint); err == nil {
+		handler_common.SendSuccess(msg, ch, id)
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}

@@ -78,6 +78,7 @@ message Endpoint {
 }
 
 message ListServicesRequest {
+    string query = 1;
 }
 
 message ListServicesResponse {
@@ -102,8 +103,7 @@ message GetServiceResponse {
 
 // service endpoints
 message ListEndpointsRequest {
-    string serviceId = 1;
-    string routerId = 2;
+    string query = 1;
 }
 
 message ListEndpointsResponse {
@@ -138,6 +138,7 @@ message Router {
 }
 
 message ListRoutersRequest {
+    string query = 1;
 }
 message ListRoutersResponse {
     repeated Router routers = 1;

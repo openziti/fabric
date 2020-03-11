@@ -17,12 +17,14 @@
 package handler_mgmt
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"reflect"
 )
 
 type listEndpointsHandler struct {
@@ -45,10 +47,16 @@ func (h *listEndpointsHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	}
 	response := &mgmt_pb.ListEndpointsResponse{Endpoints: make([]*mgmt_pb.Endpoint, 0)}
 
-	svcs, err := h.network.ListEndpoints(ls.ServiceId, ls.RouterId)
+	result, err := h.network.Endpoints.BaseList(ls.Query)
 	if err == nil {
-		for _, s := range svcs {
-			response.Endpoints = append(response.Endpoints, toApiEndpoint(s))
+		for _, entity := range result.Entities {
+			endpoint, ok := entity.(*network.Endpoint)
+			if !ok {
+				errorMsg := fmt.Sprintf("unexpected result in endpoint list of type: %v", reflect.TypeOf(entity))
+				handler_common.SendFailure(msg, ch, errorMsg)
+				return
+			}
+			response.Endpoints = append(response.Endpoints, toApiEndpoint(endpoint))
 		}
 
 		body, err := proto.Marshal(response)

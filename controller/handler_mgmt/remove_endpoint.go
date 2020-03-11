@@ -18,6 +18,7 @@ package handler_mgmt
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
@@ -37,18 +38,24 @@ func (h *removeEndpointHandler) ContentType() int32 {
 }
 
 func (h *removeEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	rs := &mgmt_pb.RemoveEndpointRequest{}
-	if err := proto.Unmarshal(msg.Body, rs); err != nil {
+	log := pfxlog.ContextLogger(ch.Label())
+
+	request := &mgmt_pb.RemoveEndpointRequest{}
+	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	if endpoint, found := h.network.GetEndpoint(rs.EndpointId); found {
-		if err := h.network.RemoveEndpoint(endpoint.Id); err != nil {
-			handler_common.SendFailure(msg, ch, err.Error())
-		} else {
-			handler_common.SendSuccess(msg, ch, "")
-		}
+
+	_, err := h.network.Endpoints.Read(request.EndpointId)
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	if err := h.network.Endpoints.Delete(request.EndpointId); err == nil {
+		log.Infof("removed endpoint [e/%s]", request.EndpointId)
+		handler_common.SendSuccess(msg, ch, "")
 	} else {
-		handler_common.SendFailure(msg, ch, "no such endpoint")
+		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }

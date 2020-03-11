@@ -17,12 +17,14 @@
 package handler_mgmt
 
 import (
+	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
+	"reflect"
 )
 
 type listRoutersHandler struct {
@@ -43,22 +45,26 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 	list := &mgmt_pb.ListRoutersRequest{}
 	if err := proto.Unmarshal(msg.Body, list); err == nil {
 		response := &mgmt_pb.ListRoutersResponse{Routers: make([]*mgmt_pb.Router, 0)}
-		if routers, err := h.network.AllRouters(); err == nil {
-			log.Infof("got [%d] routers", len(routers))
-			for _, r := range routers {
-				connected := false
-				if connR := h.network.GetConnectedRouter(r.Id); connR != nil {
-					connected = true
-					r.AdvertisedListener = connR.AdvertisedListener
+		if result, err := h.network.Routers.BaseList(list.Query); err == nil {
+			log.Infof("got [%d] routers", len(result.Entities))
+			for _, entity := range result.Entities {
+				router, ok := entity.(*network.Router)
+				if !ok {
+					errorMsg := fmt.Sprintf("unexpected result in router list of type: %v", reflect.TypeOf(entity))
+					handler_common.SendFailure(msg, ch, errorMsg)
+					return
 				}
+
 				responseR := &mgmt_pb.Router{
-					Id:          r.Id,
-					Fingerprint: r.Fingerprint,
-					Connected:   connected,
+					Id:          router.Id,
+					Fingerprint: router.Fingerprint,
 				}
-				if r.AdvertisedListener != nil {
-					responseR.ListenerAddress = r.AdvertisedListener.String()
+
+				if connR := h.network.GetConnectedRouter(router.Id); connR != nil {
+					responseR.Connected = true
+					responseR.ListenerAddress = connR.AdvertisedListener.String()
 				}
+
 				response.Routers = append(response.Routers, responseR)
 			}
 

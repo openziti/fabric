@@ -40,25 +40,27 @@ func (h *getServiceHandler) ContentType() int32 {
 func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
 	rs := &mgmt_pb.GetServiceRequest{}
 	err := proto.Unmarshal(msg.Body, rs)
-	if err == nil {
-		response := &mgmt_pb.GetServiceResponse{}
-		if svc := h.network.GetService(rs.ServiceId); svc != nil {
-			response.Service = toApiService(svc)
-			body, err := proto.Marshal(response)
-			if err == nil {
-				responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
-				responseMsg.ReplyTo(msg)
-				ch.Send(responseMsg)
 
-			} else {
-				pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
-			}
-
-		} else {
-			handler_common.SendFailure(msg, ch, "no such service")
-		}
-	} else {
+	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	response := &mgmt_pb.GetServiceResponse{}
+	svc, err := h.network.Services.Read(rs.ServiceId)
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
+	}
+
+	response.Service = toApiService(svc)
+	body, err := proto.Marshal(response)
+	if err == nil {
+		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetServiceResponseType), body)
+		responseMsg.ReplyTo(msg)
+		ch.Send(responseMsg)
+	} else {
+		pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error (%s)", err)
 	}
 }
 
