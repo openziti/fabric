@@ -58,7 +58,10 @@ type Network struct {
 }
 
 func NewNetwork(nodeId *identity.TokenId, options *Options, database *db.Db, metricsCfg *metrics.Config) (*Network, error) {
-	stores := db.InitStores()
+	stores, err := db.InitStores(database)
+	if err != nil {
+		return nil, err
+	}
 	controllers := NewControllers(database, stores)
 
 	network := &Network{

@@ -16,6 +16,10 @@
 
 package db
 
+import (
+	"github.com/netfoundry/ziti-foundation/storage/boltz"
+)
+
 type Stores struct {
 	Endpoint EndpointStore
 	Router   RouterStore
@@ -28,7 +32,7 @@ type stores struct {
 	service  *serviceStoreImpl
 }
 
-func InitStores() *Stores {
+func InitStores(db boltz.Db) (*Stores, error) {
 	internalStores := &stores{}
 
 	internalStores.endpoint = newEndpointStore(internalStores)
@@ -45,5 +49,10 @@ func InitStores() *Stores {
 	internalStores.router.initializeLinked()
 	internalStores.service.initializeLinked()
 
-	return stores
+	mm := boltz.NewMigratorManager(db)
+	if err := mm.Migrate("fabric", internalStores.migrate); err != nil {
+		return nil, err
+	}
+
+	return stores, nil
 }
