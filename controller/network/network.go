@@ -213,7 +213,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	// 1: Find Service
 	svc, err := network.Services.Read(serviceId)
-	if err == nil {
+	if err != nil {
 		return nil, err
 	}
 

@@ -58,24 +58,29 @@ func (entity *Service) toBolt() *db.Service {
 	}
 }
 
-type ServiceController struct {
-	baseController
-	cache cmap.ConcurrentMap
-	store db.ServiceStore
-}
-
 func newServiceController(controllers *Controllers) *ServiceController {
 	result := &ServiceController{
 		baseController: newController(controllers, controllers.stores.Service),
 		cache:          cmap.New(),
 		store:          controllers.stores.Service,
 	}
+	result.impl = result
 
 	controllers.stores.Endpoint.On(boltz.EventCreate, result.endpointChanged)
 	controllers.stores.Endpoint.On(boltz.EventUpdate, result.endpointChanged)
 	controllers.stores.Endpoint.On(boltz.EventDelete, result.endpointChanged)
 
 	return result
+}
+
+type ServiceController struct {
+	baseController
+	cache cmap.ConcurrentMap
+	store db.ServiceStore
+}
+
+func (ctrl *ServiceController) newModelEntity() boltEntitySink {
+	return &Service{}
 }
 
 func (ctrl *ServiceController) endpointChanged(params ...interface{}) {

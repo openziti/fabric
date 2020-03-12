@@ -32,6 +32,8 @@ const (
 
 type EntityLister interface {
 	BaseList(query string) (*EntityListResult, error)
+	BasePreparedList(query ast.Query) (*EntityListResult, error)
+
 	GetStore() boltz.CrudStore
 }
 
@@ -145,6 +147,22 @@ func (ctrl *BaseController) ListWithTx(tx *bbolt.Tx, queryString string, resultH
 		return err
 	}
 
+	ctrl.checkLimits(query)
+
+	keys, count, err := ctrl.Store.QueryIdsC(tx, query)
+	if err != nil {
+		return err
+	}
+	qmd := &QueryMetaData{
+		Count:            count,
+		Limit:            *query.GetLimit(),
+		Offset:           *query.GetSkip(),
+		FilterableFields: ctrl.Store.GetPublicSymbols(),
+	}
+	return resultHandler(tx, keys, qmd)
+}
+
+func (ctrl *BaseController) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	keys, count, err := ctrl.Store.QueryIdsC(tx, query)

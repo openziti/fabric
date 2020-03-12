@@ -19,6 +19,7 @@ package network
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
+	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
 	"go.etcd.io/bbolt"
 )
@@ -126,5 +127,20 @@ func (ctrl *baseController) BaseList(query string) (*models.EntityListResult, er
 func (ctrl *baseController) list(queryString string, resultHandler models.ListResultHandler) error {
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.ListWithTx(tx, queryString, resultHandler)
+	})
+}
+
+func (ctrl *baseController) BasePreparedList(query ast.Query) (*models.EntityListResult, error) {
+	result := &models.EntityListResult{Loader: ctrl}
+	err := ctrl.preparedList(query, result.Collect)
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
+}
+
+func (ctrl *baseController) preparedList(query ast.Query, resultHandler models.ListResultHandler) error {
+	return ctrl.db.View(func(tx *bbolt.Tx) error {
+		return ctrl.PreparedListWithTx(tx, query, resultHandler)
 	})
 }
