@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport/tcp"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +25,10 @@ import (
 )
 
 func TestSimpleCircuit2(t *testing.T) {
-	network, err := NewNetwork(nil, nil, nil, nil)
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	network, err := NewNetwork(nil, nil, ctx.GetDb(), nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -82,7 +86,10 @@ func TestSimpleCircuit2(t *testing.T) {
 }
 
 func TestTransitCircuit2(t *testing.T) {
-	network, err := NewNetwork(nil, nil, nil, nil)
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	network, err := NewNetwork(nil, nil, ctx.GetDb(), nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"

@@ -13,6 +13,7 @@ func NewTestContext(t *testing.T) *TestContext {
 		BaseTestContext: *boltz.NewTestContext(t),
 	}
 	context.Impl = context
+	context.Init()
 	return context
 }
 

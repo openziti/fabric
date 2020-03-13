@@ -25,18 +25,18 @@ import (
 )
 
 type Controllers struct {
-	db        *db.Db
+	db        boltz.Db
 	stores    *db.Stores
 	Endpoints *EndpointController
 	Routers   *RouterController
 	Services  *ServiceController
 }
 
-func (e *Controllers) getDb() *db.Db {
+func (e *Controllers) getDb() boltz.Db {
 	return e.db
 }
 
-func NewControllers(db *db.Db, stores *db.Stores) *Controllers {
+func NewControllers(db boltz.Db, stores *db.Stores) *Controllers {
 	result := &Controllers{
 		db:     db,
 		stores: stores,

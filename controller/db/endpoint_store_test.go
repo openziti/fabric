@@ -28,7 +28,6 @@ import (
 func Test_EndpointStore(t *testing.T) {
 	ctx := NewTestContext(t)
 	defer ctx.Cleanup()
-	ctx.Init()
 
 	t.Run("test create invalid endpoints", ctx.testCreateInvalidEndpoints)
 	t.Run("test create/delete endpoints", ctx.testCreateEndpoints)

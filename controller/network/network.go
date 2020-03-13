@@ -57,7 +57,7 @@ type Network struct {
 	lock                       sync.Mutex
 }
 
-func NewNetwork(nodeId *identity.TokenId, options *Options, database *db.Db, metricsCfg *metrics.Config) (*Network, error) {
+func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, metricsCfg *metrics.Config) (*Network, error) {
 	stores, err := db.InitStores(database)
 	if err != nil {
 		return nil, err
