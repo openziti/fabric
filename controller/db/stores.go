@@ -18,12 +18,39 @@ package db
 
 import (
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"reflect"
 )
 
 type Stores struct {
 	Endpoint EndpointStore
 	Router   RouterStore
 	Service  ServiceStore
+	storeMap map[string]boltz.CrudStore
+}
+
+func (stores *Stores) buildStoreMap() {
+	stores.storeMap = map[string]boltz.CrudStore{}
+	val := reflect.ValueOf(stores).Elem()
+	for i := 0; i < val.NumField(); i++ {
+		f := val.Field(i)
+		if f.CanInterface() {
+			if store, ok := f.Interface().(boltz.CrudStore); ok {
+				stores.storeMap[store.GetEntityType()] = store
+			}
+		}
+	}
+}
+
+func (stores *Stores) GetStoreList() []boltz.CrudStore {
+	var result []boltz.CrudStore
+	for _, store := range stores.storeMap {
+		result = append(result, store)
+	}
+	return result
+}
+
+func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
+	return stores.storeMap[entity.GetEntityType()]
 }
 
 type stores struct {
@@ -44,6 +71,8 @@ func InitStores(db boltz.Db) (*Stores, error) {
 		Router:   internalStores.router,
 		Service:  internalStores.service,
 	}
+
+	stores.buildStoreMap()
 
 	internalStores.endpoint.initializeLinked()
 	internalStores.router.initializeLinked()
