@@ -6,6 +6,8 @@ import (
 	"time"
 )
 
+const CurrentDbVersion = 1
+
 func (stores *stores) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion == 0 {
 		stores.migrateToV1(step)

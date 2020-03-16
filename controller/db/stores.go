@@ -79,7 +79,7 @@ func InitStores(db boltz.Db) (*Stores, error) {
 	internalStores.service.initializeLinked()
 
 	mm := boltz.NewMigratorManager(db)
-	if err := mm.Migrate("fabric", internalStores.migrate); err != nil {
+	if err := mm.Migrate("fabric", CurrentDbVersion, internalStores.migrate); err != nil {
 		return nil, err
 	}
 

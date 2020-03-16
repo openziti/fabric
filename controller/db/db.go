@@ -60,9 +60,9 @@ func (db *Db) RootBucket(tx *bbolt.Tx) (*bbolt.Bucket, error) {
 	return ziti, nil
 }
 
-func (db *Db) Snapshot() error {
+func (db *Db) Snapshot(tx *bbolt.Tx) error {
 	path := db.db.Path()
-	path += time.Now().Format("20060102-150405-999999")
+	path += "-" + time.Now().Format("20060102-150405")
 
 	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
@@ -70,13 +70,11 @@ func (db *Db) Snapshot() error {
 	}
 	defer file.Close()
 
-	return db.View(func(tx *bbolt.Tx) error {
-		_, err := tx.WriteTo(file)
-		if err != nil {
-			pfxlog.Logger().Infof("created bolt db backup: %v", path)
-		}
-		return err
-	})
+	_, err = tx.WriteTo(file)
+	if err != nil {
+		pfxlog.Logger().Infof("created bolt db backup: %v", path)
+	}
+	return err
 }
 
 func createRoots(tx *bbolt.Tx) error {
