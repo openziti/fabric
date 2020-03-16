@@ -64,7 +64,16 @@ func (db *Db) Snapshot(tx *bbolt.Tx) error {
 	path := db.db.Path()
 	path += "-" + time.Now().Format("20060102-150405")
 
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	_, err := os.Stat(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+	} else {
+		pfxlog.Logger().Infof("bolt db backup already made: %v", path)
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		return err
 	}
