@@ -16,13 +16,13 @@ enum ContentType {
     GetServiceRequestType = 10006;
     GetServiceResponseType = 10007;
 
-    // Service Endpoints
-    CreateEndpointRequestType = 10050;
-    RemoveEndpointRequestType = 10051;
-    ListEndpointsRequestType = 10052;
-    ListEndpointsResponseType = 10053;
-    GetEndpointRequestType = 10054;
-    GetEndpointResponseType = 10055;
+    // Service Terminators
+    CreateTerminatorRequestType = 10050;
+    RemoveTerminatorRequestType = 10051;
+    ListTerminatorsRequestType = 10052;
+    ListTerminatorsResponseType = 10053;
+    GetTerminatorRequestType = 10054;
+    GetTerminatorResponseType = 10055;
 
     // Routers
     ListRoutersRequestType = 10010;
@@ -63,11 +63,11 @@ enum ContentType {
 
 message Service {
     string id = 1;
-    string endpointStrategy = 2;
-    repeated Endpoint endpoints = 3;
+    string terminatorStrategy = 2;
+    repeated Terminator terminators = 3;
 }
 
-message Endpoint {
+message Terminator {
     string id = 1;
     string serviceId = 2;
     string routerId = 3;
@@ -101,29 +101,29 @@ message GetServiceResponse {
     Service service = 1;
 }
 
-// service endpoints
-message ListEndpointsRequest {
+// service terminators
+message ListTerminatorsRequest {
     string query = 1;
 }
 
-message ListEndpointsResponse {
-    repeated Endpoint endpoints = 1;
+message ListTerminatorsResponse {
+    repeated Terminator terminators = 1;
 }
 
-message CreateEndpointRequest {
-    Endpoint endpoint = 1;
+message CreateTerminatorRequest {
+    Terminator terminator = 1;
 }
 
-message RemoveEndpointRequest {
-    string endpointId = 1;
+message RemoveTerminatorRequest {
+    string terminatorId = 1;
 }
 
-message GetEndpointRequest {
-    string endpointId = 1;
+message GetTerminatorRequest {
+    string terminatorId = 1;
 }
 
-message GetEndpointResponse {
-    Endpoint endpoint = 1;
+message GetTerminatorResponse {
+    Terminator terminator = 1;
 }
 
 //
@@ -196,7 +196,7 @@ message Session {
     string id = 1;
     string clientId = 2;
     string serviceId = 3;
-    string endpointId = 4;
+    string terminatorId = 4;
     Circuit circuit = 5;
 }
 

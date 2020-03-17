@@ -42,16 +42,16 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	err := proto.Unmarshal(msg.Body, cs)
 	if err == nil {
 		service := &network.Service{
-			BaseEntity:       models.BaseEntity{Id: cs.Service.Id},
-			EndpointStrategy: cs.Service.EndpointStrategy,
+			BaseEntity:         models.BaseEntity{Id: cs.Service.Id},
+			TerminatorStrategy: cs.Service.TerminatorStrategy,
 		}
-		for _, endpoint := range cs.Service.Endpoints {
-			modelEndpoint, err := toModelEndpoint(h.network, endpoint)
+		for _, terminator := range cs.Service.Terminators {
+			modelTerminator, err := toModelTerminator(h.network, terminator)
 			if err != nil {
 				handler_common.SendFailure(msg, ch, err.Error())
 				return
 			}
-			service.Endpoints = append(service.Endpoints, modelEndpoint)
+			service.Terminators = append(service.Terminators, modelTerminator)
 		}
 		if err = h.network.Services.Create(service); err == nil {
 			handler_common.SendSuccess(msg, ch, "")

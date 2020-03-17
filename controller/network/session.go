@@ -22,11 +22,11 @@ import (
 )
 
 type session struct {
-	Id       *identity.TokenId
-	ClientId *identity.TokenId
-	Service  *Service
-	Endpoint *Endpoint
-	Circuit  *Circuit
+	Id         *identity.TokenId
+	ClientId   *identity.TokenId
+	Service    *Service
+	Terminator *Terminator
+	Circuit    *Circuit
 }
 
 func (s *session) latency() int64 {

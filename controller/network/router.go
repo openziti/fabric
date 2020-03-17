@@ -40,12 +40,12 @@ type Router struct {
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltEndpoint, ok := boltEntity.(*db.Router)
+	boltRouter, ok := boltEntity.(*db.Router)
 	if !ok {
-		return errors.Errorf("unexpected type %v when filling model endpoint", reflect.TypeOf(boltEntity))
+		return errors.Errorf("unexpected type %v when filling model router", reflect.TypeOf(boltEntity))
 	}
-	entity.Fingerprint = boltEndpoint.Fingerprint
-	entity.FillCommon(boltEndpoint)
+	entity.Fingerprint = boltRouter.Fingerprint
+	entity.FillCommon(boltRouter)
 	return nil
 }
 

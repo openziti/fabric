@@ -26,37 +26,37 @@ import (
 	"github.com/pkg/errors"
 )
 
-type createEndpointHandler struct {
+type createTerminatorHandler struct {
 	network *network.Network
 }
 
-func newCreateEndpointHandler(network *network.Network) *createEndpointHandler {
-	return &createEndpointHandler{network: network}
+func newCreateTerminatorHandler(network *network.Network) *createTerminatorHandler {
+	return &createTerminatorHandler{network: network}
 }
 
-func (h *createEndpointHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_CreateEndpointRequestType)
+func (h *createTerminatorHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_CreateTerminatorRequestType)
 }
 
-func (h *createEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	cs := &mgmt_pb.CreateEndpointRequest{}
+func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	cs := &mgmt_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, cs); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	endpoint, err := toModelEndpoint(h.network, cs.Endpoint)
+	terminator, err := toModelTerminator(h.network, cs.Terminator)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	if id, err := h.network.Endpoints.Create(endpoint); err == nil {
+	if id, err := h.network.Terminators.Create(terminator); err == nil {
 		handler_common.SendSuccess(msg, ch, id)
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}
 }
 
-func toModelEndpoint(n *network.Network, e *mgmt_pb.Endpoint) (*network.Endpoint, error) {
+func toModelTerminator(n *network.Network, e *mgmt_pb.Terminator) (*network.Terminator, error) {
 	router, _ := n.GetRouter(e.RouterId)
 	if router == nil {
 		return nil, errors.Errorf("invalid router id %v", e.RouterId)
@@ -67,7 +67,7 @@ func toModelEndpoint(n *network.Network, e *mgmt_pb.Endpoint) (*network.Endpoint
 		binding = e.Binding
 	}
 
-	return &network.Endpoint{
+	return &network.Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:   e.Id,
 			Tags: nil,

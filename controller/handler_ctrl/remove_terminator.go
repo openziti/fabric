@@ -18,48 +18,43 @@ package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
-	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
-type createEndpointHandler struct {
-	router  *network.Router
+type removeTerminatorHandler struct {
 	network *network.Network
 }
 
-func newCreateEndpointHandler(network *network.Network, router *network.Router) *createEndpointHandler {
-	return &createEndpointHandler{
-		network: network,
-		router:  router,
-	}
+func newRemoveTerminatorHandler(network *network.Network) *removeTerminatorHandler {
+	return &removeTerminatorHandler{network: network}
 }
 
-func (h *createEndpointHandler) ContentType() int32 {
-	return int32(ctrl_pb.ContentType_CreateEndpointRequestType)
+func (h *removeTerminatorHandler) ContentType() int32 {
+	return int32(ctrl_pb.ContentType_RemoveTerminatorRequestType)
 }
 
-func (h *createEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	request := &ctrl_pb.CreateEndpointRequest{}
+func (h *removeTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	log := pfxlog.ContextLogger(ch.Label())
+
+	request := &ctrl_pb.RemoveTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	endpoint := &network.Endpoint{
-		BaseEntity: models.BaseEntity{
-			Id: request.Id,
-		},
-		Service:  request.ServiceId,
-		Router:   h.router.Id,
-		Binding:  request.Binding,
-		Address:  request.Address,
-		PeerData: request.PeerData,
+
+	_, err := h.network.Terminators.Read(request.TerminatorId)
+	if err != nil {
+		handler_common.SendFailure(msg, ch, err.Error())
+		return
 	}
 
-	if id, err := h.network.Endpoints.Create(endpoint); err == nil {
-		handler_common.SendSuccess(msg, ch, id)
+	if err := h.network.Terminators.Delete(request.TerminatorId); err == nil {
+		log.Infof("removed terminator [e/%s]", request.TerminatorId)
+		handler_common.SendSuccess(msg, ch, "")
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}

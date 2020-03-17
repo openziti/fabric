@@ -56,11 +56,11 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_CreateEndpointRequestType):
-		createEndpoint := &CreateEndpointRequest{}
-		if err := proto.Unmarshal(msg.Body, createEndpoint); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Create Endpoint Request")
-			meta["endpoint"] = endpointToString(createEndpoint)
+	case int32(ContentType_CreateTerminatorRequestType):
+		createTerminator := &CreateTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, createTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Create Terminator Request")
+			meta["terminator"] = terminatorToString(createTerminator)
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
@@ -75,11 +75,11 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 			return nil, true
 		}
 
-	case int32(ContentType_RemoveEndpointRequestType):
-		removeEndpoint := &RemoveEndpointRequest{}
-		if err := proto.Unmarshal(msg.Body, removeEndpoint); err == nil {
-			meta := channel2.NewTraceMessageDecode(DECODER, "Remove Endpoint Request")
-			meta["endpointId"] = removeEndpoint.EndpointId
+	case int32(ContentType_RemoveTerminatorRequestType):
+		removeTerminator := &RemoveTerminatorRequest{}
+		if err := proto.Unmarshal(msg.Body, removeTerminator); err == nil {
+			meta := channel2.NewTraceMessageDecode(DECODER, "Remove Terminator Request")
+			meta["terminatorId"] = removeTerminator.TerminatorId
 
 			data, err := meta.MarshalTraceMessageDecode()
 			if err != nil {
@@ -273,6 +273,6 @@ func (d Decoder) Decode(msg *channel2.Message) ([]byte, bool) {
 	return nil, false
 }
 
-func endpointToString(request *CreateEndpointRequest) string {
+func terminatorToString(request *CreateTerminatorRequest) string {
 	return fmt.Sprintf("{id=[%s]}", request.Id)
 }

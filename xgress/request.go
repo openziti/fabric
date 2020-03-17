@@ -208,10 +208,10 @@ func CreateSession(ctrl CtrlChannel, peer Connection, request *Request, bindHand
 	return &Response{Success: true, SessionId: sessionInfo.SessionId.Token}
 }
 
-func AddEndpoint(ctrl CtrlChannel, endpointId string, serviceId string, binding string, address string, peerData map[uint32][]byte) error {
+func AddTerminator(ctrl CtrlChannel, terminatorId string, serviceId string, binding string, address string, peerData map[uint32][]byte) error {
 	log := pfxlog.Logger()
-	request := &ctrl_pb.CreateEndpointRequest{
-		Id:        endpointId,
+	request := &ctrl_pb.CreateTerminatorRequest{
+		Id:        terminatorId,
 		ServiceId: serviceId,
 		Binding:   binding,
 		Address:   address,
@@ -219,21 +219,21 @@ func AddEndpoint(ctrl CtrlChannel, endpointId string, serviceId string, binding 
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {
-		log.Errorf("failed to marshal CreateEndpointRequest message: (%v)", err)
+		log.Errorf("failed to marshal CreateTerminatorRequest message: (%v)", err)
 		return authError
 	}
 
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CreateEndpointRequestType), bytes)
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_CreateTerminatorRequestType), bytes)
 	responseMesg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send CreateEndpointRequest message: (%v)", err)
+		log.Errorf("failed to send CreateTerminatorRequest message: (%v)", err)
 		return authError
 	}
 
 	if responseMesg != nil && responseMesg.ContentType == channel2.ContentTypeResultType {
 		result := channel2.UnmarshalResult(responseMesg)
 		if result.Success {
-			log.Debugf("successfully added service endpoint [s/%s] for service [%v]", endpointId, serviceId)
+			log.Debugf("successfully added service terminator [s/%s] for service [%v]", terminatorId, serviceId)
 			return nil
 		}
 		log.Errorf("authentication failure: (%v)", result.Message)
@@ -244,31 +244,31 @@ func AddEndpoint(ctrl CtrlChannel, endpointId string, serviceId string, binding 
 	}
 }
 
-func RemoveEndpoint(ctrl CtrlChannel, endpointId string) error {
+func RemoveTerminator(ctrl CtrlChannel, terminatorId string) error {
 	log := pfxlog.Logger()
-	request := &ctrl_pb.RemoveEndpointRequest{
-		EndpointId: endpointId,
+	request := &ctrl_pb.RemoveTerminatorRequest{
+		TerminatorId: terminatorId,
 	}
 	bytes, err := proto.Marshal(request)
 	if err != nil {
-		log.Errorf("failed to marshal RemoveEndpointRequest message: (%v)", err)
+		log.Errorf("failed to marshal RemoveTerminatorRequest message: (%v)", err)
 		return authError
 	}
 
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RemoveEndpointRequestType), bytes)
+	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RemoveTerminatorRequestType), bytes)
 	responseMsg, err := ctrl.Channel().SendAndWaitWithTimeout(msg, 5*time.Second)
 	if err != nil {
-		log.Errorf("failed to send RemoveEndpointRequest message: (%v)", err)
+		log.Errorf("failed to send RemoveTerminatorRequest message: (%v)", err)
 		return authError
 	}
 
 	if responseMsg != nil && responseMsg.ContentType == channel2.ContentTypeResultType {
 		result := channel2.UnmarshalResult(responseMsg)
 		if result.Success {
-			log.Debugf("successfully removed service endpoint [s/%s]", endpointId)
+			log.Debugf("successfully removed service terminator [s/%s]", terminatorId)
 			return nil
 		}
-		log.Errorf("failure removing service endpoint: (%v)", result.Message)
+		log.Errorf("failure removing service terminator: (%v)", result.Message)
 		return errors.New(result.Message)
 	} else {
 		log.Errorf("unexpected controller response, ContentType: (%v)", responseMsg.ContentType)

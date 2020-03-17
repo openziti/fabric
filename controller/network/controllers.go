@@ -25,11 +25,11 @@ import (
 )
 
 type Controllers struct {
-	db        boltz.Db
-	stores    *db.Stores
-	Endpoints *EndpointController
-	Routers   *RouterController
-	Services  *ServiceController
+	db          boltz.Db
+	stores      *db.Stores
+	Terminators *TerminatorController
+	Routers     *RouterController
+	Services    *ServiceController
 }
 
 func (e *Controllers) getDb() boltz.Db {
@@ -41,7 +41,7 @@ func NewControllers(db boltz.Db, stores *db.Stores) *Controllers {
 		db:     db,
 		stores: stores,
 	}
-	result.Endpoints = newEndpointController(result)
+	result.Terminators = newTerminatorController(result)
 	result.Routers = newRouterController(result)
 	result.Services = newServiceController(result)
 	return result

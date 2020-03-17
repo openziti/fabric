@@ -14,47 +14,52 @@
 	limitations under the License.
 */
 
-package handler_mgmt
+package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
-	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
+	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
-type removeEndpointHandler struct {
+type createTerminatorHandler struct {
+	router  *network.Router
 	network *network.Network
 }
 
-func newRemoveEndpointHandler(network *network.Network) *removeEndpointHandler {
-	return &removeEndpointHandler{network: network}
+func newCreateTerminatorHandler(network *network.Network, router *network.Router) *createTerminatorHandler {
+	return &createTerminatorHandler{
+		network: network,
+		router:  router,
+	}
 }
 
-func (h *removeEndpointHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_RemoveEndpointRequestType)
+func (h *createTerminatorHandler) ContentType() int32 {
+	return int32(ctrl_pb.ContentType_CreateTerminatorRequestType)
 }
 
-func (h *removeEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	log := pfxlog.ContextLogger(ch.Label())
-
-	request := &mgmt_pb.RemoveEndpointRequest{}
+func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	request := &ctrl_pb.CreateTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, request); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-
-	_, err := h.network.Endpoints.Read(request.EndpointId)
-	if err != nil {
-		handler_common.SendFailure(msg, ch, err.Error())
-		return
+	terminator := &network.Terminator{
+		BaseEntity: models.BaseEntity{
+			Id: request.Id,
+		},
+		Service:  request.ServiceId,
+		Router:   h.router.Id,
+		Binding:  request.Binding,
+		Address:  request.Address,
+		PeerData: request.PeerData,
 	}
 
-	if err := h.network.Endpoints.Delete(request.EndpointId); err == nil {
-		log.Infof("removed endpoint [e/%s]", request.EndpointId)
-		handler_common.SendSuccess(msg, ch, "")
+	if id, err := h.network.Terminators.Create(terminator); err == nil {
+		handler_common.SendSuccess(msg, ch, id)
 	} else {
 		handler_common.SendFailure(msg, ch, err.Error())
 	}

@@ -29,22 +29,22 @@ import (
 
 type Service struct {
 	models.BaseEntity
-	EndpointStrategy string
-	Endpoints        []*Endpoint
+	TerminatorStrategy string
+	Terminators        []*Terminator
 }
 
 func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltEndpoint, ok := boltEntity.(*db.Service)
+	boltService, ok := boltEntity.(*db.Service)
 	if !ok {
-		return errors.Errorf("unexpected type %v when filling model endpoint", reflect.TypeOf(boltEntity))
+		return errors.Errorf("unexpected type %v when filling model service", reflect.TypeOf(boltEntity))
 	}
-	entity.EndpointStrategy = boltEndpoint.EndpointStrategy
-	entity.FillCommon(boltEndpoint)
+	entity.TerminatorStrategy = boltService.TerminatorStrategy
+	entity.FillCommon(boltService)
 
-	endpointIds := ctrl.getControllers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeEndpoints)
-	for _, endpointId := range endpointIds {
-		if endpoint, _ := ctrl.getControllers().Endpoints.readInTx(tx, endpointId); endpoint != nil {
-			entity.Endpoints = append(entity.Endpoints, endpoint)
+	terminatorIds := ctrl.getControllers().stores.Service.GetRelatedEntitiesIdList(tx, entity.Id, db.EntityTypeTerminators)
+	for _, terminatorId := range terminatorIds {
+		if terminator, _ := ctrl.getControllers().Terminators.readInTx(tx, terminatorId); terminator != nil {
+			entity.Terminators = append(entity.Terminators, terminator)
 		}
 	}
 
@@ -53,8 +53,8 @@ func (entity *Service) fillFrom(ctrl Controller, tx *bbolt.Tx, boltEntity boltz.
 
 func (entity *Service) toBolt() *db.Service {
 	return &db.Service{
-		BaseExtEntity:    *boltz.NewExtEntity(entity.Id, entity.Tags),
-		EndpointStrategy: entity.EndpointStrategy,
+		BaseExtEntity:      *boltz.NewExtEntity(entity.Id, entity.Tags),
+		TerminatorStrategy: entity.TerminatorStrategy,
 	}
 }
 
@@ -66,9 +66,9 @@ func newServiceController(controllers *Controllers) *ServiceController {
 	}
 	result.impl = result
 
-	controllers.stores.Endpoint.On(boltz.EventCreate, result.endpointChanged)
-	controllers.stores.Endpoint.On(boltz.EventUpdate, result.endpointChanged)
-	controllers.stores.Endpoint.On(boltz.EventDelete, result.endpointChanged)
+	controllers.stores.Terminator.On(boltz.EventCreate, result.terminatorChanged)
+	controllers.stores.Terminator.On(boltz.EventUpdate, result.terminatorChanged)
+	controllers.stores.Terminator.On(boltz.EventDelete, result.terminatorChanged)
 
 	return result
 }
@@ -83,9 +83,9 @@ func (ctrl *ServiceController) newModelEntity() boltEntitySink {
 	return &Service{}
 }
 
-func (ctrl *ServiceController) endpointChanged(params ...interface{}) {
+func (ctrl *ServiceController) terminatorChanged(params ...interface{}) {
 	if len(params) > 0 {
-		if entity, ok := params[0].(*db.Endpoint); ok {
+		if entity, ok := params[0].(*db.Terminator); ok {
 			ctrl.RemoveFromCache(entity.Service)
 		}
 	}
@@ -97,9 +97,9 @@ func (ctrl *ServiceController) Create(s *Service) error {
 		if err := ctrl.store.Create(ctx, s.toBolt()); err != nil {
 			return err
 		}
-		for _, endpoint := range s.Endpoints {
-			endpoint.Service = s.Id
-			if _, err := ctrl.Endpoints.createInTx(ctx, endpoint); err != nil {
+		for _, terminator := range s.Terminators {
+			terminator.Service = s.Id
+			if _, err := ctrl.Terminators.createInTx(ctx, terminator); err != nil {
 				return err
 			}
 		}

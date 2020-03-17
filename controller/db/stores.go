@@ -22,10 +22,10 @@ import (
 )
 
 type Stores struct {
-	Endpoint EndpointStore
-	Router   RouterStore
-	Service  ServiceStore
-	storeMap map[string]boltz.CrudStore
+	Terminator TerminatorStore
+	Router     RouterStore
+	Service    ServiceStore
+	storeMap   map[string]boltz.CrudStore
 }
 
 func (stores *Stores) buildStoreMap() {
@@ -54,27 +54,27 @@ func (stores *Stores) GetStoreForEntity(entity boltz.Entity) boltz.CrudStore {
 }
 
 type stores struct {
-	endpoint *endpointStoreImpl
-	router   *routerStoreImpl
-	service  *serviceStoreImpl
+	terminator *terminatorStoreImpl
+	router     *routerStoreImpl
+	service    *serviceStoreImpl
 }
 
 func InitStores(db boltz.Db) (*Stores, error) {
 	internalStores := &stores{}
 
-	internalStores.endpoint = newEndpointStore(internalStores)
+	internalStores.terminator = newTerminatorStore(internalStores)
 	internalStores.router = newRouterStore(internalStores)
 	internalStores.service = newServiceStore(internalStores)
 
 	stores := &Stores{
-		Endpoint: internalStores.endpoint,
-		Router:   internalStores.router,
-		Service:  internalStores.service,
+		Terminator: internalStores.terminator,
+		Router:     internalStores.router,
+		Service:    internalStores.service,
 	}
 
 	stores.buildStoreMap()
 
-	internalStores.endpoint.initializeLinked()
+	internalStores.terminator.initializeLinked()
 	internalStores.router.initializeLinked()
 	internalStores.service.initializeLinked()
 

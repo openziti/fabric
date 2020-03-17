@@ -29,7 +29,7 @@ import (
 	"time"
 )
 
-type Endpoint struct {
+type Terminator struct {
 	models.BaseEntity
 	Service  string
 	Router   string
@@ -38,22 +38,22 @@ type Endpoint struct {
 	PeerData map[uint32][]byte
 }
 
-func (entity *Endpoint) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
-	boltEndpoint, ok := boltEntity.(*db.Endpoint)
+func (entity *Terminator) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
+	boltTerminator, ok := boltEntity.(*db.Terminator)
 	if !ok {
-		return errors.Errorf("unexpected type %v when filling model endpoint", reflect.TypeOf(boltEntity))
+		return errors.Errorf("unexpected type %v when filling model terminator", reflect.TypeOf(boltEntity))
 	}
-	entity.Service = boltEndpoint.Service
-	entity.Router = boltEndpoint.Router
-	entity.Binding = boltEndpoint.Binding
-	entity.Address = boltEndpoint.Address
-	entity.PeerData = boltEndpoint.PeerData
-	entity.FillCommon(boltEndpoint)
+	entity.Service = boltTerminator.Service
+	entity.Router = boltTerminator.Router
+	entity.Binding = boltTerminator.Binding
+	entity.Address = boltTerminator.Address
+	entity.PeerData = boltTerminator.PeerData
+	entity.FillCommon(boltTerminator)
 	return nil
 }
 
-func (entity *Endpoint) toBolt() *db.Endpoint {
-	return &db.Endpoint{
+func (entity *Terminator) toBolt() *db.Terminator {
+	return &db.Terminator{
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Service:       entity.Service,
 		Router:        entity.Router,
@@ -63,25 +63,25 @@ func (entity *Endpoint) toBolt() *db.Endpoint {
 	}
 }
 
-func newEndpointController(controllers *Controllers) *EndpointController {
-	result := &EndpointController{
-		baseController: newController(controllers, controllers.stores.Endpoint),
-		store:          controllers.stores.Endpoint,
+func newTerminatorController(controllers *Controllers) *TerminatorController {
+	result := &TerminatorController{
+		baseController: newController(controllers, controllers.stores.Terminator),
+		store:          controllers.stores.Terminator,
 	}
 	result.impl = result
 	return result
 }
 
-type EndpointController struct {
+type TerminatorController struct {
 	baseController
-	store db.EndpointStore
+	store db.TerminatorStore
 }
 
-func (ctrl *EndpointController) newModelEntity() boltEntitySink {
-	return &Endpoint{}
+func (ctrl *TerminatorController) newModelEntity() boltEntitySink {
+	return &Terminator{}
 }
 
-func (ctrl *EndpointController) Create(s *Endpoint) (string, error) {
+func (ctrl *TerminatorController) Create(s *Terminator) (string, error) {
 	var id string
 	var err error
 	err = ctrl.db.Update(func(tx *bbolt.Tx) error {
@@ -91,7 +91,7 @@ func (ctrl *EndpointController) Create(s *Endpoint) (string, error) {
 	return id, err
 }
 
-func (ctrl *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint) (string, error) {
+func (ctrl *TerminatorController) createInTx(ctx boltz.MutateContext, e *Terminator) (string, error) {
 	if e.Id == "" {
 		e.Id = uuid.New().String()
 	}
@@ -109,7 +109,7 @@ func (ctrl *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint)
 		return "", boltz.NewNotFoundError("service", "service", e.Service)
 	}
 	if e.Router == "" {
-		return "", errors.Errorf("router is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
+		return "", errors.Errorf("router is required when creating terminator. id: %v, service: %v", e.Id, e.Service)
 	}
 	if !ctrl.stores.Router.IsEntityPresent(ctx.Tx(), e.Router) {
 		return "", boltz.NewNotFoundError("router", "router", e.Router)
@@ -121,19 +121,19 @@ func (ctrl *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint)
 	return e.Id, nil
 }
 
-func (ctrl *EndpointController) Update(s *Endpoint) error {
+func (ctrl *TerminatorController) Update(s *Terminator) error {
 	return ctrl.db.Update(func(tx *bbolt.Tx) error {
 		return ctrl.GetStore().Update(boltz.NewMutateContext(tx), s.toBolt(), nil)
 	})
 }
 
-func (ctrl *EndpointController) Patch(s *Endpoint, checker boltz.FieldChecker) error {
+func (ctrl *TerminatorController) Patch(s *Terminator, checker boltz.FieldChecker) error {
 	return ctrl.db.Update(func(tx *bbolt.Tx) error {
 		return ctrl.GetStore().Update(boltz.NewMutateContext(tx), s.toBolt(), checker)
 	})
 }
 
-func (ctrl *EndpointController) Read(id string) (entity *Endpoint, err error) {
+func (ctrl *TerminatorController) Read(id string) (entity *Terminator, err error) {
 	err = ctrl.db.View(func(tx *bbolt.Tx) error {
 		entity, err = ctrl.readInTx(tx, id)
 		return err
@@ -144,8 +144,8 @@ func (ctrl *EndpointController) Read(id string) (entity *Endpoint, err error) {
 	return entity, err
 }
 
-func (ctrl *EndpointController) readInTx(tx *bbolt.Tx, id string) (*Endpoint, error) {
-	entity := &Endpoint{}
+func (ctrl *TerminatorController) readInTx(tx *bbolt.Tx, id string) (*Terminator, error) {
+	entity := &Terminator{}
 	err := ctrl.readEntityInTx(tx, id, entity)
 	if err != nil {
 		return nil, err
@@ -153,6 +153,6 @@ func (ctrl *EndpointController) readInTx(tx *bbolt.Tx, id string) (*Endpoint, er
 	return entity, nil
 }
 
-func (ctrl *EndpointController) Delete(id string) error {
+func (ctrl *TerminatorController) Delete(id string) error {
 	return controllers.DeleteEntityById(ctrl.GetStore(), ctrl.db, id)
 }

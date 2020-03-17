@@ -65,14 +65,14 @@ func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 }
 
 func toApiService(s *network.Service) *mgmt_pb.Service {
-	var endpoints []*mgmt_pb.Endpoint
-	for _, endpoint := range s.Endpoints {
-		endpoints = append(endpoints, toApiEndpoint(endpoint))
+	var terminators []*mgmt_pb.Terminator
+	for _, terminator := range s.Terminators {
+		terminators = append(terminators, toApiTerminator(terminator))
 	}
 
 	return &mgmt_pb.Service{
-		Id:               s.Id,
-		EndpointStrategy: s.EndpointStrategy,
-		Endpoints:        endpoints,
+		Id:                 s.Id,
+		TerminatorStrategy: s.TerminatorStrategy,
+		Terminators:        terminators,
 	}
 }

@@ -224,17 +224,17 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	}
 	sessionId := &identity.TokenId{Token: sessionIdHash}
 
-	if len(svc.Endpoints) == 0 {
-		return nil, errors2.Errorf("service %v has no Endpoints", serviceId)
+	if len(svc.Terminators) == 0 {
+		return nil, errors2.Errorf("service %v has no Terminators", serviceId)
 	}
 
-	// 3: select endpoint
-	endpoint := svc.Endpoints[0]
+	// 3: select terminator
+	terminator := svc.Terminators[0]
 
 	// 4: Get Egress Router
-	er := network.Routers.getConnected(endpoint.Router)
+	er := network.Routers.getConnected(terminator.Router)
 	if er == nil {
-		return nil, errors2.Errorf("invalid terminating router %v for service %v", endpoint.Router, svc.Id)
+		return nil, errors2.Errorf("invalid terminating router %v for service %v", terminator.Router, svc.Id)
 	}
 
 	// 5: Create Circuit
@@ -243,16 +243,16 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		return nil, err
 	}
 	circuit.Binding = "transport"
-	if endpoint.Binding != "" {
-		circuit.Binding = endpoint.Binding
-	} else if strings.HasPrefix(endpoint.Address, "hosted") {
+	if terminator.Binding != "" {
+		circuit.Binding = terminator.Binding
+	} else if strings.HasPrefix(terminator.Address, "hosted") {
 		circuit.Binding = "edge"
-	} else if strings.HasPrefix(endpoint.Address, "udp") {
+	} else if strings.HasPrefix(terminator.Address, "udp") {
 		circuit.Binding = "udp"
 	}
 
 	// 5a: Create Route Messages
-	rms, err := circuit.CreateRouteMessages(sessionId, endpoint.Address)
+	rms, err := circuit.CreateRouteMessages(sessionId, terminator.Address)
 	if err != nil {
 		return nil, err
 	}
@@ -274,11 +274,11 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 
 	// 8: Create Session Object
 	ss := &session{
-		Id:       sessionId,
-		ClientId: clientId,
-		Service:  svc,
-		Circuit:  circuit,
-		Endpoint: endpoint,
+		Id:         sessionId,
+		ClientId:   clientId,
+		Service:    svc,
+		Circuit:    circuit,
+		Terminator: terminator,
 	}
 	network.sessionController.add(ss)
 	network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
@@ -451,7 +451,7 @@ func (network *Network) rerouteSession(s *session) error {
 	if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
 		s.Circuit = cq
 
-		rms, err := cq.CreateRouteMessages(s.Id, s.Endpoint.Address)
+		rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.Address)
 		if err != nil {
 			log.Errorf("error creating route messages (%s)", err)
 			return err
@@ -478,7 +478,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 
 	s.Circuit = cq
 
-	rms, err := cq.CreateRouteMessages(s.Id, s.Endpoint.Address)
+	rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.Address)
 	if err != nil {
 		log.Errorf("error creating route messages (%s)", err)
 		return err

@@ -17,8 +17,8 @@ enum ContentType {
     MetricsType = 1007;
     TogglePipeTracesRequestType = 1008;
     TraceEventType = 1010;
-    CreateEndpointRequestType = 1011;
-    RemoveEndpointRequestType = 1012;
+    CreateTerminatorRequestType = 1011;
+    RemoveTerminatorRequestType = 1012;
     InspectRequestType = 1013;
     InspectResponseType = 1014;
     StartXgressType = 1015;
@@ -31,7 +31,7 @@ message SessionRequest {
     map<uint32, bytes> peerData = 3;
 }
 
-message CreateEndpointRequest {
+message CreateTerminatorRequest {
     string id = 1;
     string serviceId = 2;
     string binding = 3;
@@ -39,8 +39,8 @@ message CreateEndpointRequest {
     map<uint32, bytes> peerData = 5;
 }
 
-message RemoveEndpointRequest {
-    string endpointId = 1;
+message RemoveTerminatorRequest {
+    string terminatorId = 1;
 }
 
 message Dial {

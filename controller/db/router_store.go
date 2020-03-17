@@ -68,13 +68,13 @@ func newRouterStore(stores *stores) *routerStoreImpl {
 	}
 	store.InitImpl(store)
 	store.AddSymbol(FieldRouterFingerprint, ast.NodeTypeString)
-	store.endpointsSymbol = store.AddFkSetSymbol(EntityTypeEndpoints, stores.endpoint)
+	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, stores.terminator)
 	return store
 }
 
 type routerStoreImpl struct {
 	baseStore
-	endpointsSymbol boltz.EntitySetSymbol
+	terminatorsSymbol boltz.EntitySetSymbol
 }
 
 func (store *routerStoreImpl) initializeLinked() {
@@ -93,9 +93,9 @@ func (store *routerStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Router, err
 }
 
 func (store *routerStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	endpointIds := store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeEndpoints)
-	for _, endpointId := range endpointIds {
-		if err := store.stores.endpoint.DeleteById(ctx, endpointId); err != nil {
+	terminatorIds := store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeTerminators)
+	for _, terminatorId := range terminatorIds {
+		if err := store.stores.terminator.DeleteById(ctx, terminatorId); err != nil {
 			return err
 		}
 	}

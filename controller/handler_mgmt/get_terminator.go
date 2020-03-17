@@ -26,35 +26,35 @@ import (
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
-type getEndpointHandler struct {
+type getTerminatorHandler struct {
 	network *network.Network
 }
 
-func newGetEndpointHandler(network *network.Network) *getEndpointHandler {
-	return &getEndpointHandler{network: network}
+func newGetTerminatorHandler(network *network.Network) *getTerminatorHandler {
+	return &getTerminatorHandler{network: network}
 }
 
-func (h *getEndpointHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_GetEndpointRequestType)
+func (h *getTerminatorHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_GetTerminatorRequestType)
 }
 
-func (h *getEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	rs := &mgmt_pb.GetEndpointRequest{}
+func (h *getTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	rs := &mgmt_pb.GetTerminatorRequest{}
 	if err := proto.Unmarshal(msg.Body, rs); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	response := &mgmt_pb.GetEndpointResponse{}
-	endpoint, err := h.network.Endpoints.Read(rs.EndpointId)
+	response := &mgmt_pb.GetTerminatorResponse{}
+	terminator, err := h.network.Terminators.Read(rs.TerminatorId)
 	if err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
 
-	response.Endpoint = toApiEndpoint(endpoint)
+	response.Terminator = toApiTerminator(terminator)
 	body, err := proto.Marshal(response)
 	if err == nil {
-		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetEndpointResponseType), body)
+		responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_GetTerminatorResponseType), body)
 		responseMsg.ReplyTo(msg)
 		ch.Send(responseMsg)
 
@@ -63,12 +63,12 @@ func (h *getEndpointHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 	}
 }
 
-func toApiEndpoint(s *network.Endpoint) *mgmt_pb.Endpoint {
+func toApiTerminator(s *network.Terminator) *mgmt_pb.Terminator {
 	ts, err := ptypes.TimestampProto(s.CreatedAt)
 	if err != nil {
 		pfxlog.Logger().Warnf("unexpected bad timestamp conversion: %v", err)
 	}
-	return &mgmt_pb.Endpoint{
+	return &mgmt_pb.Terminator{
 		Id:        s.Id,
 		ServiceId: s.Service,
 		RouterId:  s.Router,

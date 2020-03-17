@@ -24,23 +24,23 @@ import (
 )
 
 const (
-	EntityTypeServices           = "services"
-	FieldServiceEndpointStrategy = "endpointStrategy"
+	EntityTypeServices             = "services"
+	FieldServiceTerminatorStrategy = "terminatorStrategy"
 )
 
 type Service struct {
 	boltz.BaseExtEntity
-	EndpointStrategy string
+	TerminatorStrategy string
 }
 
 func (entity *Service) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.LoadBaseValues(bucket)
-	entity.EndpointStrategy = bucket.GetStringWithDefault(FieldServiceEndpointStrategy, "")
+	entity.TerminatorStrategy = bucket.GetStringWithDefault(FieldServiceTerminatorStrategy, "")
 }
 
 func (entity *Service) SetValues(ctx *boltz.PersistContext) {
 	entity.SetBaseValues(ctx)
-	ctx.SetString(FieldServiceEndpointStrategy, entity.EndpointStrategy)
+	ctx.SetString(FieldServiceTerminatorStrategy, entity.TerminatorStrategy)
 }
 
 func (entity *Service) GetEntityType() string {
@@ -64,14 +64,14 @@ func newServiceStore(stores *stores) *serviceStoreImpl {
 		},
 	}
 	store.InitImpl(store)
-	store.AddSymbol(FieldServiceEndpointStrategy, ast.NodeTypeString)
-	store.endpointsSymbol = store.AddFkSetSymbol(EntityTypeEndpoints, stores.endpoint)
+	store.AddSymbol(FieldServiceTerminatorStrategy, ast.NodeTypeString)
+	store.terminatorsSymbol = store.AddFkSetSymbol(EntityTypeTerminators, stores.terminator)
 	return store
 }
 
 type serviceStoreImpl struct {
 	baseStore
-	endpointsSymbol boltz.EntitySetSymbol
+	terminatorsSymbol boltz.EntitySetSymbol
 }
 
 func (store *serviceStoreImpl) initializeLinked() {
@@ -90,9 +90,9 @@ func (store *serviceStoreImpl) LoadOneById(tx *bbolt.Tx, id string) (*Service, e
 }
 
 func (store *serviceStoreImpl) DeleteById(ctx boltz.MutateContext, id string) error {
-	endpointIds := store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeEndpoints)
-	for _, endpointId := range endpointIds {
-		if err := store.stores.endpoint.DeleteById(ctx, endpointId); err != nil {
+	terminatorIds := store.GetRelatedEntitiesIdList(ctx.Tx(), id, EntityTypeTerminators)
+	for _, terminatorId := range terminatorIds {
+		if err := store.stores.terminator.DeleteById(ctx, terminatorId); err != nil {
 			return err
 		}
 	}

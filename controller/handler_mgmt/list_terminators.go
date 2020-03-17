@@ -27,41 +27,41 @@ import (
 	"reflect"
 )
 
-type listEndpointsHandler struct {
+type listTerminatorsHandler struct {
 	network *network.Network
 }
 
-func newListEndpointsHandler(network *network.Network) *listEndpointsHandler {
-	return &listEndpointsHandler{network: network}
+func newListTerminatorsHandler(network *network.Network) *listTerminatorsHandler {
+	return &listTerminatorsHandler{network: network}
 }
 
-func (h *listEndpointsHandler) ContentType() int32 {
-	return int32(mgmt_pb.ContentType_ListEndpointsRequestType)
+func (h *listTerminatorsHandler) ContentType() int32 {
+	return int32(mgmt_pb.ContentType_ListTerminatorsRequestType)
 }
 
-func (h *listEndpointsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
-	ls := &mgmt_pb.ListEndpointsRequest{}
+func (h *listTerminatorsHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+	ls := &mgmt_pb.ListTerminatorsRequest{}
 	if err := proto.Unmarshal(msg.Body, ls); err != nil {
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	response := &mgmt_pb.ListEndpointsResponse{Endpoints: make([]*mgmt_pb.Endpoint, 0)}
+	response := &mgmt_pb.ListTerminatorsResponse{Terminators: make([]*mgmt_pb.Terminator, 0)}
 
-	result, err := h.network.Endpoints.BaseList(ls.Query)
+	result, err := h.network.Terminators.BaseList(ls.Query)
 	if err == nil {
 		for _, entity := range result.Entities {
-			endpoint, ok := entity.(*network.Endpoint)
+			terminator, ok := entity.(*network.Terminator)
 			if !ok {
-				errorMsg := fmt.Sprintf("unexpected result in endpoint list of type: %v", reflect.TypeOf(entity))
+				errorMsg := fmt.Sprintf("unexpected result in terminator list of type: %v", reflect.TypeOf(entity))
 				handler_common.SendFailure(msg, ch, errorMsg)
 				return
 			}
-			response.Endpoints = append(response.Endpoints, toApiEndpoint(endpoint))
+			response.Terminators = append(response.Terminators, toApiTerminator(terminator))
 		}
 
 		body, err := proto.Marshal(response)
 		if err == nil {
-			responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListEndpointsResponseType), body)
+			responseMsg := channel2.NewMessage(int32(mgmt_pb.ContentType_ListTerminatorsResponseType), body)
 			responseMsg.ReplyTo(msg)
 			if err := ch.Send(responseMsg); err != nil {
 				pfxlog.ContextLogger(ch.Label()).Errorf("unexpected error sending response (%s)", err)

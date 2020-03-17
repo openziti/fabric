@@ -48,10 +48,10 @@ func (bindHandler *BindHandler) BindChannel(ch channel2.Channel) error {
 	ch.AddReceiveHandler(newSetLinkCostHandler(network))
 	ch.AddReceiveHandler(newSetLinkDownHandler(network))
 
-	ch.AddReceiveHandler(newCreateEndpointHandler(network))
-	ch.AddReceiveHandler(newRemoveEndpointHandler(network))
-	ch.AddReceiveHandler(newGetEndpointHandler(network))
-	ch.AddReceiveHandler(newListEndpointsHandler(network))
+	ch.AddReceiveHandler(newCreateTerminatorHandler(network))
+	ch.AddReceiveHandler(newRemoveTerminatorHandler(network))
+	ch.AddReceiveHandler(newGetTerminatorHandler(network))
+	ch.AddReceiveHandler(newListTerminatorsHandler(network))
 
 	streamMetricHandler := newStreamMetricsHandler(network)
 	ch.AddReceiveHandler(streamMetricHandler)
