@@ -95,19 +95,19 @@ func (ctrl *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint)
 		e.Id = uuid.New().String()
 	}
 	if e.Binding == "" {
-		return "", errors.Errorf("binding is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
+		return "", models.NewFieldError("required value is missing", "binding", e.Binding)
 	}
 	if e.Address == "" {
-		return "", errors.Errorf("address is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
+		return "", models.NewFieldError("required value is missing", "address", e.Binding)
 	}
 	if !ctrl.stores.Service.IsEntityPresent(ctx.Tx(), e.Service) {
-		return "", errors.Errorf("invalid service %v for new endpoint %v", e.Service, e.Id)
+		return "", boltz.NewNotFoundError("service", "service", e.Service)
 	}
 	if e.Router == "" {
 		return "", errors.Errorf("router is required when creating endpoint. id: %v, service: %v", e.Id, e.Service)
 	}
 	if !ctrl.stores.Router.IsEntityPresent(ctx.Tx(), e.Router) {
-		return "", errors.Errorf("invalid router %v for new endpoint %v", e.Router, e.Id)
+		return "", boltz.NewNotFoundError("router", "router", e.Router)
 	}
 	e.CreatedAt = time.Now()
 	if err := ctrl.GetStore().Create(ctx, e.toBolt()); err != nil {
