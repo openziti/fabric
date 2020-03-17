@@ -25,6 +25,7 @@ import (
 	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"reflect"
+	"strings"
 	"time"
 )
 
@@ -95,7 +96,11 @@ func (ctrl *EndpointController) createInTx(ctx boltz.MutateContext, e *Endpoint)
 		e.Id = uuid.New().String()
 	}
 	if e.Binding == "" {
-		return "", models.NewFieldError("required value is missing", "binding", e.Binding)
+		if strings.HasPrefix(e.Address, "udp:") {
+			e.Binding = "udp"
+		} else {
+			e.Binding = "transport"
+		}
 	}
 	if e.Address == "" {
 		return "", models.NewFieldError("required value is missing", "address", e.Binding)
