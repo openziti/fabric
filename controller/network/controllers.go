@@ -48,8 +48,7 @@ func NewControllers(db boltz.Db, stores *db.Stores) *Controllers {
 }
 
 type Controller interface {
-	models.EntityLoader
-	models.EntityLister
+	models.EntityRetriever
 	getControllers() *Controllers
 
 	newModelEntity() boltEntitySink
@@ -143,4 +142,17 @@ func (ctrl *baseController) preparedList(query ast.Query, resultHandler models.L
 	return ctrl.db.View(func(tx *bbolt.Tx) error {
 		return ctrl.PreparedListWithTx(tx, query, resultHandler)
 	})
+}
+
+func (ctrl *baseController) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult, error) {
+	result := &models.EntityListResult{Loader: ctrl}
+	err := ctrl.db.View(func(tx *bbolt.Tx) error {
+		store := typeLoader.GetStore()
+		return ctrl.PreparedListAssociatedWithTx(tx, id, store.GetEntityType(), store, query, result.Collect)
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	return result, nil
 }

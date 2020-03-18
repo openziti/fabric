@@ -30,16 +30,15 @@ const (
 	ListOffsetDefault = 0
 )
 
-type EntityLister interface {
-	BaseList(query string) (*EntityListResult, error)
-	BasePreparedList(query ast.Query) (*EntityListResult, error)
-
-	GetStore() boltz.CrudStore
-}
-
-type EntityLoader interface {
+type EntityRetriever interface {
 	BaseLoad(id string) (Entity, error)
 	BaseLoadInTx(tx *bbolt.Tx, id string) (Entity, error)
+
+	BaseList(query string) (*EntityListResult, error)
+	BasePreparedList(query ast.Query) (*EntityListResult, error)
+	BasePreparedListAssociated(id string, typeLoader EntityRetriever, query ast.Query) (*EntityListResult, error)
+
+	GetStore() boltz.CrudStore
 }
 
 type Entity interface {
@@ -85,7 +84,7 @@ func (entity *BaseEntity) FillCommon(boltEntity boltz.ExtEntity) {
 }
 
 type EntityListResult struct {
-	Loader   EntityLoader
+	Loader   EntityRetriever
 	Entities []Entity
 	QueryMetaData
 }
@@ -174,6 +173,28 @@ func (ctrl *BaseController) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, re
 		Limit:            *query.GetLimit(),
 		Offset:           *query.GetSkip(),
 		FilterableFields: ctrl.Store.GetPublicSymbols(),
+	}
+	return resultHandler(tx, keys, qmd)
+}
+
+func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, typeStore boltz.ListStore, query ast.Query, resultHandler ListResultHandler) error {
+	ctrl.checkLimits(query)
+
+	var count int64
+	var keys []string
+	var err error
+
+	if cursor := ctrl.Store.GetRelatedEntitiesCursor(tx, id, association); cursor != nil {
+		if keys, count, err = typeStore.QueryIdsC(tx, query); err != nil {
+			return err
+		}
+	}
+
+	qmd := &QueryMetaData{
+		Count:            count,
+		Limit:            *query.GetLimit(),
+		Offset:           *query.GetSkip(),
+		FilterableFields: typeStore.GetPublicSymbols(),
 	}
 	return resultHandler(tx, keys, qmd)
 }
