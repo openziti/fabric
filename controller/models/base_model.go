@@ -185,7 +185,7 @@ func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, assoc
 	var err error
 
 	if cursor := ctrl.Store.GetRelatedEntitiesCursor(tx, id, association); cursor != nil {
-		if keys, count, err = typeStore.QueryIdsC(tx, query); err != nil {
+		if keys, count, err = typeStore.QueryWithCursorC(tx, cursor, query); err != nil {
 			return err
 		}
 	}
