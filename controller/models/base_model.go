@@ -19,6 +19,7 @@ package models
 import (
 	"github.com/netfoundry/ziti-foundation/storage/ast"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
+	"github.com/pkg/errors"
 	"go.etcd.io/bbolt"
 	"time"
 )
@@ -177,15 +178,25 @@ func (ctrl *BaseController) PreparedListWithTx(tx *bbolt.Tx, query ast.Query, re
 	return resultHandler(tx, keys, qmd)
 }
 
-func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, typeStore boltz.ListStore, query ast.Query, resultHandler ListResultHandler) error {
+func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, association string, query ast.Query, resultHandler ListResultHandler) error {
 	ctrl.checkLimits(query)
 
 	var count int64
 	var keys []string
 	var err error
 
-	if cursor := ctrl.Store.GetRelatedEntitiesCursor(tx, id, association); cursor != nil {
-		if keys, count, err = typeStore.QueryWithCursorC(tx, cursor, query); err != nil {
+	symbol := ctrl.GetStore().GetSymbol(association)
+	if symbol == nil {
+		return errors.Errorf("invalid association: '%v'", association)
+	}
+
+	linkedType := symbol.GetLinkedType()
+	if linkedType == nil {
+		return errors.Errorf("invalid association: '%v'", association)
+	}
+
+	if cursor := symbol.GetStore().GetRelatedEntitiesCursor(tx, id, association); cursor != nil {
+		if keys, count, err = linkedType.QueryWithCursorC(tx, cursor, query); err != nil {
 			return err
 		}
 	}
@@ -194,7 +205,7 @@ func (ctrl *BaseController) PreparedListAssociatedWithTx(tx *bbolt.Tx, id, assoc
 		Count:            count,
 		Limit:            *query.GetLimit(),
 		Offset:           *query.GetSkip(),
-		FilterableFields: typeStore.GetPublicSymbols(),
+		FilterableFields: linkedType.GetPublicSymbols(),
 	}
 	return resultHandler(tx, keys, qmd)
 }

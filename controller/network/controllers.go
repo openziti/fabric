@@ -147,8 +147,7 @@ func (ctrl *baseController) preparedList(query ast.Query, resultHandler models.L
 func (ctrl *baseController) BasePreparedListAssociated(id string, typeLoader models.EntityRetriever, query ast.Query) (*models.EntityListResult, error) {
 	result := &models.EntityListResult{Loader: ctrl}
 	err := ctrl.db.View(func(tx *bbolt.Tx) error {
-		store := typeLoader.GetStore()
-		return ctrl.PreparedListAssociatedWithTx(tx, id, store.GetEntityType(), store, query, result.Collect)
+		return ctrl.PreparedListAssociatedWithTx(tx, id, typeLoader.GetStore().GetEntityType(), query, result.Collect)
 	})
 
 	if err != nil {
