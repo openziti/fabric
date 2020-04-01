@@ -110,12 +110,12 @@ func (router *Router) showOptions() {
 	if ctrl, err := json.Marshal(router.config.Ctrl.Options); err == nil {
 		pfxlog.Logger().Infof("ctrl = %s", string(ctrl))
 	} else {
-		logrus.Fatalf("unable to display options (%w)", err)
+		logrus.Fatalf("unable to display options (%v)", err)
 	}
 	if link, err := json.Marshal(router.config.Link.Options); err == nil {
 		pfxlog.Logger().Infof("link = %s", string(link))
 	} else {
-		logrus.Fatalf("unable to display options (%w)", err)
+		logrus.Fatalf("unable to display options (%v)", err)
 	}
 }
 
