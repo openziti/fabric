@@ -35,11 +35,11 @@ func (self *impl) Id() *identity.TokenId {
 }
 
 func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return writePayload(self.nextSequence(), payload, self.conn, self.peer)
+	return writePayload(self.nextSequence(), payload, self.txBuffer, self.conn, self.peer)
 }
 
 func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return writeAcknowledgement(self.nextSequence(), acknowledgement, self.conn, self.peer)
+	return writeAcknowledgement(self.nextSequence(), acknowledgement, self.txBuffer, self.conn, self.peer)
 }
 
 func (self *impl) Close() error {
@@ -71,8 +71,11 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 	}
 }
 
-func (self *impl) HandleWindowReport(lowWater, highWater, gaps, count int32, conn *net.UDPConn, peer *net.UDPAddr) {
-	logrus.Errorf("window report not connected")
+func (self *impl) HandleWindowReport(lowWater, highWater, oops, count int32, _ *net.UDPConn, peer *net.UDPAddr) {
+	if oops > 0 {
+		logrus.Infof("[l:%d, h:%d, o:%d, c:%d] <= [%s]", lowWater, highWater, oops, count, peer)
+	}
+	self.txBuffer.release()
 }
 
 func (self *impl) HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) {
@@ -86,7 +89,7 @@ func (self *impl) listener() {
 	for {
 		if m, peer, err := readMessage(self.conn); err == nil {
 			self.rxBuffer.receive(m)
-			
+
 			if err := handleMessage(m, self.conn, peer, self); err != nil {
 				logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 			}
@@ -108,7 +111,7 @@ func (self *impl) pinger() {
 
 func (self *impl) sendPingRequest() error {
 	sequence := self.nextSequence()
-	if err := writePing(sequence, self.conn, self.peer, noReplyFor); err == nil {
+	if err := writePing(sequence, noReplyFor, self.txBuffer, self.conn, self.peer); err == nil {
 		self.lastPingTxSequence = sequence
 		self.lastPingTx = time.Now()
 
@@ -123,7 +126,7 @@ func (self *impl) sendPingRequest() error {
 
 func (self *impl) sendPingReply(forSequence int32) error {
 	sequence := self.nextSequence()
-	if err := writePing(sequence, self.conn, self.peer, forSequence); err == nil {
+	if err := writePing(sequence, forSequence, self.txBuffer, self.conn, self.peer); err == nil {
 		logrus.Infof("[ping:%d] <= %s", forSequence, self.peer)
 		return nil
 

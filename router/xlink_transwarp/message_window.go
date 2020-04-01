@@ -22,85 +22,59 @@ import (
 	"fmt"
 )
 
-func encodeWindowReport(sequence, lowWater, highWater, gaps, count int32) (*message, error) {
-	headers := make(map[uint8][]byte)
-	if data, err := writeInt32(lowWater); err == nil {
-		headers[0] = data
-	} else {
+func encodeWindowReport(sequence, lowWater, highWater, oops, count int32) (m *message, err error) {
+	payload := new(bytes.Buffer)
+	if err := binary.Write(payload, binary.LittleEndian, lowWater); err != nil {
 		return nil, err
 	}
-	if data, err := writeInt32(highWater); err == nil {
-		headers[1] = data
-	} else {
+	if err := binary.Write(payload, binary.LittleEndian, highWater); err != nil {
 		return nil, err
 	}
-	if data, err := writeInt32(gaps); err != nil {
-		headers[2] = data
-	} else {
+	if err := binary.Write(payload, binary.LittleEndian, oops); err != nil {
 		return nil, err
 	}
-	if data, err := writeInt32(count); err != nil {
-		headers[3] = data
-	} else {
+	if err := binary.Write(payload, binary.LittleEndian, count); err != nil {
 		return nil, err
 	}
 
-	return &message{
+	m = &message{
 		sequence:    sequence,
 		fragment:    0,
 		ofFragments: 1,
 		messageType: WindowReport,
-		headers:     headers,
-	}, nil
+		payload:     payload.Bytes(),
+	}
+
+	return
 }
 
-func decodeWindowReport(m *message) (lowWater, highWater, gaps, count int32, err error) {
-	if m.headers != nil {
-		if value, found := m.headers[0]; found {
-			i32v, err := readInt32(value)
-			if err == nil {
-				lowWater = i32v
-			} else {
-				return 0, 0, 0, 0, fmt.Errorf("malformed lowWater (%w)", err)
-			}
-		} else {
-			return 0, 0, 0, 0, fmt.Errorf("missing lowWater")
-		}
-		if value, found := m.headers[1]; found {
-			i32v, err := readInt32(value)
-			if err == nil {
-				highWater = i32v
-			} else {
-				return 0, 0, 0, 0, fmt.Errorf("malformed highWater (%w)", err)
-			}
-		} else {
-			return 0, 0, 0, 0, fmt.Errorf("missing highWater")
-		}
-		if value, found := m.headers[2]; found {
-			i32v, err := readInt32(value)
-			if err == nil {
-				gaps = i32v
-			} else {
-				return 0, 0, 0, 0, fmt.Errorf("malformed gaps (%w)", err)
-			}
-		} else {
-			return 0, 0, 0, 0, fmt.Errorf("missing gaps")
-		}
-		if value, found := m.headers[3]; found {
-			i32v, err := readInt32(value)
-			if err == nil {
-				count = i32v
-			} else {
-				return 0, 0, 0, 0, fmt.Errorf("malformed count (%w)", err)
-			}
-		} else {
-			return 0, 0, 0, 0, fmt.Errorf("missing count")
-		}
-
-		return
-	} else {
-		return 0, 0, 0, 0, fmt.Errorf("missing headers")
+func decodeWindowReport(m *message) (lowWater, highWater, oops, count int32, err error) {
+	if len(m.payload) != 16 {
+		return 0, 0, 0, 0, fmt.Errorf("expected 16 byte payload")
 	}
+
+	if value, err := readInt32(m.payload[0:4]); err == nil {
+		lowWater = value
+	} else {
+		return 0, 0, 0, 0, err
+	}
+	if value, err := readInt32(m.payload[4:8]); err == nil {
+		highWater = value
+	} else {
+		return 0, 0, 0, 0, err
+	}
+	if value, err := readInt32(m.payload[8:12]); err == nil {
+		oops = value
+	} else {
+		return 0, 0, 0, 0, err
+	}
+	if value, err := readInt32(m.payload[12:16]); err == nil {
+		count = value
+	} else {
+		return 0, 0, 0, 0, err
+	}
+
+	return
 }
 
 func encodeWindowSizeRequest(sequence, newSize int32) (*message, error) {

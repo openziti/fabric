@@ -48,10 +48,10 @@ func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) 
 		ofFragments: 1,
 		messageType: Hello,
 		payload:     payload.Bytes(),
-	}, conn, peer)
+	}, nil, conn, peer)
 }
 
-func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor int32) error {
+func writePing(sequence, replyFor int32, txBuffer *transmitBuffer, conn *net.UDPConn, peer *net.UDPAddr) error {
 	payload := new(bytes.Buffer)
 	if err := binary.Write(payload, binary.LittleEndian, replyFor); err != nil {
 		return fmt.Errorf("reply for write (%w)", err)
@@ -62,45 +62,49 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 		ofFragments: 1,
 		messageType: Ping,
 		payload:     payload.Bytes(),
-	}, conn, peer)
+	}, txBuffer, conn, peer)
 }
 
-func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writePayload(sequence int32, p *xgress.Payload, txBuffer *transmitBuffer, conn *net.UDPConn, peer *net.UDPAddr) error {
 	m, err := encodePayload(p, sequence)
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, conn, peer)
+	return writeMessage(m, txBuffer, conn, peer)
 }
 
-func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, txBuffer *transmitBuffer, conn *net.UDPConn, peer *net.UDPAddr) error {
 	m, err := encodeAcnowledgement(a, sequence)
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, conn, peer)
+	return writeMessage(m, txBuffer, conn, peer)
 }
 
-func writeWindowReport(sequence int32, lowWater, highWater, gaps, count int32, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writeWindowReport(sequence int32, lowWater, highWater, gaps, count int32, txBuffer *transmitBuffer, conn *net.UDPConn, peer *net.UDPAddr) error {
 	m, err := encodeWindowReport(sequence, lowWater, highWater, gaps, count)
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, conn, peer)
+	return writeMessage(m, txBuffer, conn, peer)
 }
 
-func writeWindowSizeRequest(sequence, newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writeWindowSizeRequest(sequence, newWindowSize int32, txBuffer *transmitBuffer, conn *net.UDPConn, peer *net.UDPAddr) error {
 	m, err := encodeWindowSizeRequest(sequence, newWindowSize)
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, conn, peer)
+	return writeMessage(m, txBuffer, conn, peer)
 }
 
-func writeMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writeMessage(m *message, txBuffer *transmitBuffer, conn *net.UDPConn, peer *net.UDPAddr) error {
 	data, err := encodeMessage(m)
 	if err != nil {
-		return fmt.Errorf("error creating message (%w)", err)
+		return fmt.Errorf("error encoding bitstream (%w)", err)
+	}
+
+	if txBuffer != nil {
+		txBuffer.accept(m)
 	}
 
 	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {

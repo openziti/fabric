@@ -18,6 +18,7 @@ package xlink_transwarp
 
 import (
 	"github.com/sirupsen/logrus"
+	"math"
 	"sync"
 	"time"
 )
@@ -43,9 +44,18 @@ func (self *transmitBuffer) accept(m *message) {
 	self.cond.L.Unlock()
 }
 
+func (self *transmitBuffer) release() {
+	self.cond.L.Lock()
+	self.windowContains = 0
+	self.cond.L.Unlock()
+	self.cond.Broadcast()
+	logrus.Warnf("released")
+}
+
 func newTransmitBuffer() *transmitBuffer {
 	txb := &transmitBuffer{
 		windowSize: startingWindowSize,
+		highWater:  -1,
 	}
 	txb.lock = new(sync.Mutex)
 	txb.cond = sync.NewCond(txb.lock)
@@ -63,7 +73,7 @@ type transmitBuffer struct {
 func (self *receiveBuffer) receive(m *message) {
 	self.lock.Lock()
 	if m.sequence != self.highWater+1 {
-		self.gaps++
+		self.oops += int32(math.Abs(float64(m.sequence - (self.highWater + 1))))
 	}
 	if m.sequence < self.lowWater {
 		self.lowWater = m.sequence
@@ -71,19 +81,42 @@ func (self *receiveBuffer) receive(m *message) {
 	if m.sequence > self.highWater {
 		self.highWater = m.sequence
 	}
+	self.count++
+	if self.count >= self.windowSize {
+		if err := writeWindowReport(self.xlinkImpl.nextSequence(), self.lowWater, self.highWater, self.oops, self.count, self.xlinkImpl.txBuffer, self.xlinkImpl.conn, self.xlinkImpl.peer); err == nil {
+			if self.oops > 0 {
+				logrus.Infof("[lw:%d, hw:%d, oo:%d, c:%d] => [%s]", self.lowWater, self.highWater, self.oops, self.count, self.xlinkImpl.peer)
+			}
+		} else {
+			logrus.Errorf("error writing window report (%v)", err)
+		}
+		self.lowWater = self.highWater
+		self.count = 0
+		self.oops = 0
+		self.lastReport = time.Now()
+	}
 	self.lock.Unlock()
 }
 
 func (self *receiveBuffer) acker() {
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(3 * time.Second)
 
 		self.lock.Lock()
 		if time.Since(self.lastReport).Milliseconds() > 1000 {
-			// send report
 			logrus.Infof("sending transwarp window report")
+
+			if err := writeWindowReport(self.xlinkImpl.nextSequence(), self.lowWater, self.highWater, self.oops, self.count, self.xlinkImpl.txBuffer, self.xlinkImpl.conn, self.xlinkImpl.peer); err == nil {
+				if self.oops > 0 {
+					logrus.Infof("[lw:%d, hw:%d, oo:%d, c:%d] => [%s]", self.lowWater, self.highWater, self.oops, self.count, self.xlinkImpl.peer)
+				}
+			} else {
+				logrus.Errorf("error writing window report (%v)", err)
+			}
+
 			self.lastReport = time.Now()
 		}
+		self.lock.Unlock()
 	}
 }
 
@@ -94,6 +127,7 @@ func newReceiveBuffer(xlinkImpl *impl) *receiveBuffer {
 		xlinkImpl:  xlinkImpl,
 	}
 	rxb.lock = new(sync.Mutex)
+	//go rxb.acker()
 	return rxb
 }
 
@@ -101,8 +135,8 @@ type receiveBuffer struct {
 	lowWater   int32
 	highWater  int32
 	count      int32
-	gaps       int32
-	windowSize int
+	oops       int32
+	windowSize int32
 	lastReport time.Time
 	xlinkImpl  *impl
 	lock       *sync.Mutex

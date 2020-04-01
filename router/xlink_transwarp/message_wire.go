@@ -53,6 +53,10 @@ const mss = 1472
 const noReplyFor = -1
 
 func encodeMessage(m *message) ([]byte, error) {
+	if m == nil {
+		return nil, fmt.Errorf("nil message")
+	}
+
 	data := new(bytes.Buffer)
 
 	data.Write(magicV1)
