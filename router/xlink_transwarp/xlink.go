@@ -85,6 +85,8 @@ func (self *impl) HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn
 func (self *impl) listener() {
 	for {
 		if m, peer, err := readMessage(self.conn); err == nil {
+			self.rxBuffer.receive(m)
+			
 			if err := handleMessage(m, self.conn, peer, self); err != nil {
 				logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 			}

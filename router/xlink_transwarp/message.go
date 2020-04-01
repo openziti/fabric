@@ -39,67 +39,16 @@ type MessageHandler interface {
 	HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn, addr *net.UDPAddr)
 }
 
-/**
- * TRANSWARP v1 Wire Format
- *
- * // --- message section --------------------------------------------------------------------------------- //
- *
- * <version:[]byte>								0  1  2  3
- * <sequence:int32> 							4  5  6  7
- * <fragment:uint8>								8
- * <of_fragments:uint8>							9
- * <content_type:uint8>							10
- * <headers_length:uint16>						11 12
- * <payload_length:uint16> 						13 14
- *
- * // --- data section ------------------------------------------------------------------------------------ //
- *
- * <headers>									15 -> (15 + headers_length)
- * <body>										(15 + headers_length) -> (15 + headers_length + body_length)
- */
-var magicV1 = []byte{0x01, 0x02, 0x02, 0x00}
-
-const messageSectionLength = 15
-
-type messageType uint8
-
-const (
-	Hello messageType = iota
-	Ping
-	Payload
-	Acknowledgement
-	WindowReport
-	WindowSizeRequest
-)
-
-const timeoutSeconds = 5
-const mss = 1472
-const noReplyFor = -1
-
 func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) error {
 	payload := new(bytes.Buffer)
 	payload.Write([]byte(linkId.Token))
-
-	data, err := encodeMessage(&message{
+	return writeMessage(&message{
 		sequence:    -1,
 		fragment:    0,
 		ofFragments: 1,
 		messageType: Hello,
 		payload:     payload.Bytes(),
-	})
-	if err != nil {
-		return fmt.Errorf("error creating message (%w)", err)
-	}
-
-	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
-		return fmt.Errorf("unable to set write deadline (%w)", err)
-	}
-
-	if _, err := conn.WriteToUDP(data, peer); err != nil {
-		return err
-	}
-
-	return nil
+	}, conn, peer)
 }
 
 func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor int32) error {
@@ -107,27 +56,13 @@ func writePing(sequence int32, conn *net.UDPConn, peer *net.UDPAddr, replyFor in
 	if err := binary.Write(payload, binary.LittleEndian, replyFor); err != nil {
 		return fmt.Errorf("reply for write (%w)", err)
 	}
-
-	data, err := encodeMessage(&message{
+	return writeMessage(&message{
 		sequence:    sequence,
 		fragment:    0,
 		ofFragments: 1,
 		messageType: Ping,
 		payload:     payload.Bytes(),
-	})
-	if err != nil {
-		return fmt.Errorf("error creating message (%w)", err)
-	}
-
-	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
-		return fmt.Errorf("unable to set write deadline (%w)", err)
-	}
-
-	if _, err := conn.WriteToUDP(data, peer); err != nil {
-		return err
-	}
-
-	return nil
+	}, conn, peer)
 }
 
 func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -135,21 +70,7 @@ func writePayload(sequence int32, p *xgress.Payload, conn *net.UDPConn, peer *ne
 	if err != nil {
 		return err
 	}
-
-	data, err := encodeMessage(m)
-	if err != nil {
-		return fmt.Errorf("error creating message (%w)", err)
-	}
-
-	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
-		return fmt.Errorf("unable to set write deadline (%w)", err)
-	}
-
-	if _, err := conn.WriteToUDP(data, peer); err != nil {
-		return err
-	}
-
-	return nil
+	return writeMessage(m, conn, peer)
 }
 
 func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -157,21 +78,7 @@ func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, conn *net.U
 	if err != nil {
 		return err
 	}
-
-	data, err := encodeMessage(m)
-	if err != nil {
-		return fmt.Errorf("error creating message (%w)", err)
-	}
-
-	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
-		return fmt.Errorf("unable to set write deadline (%w)", err)
-	}
-
-	if _, err := conn.WriteToUDP(data, peer); err != nil {
-		return err
-	}
-
-	return nil
+	return writeMessage(m, conn, peer)
 }
 
 func writeWindowReport(sequence int32, lowWater, highWater, gaps, count int32, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -179,21 +86,7 @@ func writeWindowReport(sequence int32, lowWater, highWater, gaps, count int32, c
 	if err != nil {
 		return err
 	}
-
-	data, err := encodeMessage(m)
-	if err != nil {
-		return fmt.Errorf("error creating message (%w)", err)
-	}
-
-	if err := conn.SetWriteDeadline(time.Now().Add(timeoutSeconds * time.Second)); err != nil {
-		return fmt.Errorf("unable to set write deadline (%w)", err)
-	}
-
-	if _, err := conn.WriteToUDP(data, peer); err != nil {
-		return err
-	}
-
-	return nil
+	return writeMessage(m, conn, peer)
 }
 
 func writeWindowSizeRequest(sequence, newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -201,7 +94,10 @@ func writeWindowSizeRequest(sequence, newWindowSize int32, conn *net.UDPConn, pe
 	if err != nil {
 		return err
 	}
+	return writeMessage(m, conn, peer)
+}
 
+func writeMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr) error {
 	data, err := encodeMessage(m)
 	if err != nil {
 		return fmt.Errorf("error creating message (%w)", err)
@@ -311,155 +207,4 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 	default:
 		return fmt.Errorf("unexpected message type [%d] from [%s]", m.messageType, peer)
 	}
-}
-
-func encodeMessage(m *message) ([]byte, error) {
-	data := new(bytes.Buffer)
-
-	data.Write(magicV1)
-	if err := binary.Write(data, binary.LittleEndian, m.sequence); err != nil {
-		return nil, fmt.Errorf("sequence write (%w)", err)
-	}
-	data.Write([]byte{m.fragment, m.ofFragments, uint8(m.messageType)})
-	if err := binary.Write(data, binary.LittleEndian, uint16(0)); err != nil { // headers length
-		return nil, fmt.Errorf("headers length write (%w)", err)
-	}
-	if err := binary.Write(data, binary.LittleEndian, uint16(len(m.payload))); err != nil {
-		return nil, fmt.Errorf("payload length write (%w)", err)
-	}
-	data.Write(m.payload)
-
-	buffer := make([]byte, data.Len())
-	_, err := data.Read(buffer)
-	if err != nil {
-		return nil, fmt.Errorf("error reading buffer (%w)", err)
-	}
-	/*
-		if n > mss {
-			return nil, fmt.Errorf("message too long [%d]", n)
-		}
-	*/
-
-	return buffer, nil
-}
-
-/*
- * TRANSWARP v1 Headers Wire Format
- *
- * <key:uint8>                                  0
- * <length:uint8>                               1
- * <data>                                       2 -> (2 + length)
- */
-func encodeHeaders(headers map[uint8][]byte) ([]byte, error) {
-	data := new(bytes.Buffer)
-	for k, v := range headers {
-		if _, err := data.Write([]byte{k}); err != nil {
-			return nil, err
-		}
-		if err := binary.Write(data, binary.LittleEndian, uint8(len(v))); err != nil {
-			return nil, err
-		}
-		if n, err := data.Write(v); err == nil {
-			if n != len(v) {
-				return nil, fmt.Errorf("short header write")
-			}
-		} else {
-			return nil, err
-		}
-	}
-	return data.Bytes(), nil
-}
-
-func decodeHeaders(data []byte) (map[uint8][]byte, error) {
-	headers := make(map[uint8][]byte)
-	if len(data) > 0 && len(data) < 2 {
-		return nil, fmt.Errorf("truncated header data")
-	}
-	i := 0
-	for i < len(data) {
-		key := data[i]
-		length := data[i+1]
-		if i+2+int(length) > len(data) {
-			return nil, fmt.Errorf("short header data (%d > %d)", i+2+int(length), len(data))
-		}
-		headerData := data[i+2 : i+2+int(length)]
-		headers[key] = headerData
-		i += 2 + int(length)
-	}
-	return headers, nil
-}
-
-func decodeMessage(data []byte) (*message, error) {
-	m := &message{}
-	if len(data) < messageSectionLength {
-		return nil, fmt.Errorf("short read")
-	}
-	for i := 0; i < len(magicV1); i++ {
-		if data[i] != magicV1[i] {
-			return nil, fmt.Errorf("bad magic")
-		}
-	}
-	sequence, err := readInt32(data[4:8])
-	if err != nil {
-		return nil, fmt.Errorf("error reading sequence (%w)", err)
-	}
-	m.sequence = sequence
-
-	m.fragment = data[8]
-	m.ofFragments = data[9]
-	m.messageType = messageType(data[10])
-
-	headersLength, err := readUint16(data[11:13])
-	if err != nil {
-		return nil, fmt.Errorf("error reading headers length (%w)", err)
-	}
-	if headers, err := decodeHeaders(data[15 : 15+headersLength]); err == nil {
-		m.headers = headers
-	} else {
-		return nil, fmt.Errorf("headers error (%w)", err)
-	}
-
-	payloadLength, err := readUint16(data[13:15])
-	if err != nil {
-		return nil, fmt.Errorf("error reading payload length (%w)", err)
-	}
-	m.payload = data[15+headersLength : 15+headersLength+payloadLength]
-
-	return m, nil
-}
-
-func readInt32(data []byte) (ret int32, err error) {
-	buf := bytes.NewBuffer(data)
-	err = binary.Read(buf, binary.LittleEndian, &ret)
-	return
-}
-
-func writeInt32(value int32) ([]byte, error) {
-	buf := new(bytes.Buffer)
-	err := binary.Write(buf, binary.LittleEndian, value)
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
-}
-
-func readUint32(data []byte) (ret uint32, err error) {
-	buf := bytes.NewBuffer(data)
-	err = binary.Read(buf, binary.LittleEndian, &ret)
-	return
-}
-
-func readUint16(data []byte) (ret uint16, err error) {
-	buf := bytes.NewBuffer(data)
-	err = binary.Read(buf, binary.LittleEndian, &ret)
-	return
-}
-
-type message struct {
-	sequence    int32
-	fragment    uint8
-	ofFragments uint8
-	messageType messageType
-	headers     map[uint8][]byte
-	payload     []byte
 }
