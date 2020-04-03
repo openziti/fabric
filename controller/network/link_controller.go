@@ -17,6 +17,7 @@
 package network
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/util/sequence"
 	"github.com/orcaman/concurrent-map"
@@ -67,8 +68,8 @@ func (linkController *linkController) allLinksForRouter(routerId string) []*Link
 	return nil
 }
 
-func (linkController *linkController) connectedNeighborsOfRouter(router *Router) []*Router {
-	neighborMap := make(map[string]*Router)
+func (linkController *linkController) connectedNeighborsOfRouter(router *model.Router) []*model.Router {
+	neighborMap := make(map[string]*model.Router)
 
 	links := linkController.allLinksForRouter(router.Id)
 	for _, link := range links {
@@ -83,14 +84,14 @@ func (linkController *linkController) connectedNeighborsOfRouter(router *Router)
 		}
 	}
 
-	neighbors := make([]*Router, 0)
+	neighbors := make([]*model.Router, 0)
 	for _, r := range neighborMap {
 		neighbors = append(neighbors, r)
 	}
 	return neighbors
 }
 
-func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, bool) {
+func (linkController *linkController) leastExpensiveLink(a, b *model.Router) (*Link, bool) {
 	var selected *Link
 	var cost int64 = math.MaxInt64
 
@@ -118,7 +119,7 @@ func (linkController *linkController) leastExpensiveLink(a, b *Router) (*Link, b
 	return nil, false
 }
 
-func (linkController *linkController) missingLinks(routers []*Router) ([]*Link, error) {
+func (linkController *linkController) missingLinks(routers []*model.Router) ([]*Link, error) {
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
 		for _, dstR := range routers {
@@ -140,7 +141,7 @@ func (linkController *linkController) missingLinks(routers []*Router) ([]*Link, 
 	return missingLinks, nil
 }
 
-func (linkController *linkController) firstDirectedLink(a, b *Router) (*Link, bool) {
+func (linkController *linkController) firstDirectedLink(a, b *model.Router) (*Link, bool) {
 	// a->b
 	if rlt, found := linkController.adjacencyTable.get(a.Id); found {
 		if links, found := rlt.allLinksForRouter(b.Id); found {

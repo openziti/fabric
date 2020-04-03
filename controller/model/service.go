@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"

@@ -23,6 +23,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/db"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-fabric/trace"
@@ -34,16 +35,17 @@ import (
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/netfoundry/ziti-foundation/util/sequence"
 	errors2 "github.com/pkg/errors"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 )
 
 type Network struct {
-	*Controllers
+	*model.Controllers
 	nodeId                     *identity.TokenId
 	options                    *Options
-	routerChanged              chan *Router
+	routerChanged              chan *model.Router
 	linkController             *linkController
 	linkChanged                chan *Link
 	sessionController          *sessionController
@@ -65,13 +67,13 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 	if err != nil {
 		return nil, err
 	}
-	controllers := NewControllers(database, stores)
+	controllers := model.NewControllers(database, stores)
 
 	network := &Network{
 		Controllers:                controllers,
 		nodeId:                     nodeId,
 		options:                    options,
-		routerChanged:              make(chan *Router),
+		routerChanged:              make(chan *model.Router),
 		linkController:             newLinkController(),
 		linkChanged:                make(chan *Link),
 		sessionController:          newSessionController(),
@@ -93,32 +95,24 @@ func (network *Network) GetAppId() *identity.TokenId {
 	return network.nodeId
 }
 
-func (network *Network) GetDb() boltz.Db {
-	return network.db
-}
-
-func (network *Network) GetStores() *db.Stores {
-	return network.stores
-}
-
-func (network *Network) GetControllers() *Controllers {
+func (network *Network) GetControllers() *model.Controllers {
 	return network.Controllers
 }
 
-func (network *Network) CreateRouter(router *Router) error {
+func (network *Network) CreateRouter(router *model.Router) error {
 	return network.Routers.Create(router)
 }
 
-func (network *Network) GetConnectedRouter(routerId string) *Router {
-	return network.Routers.getConnected(routerId)
+func (network *Network) GetConnectedRouter(routerId string) *model.Router {
+	return network.Routers.GetConnected(routerId)
 }
 
-func (network *Network) GetRouter(routerId string) (*Router, error) {
+func (network *Network) GetRouter(routerId string) (*model.Router, error) {
 	return network.Routers.Read(routerId)
 }
 
-func (network *Network) AllConnectedRouters() []*Router {
-	return network.Routers.allConnected()
+func (network *Network) AllConnectedRouters() []*model.Router {
+	return network.Routers.AllConnected()
 }
 
 func (network *Network) GetLink(linkId *identity.TokenId) (*Link, bool) {
@@ -157,7 +151,7 @@ func (network *Network) GetTraceController() trace.Controller {
 	return network.traceController
 }
 
-func (network *Network) RouterChanged(r *Router) {
+func (network *Network) RouterChanged(r *model.Router) {
 	network.routerChanged <- r
 }
 
@@ -165,8 +159,8 @@ func (network *Network) ConnectedRouter(id string) bool {
 	return network.Routers.IsConnected(id)
 }
 
-func (network *Network) ConnectRouter(r *Router) {
-	network.Routers.markConnected(r)
+func (network *Network) ConnectRouter(r *model.Router) {
+	network.Routers.MarkConnected(r)
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
@@ -174,7 +168,7 @@ func (network *Network) ConnectRouter(r *Router) {
 	}
 }
 
-func (network *Network) ValidateTerminators(r *Router) {
+func (network *Network) ValidateTerminators(r *model.Router) {
 	result, err := network.Terminators.Query(fmt.Sprintf(`router.id = "%v" limit none`, r.Id))
 	if err != nil {
 		pfxlog.Logger().Errorf("failed to get termintors for router %v (%v)", r.Id, err)
@@ -212,14 +206,14 @@ func (network *Network) ValidateTerminators(r *Router) {
 	}
 }
 
-func (network *Network) DisconnectRouter(r *Router) {
+func (network *Network) DisconnectRouter(r *model.Router) {
 	// 1: remove Links for Router
 	for _, l := range network.linkController.allLinksForRouter(r.Id) {
 		network.linkController.remove(l)
 		network.LinkChanged(l)
 	}
 	// 2: remove Router
-	network.Routers.markDisconnected(r)
+	network.Routers.MarkDisconnected(r)
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
@@ -250,7 +244,7 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, serviceId string) (*session, error) {
+func (network *Network) CreateSession(srcR *model.Router, clientId *identity.TokenId, serviceId string) (*session, error) {
 	log := pfxlog.Logger()
 
 	// 1: Find Service
@@ -266,68 +260,141 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 	}
 	sessionId := &identity.TokenId{Token: sessionIdHash}
 
-	if len(svc.Terminators) == 0 {
-		return nil, errors2.Errorf("service %v has no Terminators", serviceId)
-	}
-
-	// 3: select terminator
-	terminator := svc.Terminators[0]
-
-	// 4: Get Egress Router
-	er := network.Routers.getConnected(terminator.Router)
-	if er == nil {
-		return nil, errors2.Errorf("invalid terminating router %v for service %v", terminator.Router, svc.Id)
-	}
-
-	// 5: Create Circuit
-	circuit, err := network.CreateCircuit(srcR, er)
-	if err != nil {
-		return nil, err
-	}
-	circuit.Binding = "transport"
-	if terminator.Binding != "" {
-		circuit.Binding = terminator.Binding
-	} else if strings.HasPrefix(terminator.Address, "hosted") {
-		circuit.Binding = "edge"
-	} else if strings.HasPrefix(terminator.Address, "udp") {
-		circuit.Binding = "udp"
-	}
-
-	// 5a: Create Route Messages
-	rms, err := circuit.CreateRouteMessages(sessionId, terminator.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	// 6: Route Egress
-	rms[len(rms)-1].Egress.PeerData = clientId.Data
-	err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
-	if err != nil {
-		return nil, err
-	}
-
-	// 7: Create Intermediate Routes
-	for i := 0; i < len(circuit.Path)-1; i++ {
-		err = sendRoute(circuit.Path[i], rms[i])
+	retryCount := 0
+	for {
+		// 3: select terminator
+		strategy, terminator, path, err := network.selectPath(srcR, svc)
 		if err != nil {
 			return nil, err
 		}
+
+		// 4: Create Circuit
+		circuit, err := network.CreateCircuitWithPath(path)
+		if err != nil {
+			return nil, err
+		}
+		circuit.Binding = "transport"
+		if terminator.GetBinding() != "" {
+			circuit.Binding = terminator.GetBinding()
+		} else if strings.HasPrefix(terminator.GetBinding(), "hosted") {
+			circuit.Binding = "edge"
+		} else if strings.HasPrefix(terminator.GetAddress(), "udp") {
+			circuit.Binding = "udp"
+		}
+
+		// 4a: Create Route Messages
+		rms, err := circuit.CreateRouteMessages(sessionId, terminator.GetAddress())
+		if err != nil {
+			return nil, err
+		}
+
+		// 5: Route Egress
+		rms[len(rms)-1].Egress.PeerData = clientId.Data
+		err = sendRoute(circuit.Path[len(circuit.Path)-1], rms[len(rms)-1])
+		if err != nil {
+			strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+			retryCount++
+			if retryCount > 3 {
+				return nil, err
+			} else {
+				continue
+			}
+		} else {
+			strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+		}
+
+		// 6: Create Intermediate Routes
+		for i := 0; i < len(circuit.Path)-1; i++ {
+			err = sendRoute(circuit.Path[i], rms[i])
+			if err != nil {
+				return nil, err
+			}
+		}
+
+		// 7: Create Session Object
+		ss := &session{
+			Id:         sessionId,
+			ClientId:   clientId,
+			Service:    svc,
+			Circuit:    circuit,
+			Terminator: terminator,
+		}
+		network.sessionController.add(ss)
+		network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
+
+		log.Infof("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
+		return ss, nil
+	}
+}
+
+func (network *Network) selectPath(srcR *model.Router, svc *model.Service) (xt.Strategy, xt.Terminator, []*model.Router, error) {
+	if len(svc.Terminators) == 0 {
+		return nil, nil, nil, errors2.Errorf("service %v has no Terminators", svc.Id)
 	}
 
-	// 8: Create Session Object
-	ss := &session{
-		Id:         sessionId,
-		ClientId:   clientId,
-		Service:    svc,
-		Circuit:    circuit,
-		Terminator: terminator,
+	paths := map[string]*PathAndCost{}
+	var weightedTerminators []xt.WeightedTerminator
+	var errList []error
+
+	var totalWeight uint32
+	maxCost := uint32(1 << 20)
+	for _, terminator := range svc.Terminators {
+		pathAndCost, found := paths[terminator.Router]
+		if !found {
+			dstR := network.Routers.GetConnected(terminator.GetRouterId())
+			if dstR == nil {
+				err := errors2.Errorf("invalid terminating router %v on terminator %v", terminator.GetRouterId(), terminator.GetId())
+				pfxlog.Logger().Debugf("error while calculating path for service %v: %v", svc.Id, err)
+				errList = append(errList, err)
+				continue
+			}
+
+			path, cost, err := network.shortestPath(srcR, dstR)
+			if err != nil {
+				pfxlog.Logger().Debugf("error while calculating path for service %v: %v", svc.Id, err)
+				errList = append(errList, err)
+				continue
+			}
+
+			pathAndCost = newPathAndCost(path, cost)
+			paths[terminator.GetRouterId()] = pathAndCost
+		}
+
+		staticTerminatorCost := uint32(terminator.Cost)
+		dynamicTerminatorCost := uint32(xt.GlobalCosts().GetCost(terminator.Id))
+		fullCost := pathAndCost.cost + dynamicTerminatorCost + staticTerminatorCost
+		weightedTerminator := &model.RoutingTerminator{
+			Terminator: terminator,
+			Weight:     maxCost - fullCost, // want weight here, which is inverse of cost
+		}
+		weightedTerminators = append(weightedTerminators, weightedTerminator)
+		totalWeight += weightedTerminator.Weight
 	}
-	network.sessionController.add(ss)
-	network.sessionLifeCycleController.SessionCreated(ss.Id, ss.ClientId, ss.Service.Id, ss.Circuit)
 
-	log.Infof("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
+	if len(weightedTerminators) == 0 {
+		return nil, nil, nil, MultipleErrors(errList)
+	}
 
-	return ss, nil
+	strategy, err := network.strategyRegistry.GetStrategy(svc.TerminatorStrategy)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	sort.Slice(weightedTerminators, func(i, j int) bool {
+		return weightedTerminators[i].GetRouteWeight() > weightedTerminators[j].GetRouteWeight()
+	})
+
+	terminator, err := strategy.Select(weightedTerminators, totalWeight)
+
+	if err != nil {
+		return nil, nil, nil, errors2.Errorf("strategy %v errored selecting terminator for service %v: %v", svc.TerminatorStrategy, svc.Id, err)
+	}
+
+	if terminator == nil {
+		return nil, nil, nil, errors2.Errorf("strategy %v did not select terminator for service %v", svc.TerminatorStrategy, svc.Id)
+	}
+
+	return strategy, terminator, paths[terminator.GetRouterId()].path, nil
 }
 
 func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) error {
@@ -342,6 +409,12 @@ func (network *Network) RemoveSession(sessionId *identity.TokenId, now bool) err
 		}
 		network.sessionController.remove(ss)
 		network.sessionLifeCycleController.SessionDeleted(sessionId)
+
+		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
+			strategy.NotifyEvent(xt.NewSessionEnded(ss.Terminator))
+		} else if err != nil {
+			log.Warnf("failed to notify strategy %v of session end. invalid strategy (%v)", ss.Service.TerminatorStrategy, err)
+		}
 
 		log.Infof("removed session [s/%s]", ss.Id.Token)
 
@@ -361,7 +434,7 @@ func (network *Network) StartSessionEgress(sessionId *identity.TokenId) error {
 	return fmt.Errorf("invalid session (%s)", sessionId.Token)
 }
 
-func (network *Network) CreateCircuit(srcR, dstR *Router) (*Circuit, error) {
+func (network *Network) CreateCircuit(srcR, dstR *model.Router) (*Circuit, error) {
 	ingressId, err := network.sequence.NextHash()
 	if err != nil {
 		return nil, err
@@ -376,7 +449,7 @@ func (network *Network) CreateCircuit(srcR, dstR *Router) (*Circuit, error) {
 		Links:     make([]*Link, 0),
 		IngressId: ingressId,
 		EgressId:  egressId,
-		Path:      make([]*Router, 0),
+		Path:      make([]*model.Router, 0),
 	}
 	circuit.Path = append(circuit.Path, srcR)
 	circuit.Path = append(circuit.Path, dstR)
@@ -384,10 +457,28 @@ func (network *Network) CreateCircuit(srcR, dstR *Router) (*Circuit, error) {
 	return network.UpdateCircuit(circuit)
 }
 
+func (network *Network) CreateCircuitWithPath(path []*model.Router) (*Circuit, error) {
+	ingressId, err := network.sequence.NextHash()
+	if err != nil {
+		return nil, err
+	}
+
+	egressId, err := network.sequence.NextHash()
+	if err != nil {
+		return nil, err
+	}
+
+	return &Circuit{
+		Path:      path,
+		IngressId: ingressId,
+		EgressId:  egressId,
+	}, nil
+}
+
 func (network *Network) UpdateCircuit(circuit *Circuit) (*Circuit, error) {
 	srcR := circuit.Path[0]
 	dstR := circuit.Path[len(circuit.Path)-1]
-	path, err := network.shortestPath(srcR, dstR)
+	path, _, err := network.shortestPath(srcR, dstR)
 	if err != nil {
 		return nil, err
 	}
@@ -493,7 +584,7 @@ func (network *Network) rerouteSession(s *session) error {
 	if cq, err := network.UpdateCircuit(s.Circuit); err == nil {
 		s.Circuit = cq
 
-		rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.Address)
+		rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.GetAddress())
 		if err != nil {
 			log.Errorf("error creating route messages (%s)", err)
 			return err
@@ -520,7 +611,7 @@ func (network *Network) smartReroute(s *session, cq *Circuit) error {
 
 	s.Circuit = cq
 
-	rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.Address)
+	rms, err := cq.CreateRouteMessages(s.Id, s.Terminator.GetAddress())
 	if err != nil {
 		log.Errorf("error creating route messages (%s)", err)
 		return err
@@ -562,7 +653,7 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 	}
 }
 
-func sendRoute(r *Router, createMsg *ctrl_pb.Route) error {
+func sendRoute(r *model.Router, createMsg *ctrl_pb.Route) error {
 	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.SessionId)
 
 	body, err := proto.Marshal(createMsg)
@@ -593,7 +684,7 @@ func sendRoute(r *Router, createMsg *ctrl_pb.Route) error {
 	}
 }
 
-func sendUnroute(r *Router, sessionId *identity.TokenId, now bool) error {
+func sendUnroute(r *model.Router, sessionId *identity.TokenId, now bool) error {
 	remove := &ctrl_pb.Unroute{
 		SessionId: sessionId.Token,
 		Now:       now,
@@ -609,7 +700,7 @@ func sendUnroute(r *Router, sessionId *identity.TokenId, now bool) error {
 	return nil
 }
 
-func sendStartXgress(r *Router, sessionId *identity.TokenId) error {
+func sendStartXgress(r *model.Router, sessionId *identity.TokenId) error {
 	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_StartXgressType), []byte(sessionId.Token))
 	if err := r.Control.Send(msg); err != nil {
 		return err
@@ -631,6 +722,21 @@ func (network *Network) GetServiceCache() Cache {
 
 type Cache interface {
 	RemoveFromCache(id string)
+}
+
+func newPathAndCost(path []*model.Router, cost int64) *PathAndCost {
+	if cost > (1 << 20) {
+		cost = 1 << 20
+	}
+	return &PathAndCost{
+		path: path,
+		cost: uint32(cost),
+	}
+}
+
+type PathAndCost struct {
+	path []*model.Router
+	cost uint32
 }
 
 type MultipleErrors []error

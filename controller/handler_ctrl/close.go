@@ -18,16 +18,17 @@ package handler_ctrl
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-foundation/channel2"
 )
 
 type closeHandler struct {
-	r       *network.Router
+	r       *model.Router
 	network *network.Network
 }
 
-func newCloseHandler(r *network.Router, network *network.Network) *closeHandler {
+func newCloseHandler(r *model.Router, network *network.Network) *closeHandler {
 	return &closeHandler{r: r, network: network}
 }
 

@@ -14,14 +14,13 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-foundation/channel2"
 	"github.com/netfoundry/ziti-foundation/storage/boltz"
-	"github.com/netfoundry/ziti-foundation/transport"
 	"github.com/netfoundry/ziti-foundation/util/concurrenz"
 	"github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
@@ -62,19 +61,6 @@ func NewRouter(id, fingerprint string) *Router {
 	}
 }
 
-func newRouter(id string, fingerprint string, advLstnr transport.Address, ctrl channel2.Channel) *Router {
-	r := &Router{
-		BaseEntity:  models.BaseEntity{Id: id},
-		Fingerprint: fingerprint,
-		Control:     ctrl,
-		CostFactor:  1,
-	}
-	if advLstnr != nil {
-		r.AdvertisedListener = advLstnr.String()
-	}
-	return r
-}
-
 type RouterController struct {
 	baseController
 	cache     cmap.ConcurrentMap
@@ -97,12 +83,12 @@ func newRouterController(controllers *Controllers) *RouterController {
 	return result
 }
 
-func (ctrl *RouterController) markConnected(r *Router) {
+func (ctrl *RouterController) MarkConnected(r *Router) {
 	r.Connected.Set(true)
 	ctrl.connected.Set(r.Id, r)
 }
 
-func (ctrl *RouterController) markDisconnected(r *Router) {
+func (ctrl *RouterController) MarkDisconnected(r *Router) {
 	r.Connected.Set(false)
 	ctrl.connected.Remove(r.Id)
 }
@@ -111,14 +97,14 @@ func (ctrl *RouterController) IsConnected(id string) bool {
 	return ctrl.connected.Has(id)
 }
 
-func (ctrl *RouterController) getConnected(id string) *Router {
+func (ctrl *RouterController) GetConnected(id string) *Router {
 	if t, found := ctrl.connected.Get(id); found {
 		return t.(*Router)
 	}
 	return nil
 }
 
-func (ctrl *RouterController) allConnected() []*Router {
+func (ctrl *RouterController) AllConnected() []*Router {
 	var routers []*Router
 	for i := range ctrl.connected.IterBuffered() {
 		routers = append(routers, i.Val.(*Router))
@@ -126,7 +112,7 @@ func (ctrl *RouterController) allConnected() []*Router {
 	return routers
 }
 
-func (ctrl *RouterController) connectedCount() int {
+func (ctrl *RouterController) ConnectedCount() int {
 	return ctrl.connected.Count()
 }
 

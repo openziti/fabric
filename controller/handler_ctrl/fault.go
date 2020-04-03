@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -26,11 +27,11 @@ import (
 )
 
 type faultHandler struct {
-	r       *network.Router
+	r       *model.Router
 	network *network.Network
 }
 
-func newFaultHandler(r *network.Router, network *network.Network) *faultHandler {
+func newFaultHandler(r *model.Router, network *network.Network) *faultHandler {
 	return &faultHandler{r: r, network: network}
 }
 

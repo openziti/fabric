@@ -14,7 +14,7 @@
 	limitations under the License.
 */
 
-package network
+package model
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/db"
@@ -32,8 +32,12 @@ type Controllers struct {
 	Services    *ServiceController
 }
 
-func (e *Controllers) getDb() boltz.Db {
+func (e *Controllers) GetDb() boltz.Db {
 	return e.db
+}
+
+func (e *Controllers) GetStores() *db.Stores {
+	return e.stores
 }
 
 func NewControllers(db boltz.Db, stores *db.Stores) *Controllers {

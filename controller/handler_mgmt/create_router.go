@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -42,7 +43,7 @@ func (h *createRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.C
 
 	create := &mgmt_pb.CreateRouterRequest{}
 	if err := proto.Unmarshal(msg.Body, create); err == nil {
-		r := network.NewRouter(create.Router.Id, create.Router.Fingerprint)
+		r := model.NewRouter(create.Router.Id, create.Router.Fingerprint)
 		if err := h.network.CreateRouter(r); err == nil {
 			log.Infof("created router [r/%s] with fingerprint [%s]", r.Id, r.Fingerprint)
 			handler_common.SendSuccess(msg, ch, "")

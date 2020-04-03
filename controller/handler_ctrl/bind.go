@@ -17,6 +17,7 @@
 package handler_ctrl
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/controller/xctrl"
 	"github.com/netfoundry/ziti-fabric/trace"
@@ -24,12 +25,12 @@ import (
 )
 
 type bindHandler struct {
-	router  *network.Router
+	router  *model.Router
 	network *network.Network
 	xctrls  []xctrl.Xctrl
 }
 
-func newBindHandler(router *network.Router, network *network.Network, xctrls []xctrl.Xctrl) *bindHandler {
+func newBindHandler(router *model.Router, network *network.Network, xctrls []xctrl.Xctrl) *bindHandler {
 	return &bindHandler{router: router, network: network, xctrls: xctrls}
 }
 

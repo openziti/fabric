@@ -18,23 +18,25 @@ package network
 
 import (
 	"errors"
+	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"math"
 )
 
-func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, error) {
+func (network *Network) shortestPath(srcR *model.Router, dstR *model.Router) ([]*model.Router, int64, error) {
 	if srcR == nil || dstR == nil {
-		return nil, errors.New("not routable (!srcR||!dstR)")
+		return nil, 0, errors.New("not routable (!srcR||!dstR)")
 	}
 
 	if srcR == dstR {
-		return []*Router{srcR}, nil
+		return []*model.Router{srcR}, 0, nil
 	}
 
-	dist := make(map[*Router]int64)
-	prev := make(map[*Router]*Router)
-	unvisited := make(map[*Router]bool)
+	dist := make(map[*model.Router]int64)
+	prev := make(map[*model.Router]*model.Router)
+	unvisited := make(map[*model.Router]bool)
 
-	for _, r := range network.Routers.allConnected() {
+	for _, r := range network.Routers.AllConnected() {
 		dist[r] = math.MaxInt32
 		unvisited[r] = true
 	}
@@ -68,32 +70,31 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, err
 	 *		r1 = 1 <- r2
 	 *		r2 = 0 <- nil
 	 */
-
-	routerPath := make([]*Router, 0)
+	routerPath := make([]*model.Router, 0)
 	p := prev[dstR]
 	for p != nil {
-		routerPath = append([]*Router{p}, routerPath...)
+		routerPath = append([]*model.Router{p}, routerPath...)
 		p = prev[p]
 	}
 	routerPath = append(routerPath, dstR)
 
 	if routerPath[0] != srcR {
-		return nil, errors.New("not routable (~srcR)")
+		return nil, 0, fmt.Errorf("can't route from %v -> %v. source unreachable", srcR.Id, dstR.Id)
 	}
 	if routerPath[len(routerPath)-1] != dstR {
-		return nil, errors.New("not routable (~dstR)")
+		return nil, 0, fmt.Errorf("can't route from %v -> %v. destination unreachable", srcR.Id, dstR.Id)
 	}
 
-	return routerPath, nil
+	return routerPath, dist[dstR], nil
 }
 
-func minCost(q map[*Router]bool, dist map[*Router]int64) *Router {
+func minCost(q map[*model.Router]bool, dist map[*model.Router]int64) *model.Router {
 	if dist == nil || len(dist) < 1 {
 		return nil
 	}
 
 	min := int64(math.MaxInt64)
-	var selected *Router
+	var selected *model.Router
 	for r := range q {
 		d := dist[r]
 		if d <= min {

@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
@@ -41,7 +42,7 @@ func (h *createServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	cs := &mgmt_pb.CreateServiceRequest{}
 	err := proto.Unmarshal(msg.Body, cs)
 	if err == nil {
-		service := &network.Service{
+		service := &model.Service{
 			BaseEntity:         models.BaseEntity{Id: cs.Service.Id},
 			TerminatorStrategy: cs.Service.TerminatorStrategy,
 		}

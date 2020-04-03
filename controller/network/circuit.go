@@ -18,12 +18,13 @@ package network
 
 import (
 	"fmt"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 )
 
 type Circuit struct {
-	Path      []*Router
+	Path      []*model.Router
 	Links     []*Link
 	Binding   string
 	IngressId string
@@ -65,7 +66,7 @@ func (circuit *Circuit) EqualPath(other *Circuit) bool {
 	return true
 }
 
-func (circuit *Circuit) EgressRouter() *Router {
+func (circuit *Circuit) EgressRouter() *model.Router {
 	if len(circuit.Path) > 0 {
 		return circuit.Path[len(circuit.Path)-1]
 	}

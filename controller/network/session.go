@@ -17,6 +17,8 @@
 package network
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/model"
+	"github.com/netfoundry/ziti-fabric/controller/xt"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/orcaman/concurrent-map"
 )
@@ -24,8 +26,8 @@ import (
 type session struct {
 	Id         *identity.TokenId
 	ClientId   *identity.TokenId
-	Service    *Service
-	Terminator *Terminator
+	Service    *model.Service
+	Terminator xt.Terminator
 	Circuit    *Circuit
 }
 

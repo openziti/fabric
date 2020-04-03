@@ -19,6 +19,7 @@ package handler_ctrl
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/ctrl_pb"
@@ -26,11 +27,11 @@ import (
 )
 
 type createTerminatorHandler struct {
-	router  *network.Router
+	router  *model.Router
 	network *network.Network
 }
 
-func newCreateTerminatorHandler(network *network.Network, router *network.Router) *createTerminatorHandler {
+func newCreateTerminatorHandler(network *network.Network, router *model.Router) *createTerminatorHandler {
 	return &createTerminatorHandler{
 		network: network,
 		router:  router,
@@ -47,7 +48,7 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 		handler_common.SendFailure(msg, ch, err.Error())
 		return
 	}
-	terminator := &network.Terminator{
+	terminator := &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Id: request.Id,
 		},

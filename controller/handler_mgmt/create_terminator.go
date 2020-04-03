@@ -19,6 +19,7 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/models"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
@@ -56,7 +57,7 @@ func (h *createTerminatorHandler) HandleReceive(msg *channel2.Message, ch channe
 	}
 }
 
-func toModelTerminator(n *network.Network, e *mgmt_pb.Terminator) (*network.Terminator, error) {
+func toModelTerminator(n *network.Network, e *mgmt_pb.Terminator) (*model.Terminator, error) {
 	router, _ := n.GetRouter(e.RouterId)
 	if router == nil {
 		return nil, errors.Errorf("invalid router id %v", e.RouterId)
@@ -67,7 +68,7 @@ func toModelTerminator(n *network.Network, e *mgmt_pb.Terminator) (*network.Term
 		binding = e.Binding
 	}
 
-	return &network.Terminator{
+	return &model.Terminator{
 		BaseEntity: models.BaseEntity{
 			Id:   e.Id,
 			Tags: nil,

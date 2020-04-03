@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/ptypes"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -63,7 +64,7 @@ func (h *getTerminatorHandler) HandleReceive(msg *channel2.Message, ch channel2.
 	}
 }
 
-func toApiTerminator(s *network.Terminator) *mgmt_pb.Terminator {
+func toApiTerminator(s *model.Terminator) *mgmt_pb.Terminator {
 	ts, err := ptypes.TimestampProto(s.CreatedAt)
 	if err != nil {
 		pfxlog.Logger().Warnf("unexpected bad timestamp conversion: %v", err)

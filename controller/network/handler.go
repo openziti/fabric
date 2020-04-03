@@ -16,7 +16,11 @@
 
 package network
 
+import (
+	"github.com/netfoundry/ziti-fabric/controller/model"
+)
+
 type RouterPresenceHandler interface {
-	RouterConnected(r *Router)
-	RouterDisconnected(r *Router)
+	RouterConnected(r *model.Router)
+	RouterDisconnected(r *model.Router)
 }

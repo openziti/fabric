@@ -20,6 +20,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -64,7 +65,7 @@ func (h *getServiceHandler) HandleReceive(msg *channel2.Message, ch channel2.Cha
 	}
 }
 
-func toApiService(s *network.Service) *mgmt_pb.Service {
+func toApiService(s *model.Service) *mgmt_pb.Service {
 	var terminators []*mgmt_pb.Terminator
 	for _, terminator := range s.Terminators {
 		terminators = append(terminators, toApiTerminator(terminator))

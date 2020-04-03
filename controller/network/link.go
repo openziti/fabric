@@ -17,14 +17,15 @@
 package network
 
 import (
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/util/info"
 )
 
 type Link struct {
 	Id         *identity.TokenId
-	Src        *Router
-	Dst        *Router
+	Src        *model.Router
+	Dst        *model.Router
 	state      []*LinkState
 	Down       bool
 	Cost       int

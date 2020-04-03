@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -48,7 +49,7 @@ func (h *listRoutersHandler) HandleReceive(msg *channel2.Message, ch channel2.Ch
 		if result, err := h.network.Routers.BaseList(list.Query); err == nil {
 			log.Infof("got [%d] routers", len(result.Entities))
 			for _, entity := range result.Entities {
-				router, ok := entity.(*network.Router)
+				router, ok := entity.(*model.Router)
 				if !ok {
 					errorMsg := fmt.Sprintf("unexpected result in router list of type: %v", reflect.TypeOf(entity))
 					handler_common.SendFailure(msg, ch, errorMsg)

@@ -21,6 +21,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/netfoundry/ziti-fabric/controller/handler_common"
+	"github.com/netfoundry/ziti-fabric/controller/model"
 	"github.com/netfoundry/ziti-fabric/controller/network"
 	"github.com/netfoundry/ziti-fabric/pb/mgmt_pb"
 	"github.com/netfoundry/ziti-foundation/channel2"
@@ -50,7 +51,7 @@ func (h *listTerminatorsHandler) HandleReceive(msg *channel2.Message, ch channel
 	result, err := h.network.Terminators.BaseList(ls.Query)
 	if err == nil {
 		for _, entity := range result.Entities {
-			terminator, ok := entity.(*network.Terminator)
+			terminator, ok := entity.(*model.Terminator)
 			if !ok {
 				errorMsg := fmt.Sprintf("unexpected result in terminator list of type: %v", reflect.TypeOf(entity))
 				handler_common.SendFailure(msg, ch, errorMsg)
