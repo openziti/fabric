@@ -22,31 +22,31 @@ import (
 	"sync"
 )
 
-type txBuffer struct {
+type txWindow struct {
 	tree      *btree.Tree
 	highWater int32
 	capacity  int
 	lock      *sync.Mutex
-	ready     *sync.Cond
+	available *sync.Cond
 }
 
-func newTxBuffer() *txBuffer {
-	t := &txBuffer{
+func newTxWindow() *txWindow {
+	t := &txWindow{
 		tree:      btree.NewWith(10240, utils.Int32Comparator),
 		highWater: -1,
 		capacity:  8,
 		lock:      new(sync.Mutex),
 	}
-	t.ready = sync.NewCond(t.lock)
+	t.available = sync.NewCond(t.lock)
 	return t
 }
 
-func (self *txBuffer) tx(m *message) {
+func (self *txWindow) tx(m *message) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
 	for self.capacity < 1 {
-		self.ready.Wait()
+		self.available.Wait()
 	}
 
 	self.tree.Put(m.sequence, m)
@@ -56,7 +56,7 @@ func (self *txBuffer) tx(m *message) {
 	}
 }
 
-func (self *txBuffer) release(upTo int32) {
+func (self *txWindow) release(upTo int32) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
@@ -67,5 +67,5 @@ func (self *txBuffer) release(upTo int32) {
 		}
 	}
 
-	self.ready.Broadcast()
+	self.available.Broadcast()
 }
