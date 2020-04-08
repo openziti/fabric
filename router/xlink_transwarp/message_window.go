@@ -22,82 +22,38 @@ import (
 	"fmt"
 )
 
-func encodeWindowReport(sequence, lowWater, highWater, oops, count int32) (m *message, err error) {
+func encodeWindowReport(highWater int32) (m *message, err error) {
 	payload := new(bytes.Buffer)
-	if err := binary.Write(payload, binary.LittleEndian, lowWater); err != nil {
-		return nil, err
-	}
 	if err := binary.Write(payload, binary.LittleEndian, highWater); err != nil {
 		return nil, err
 	}
-	if err := binary.Write(payload, binary.LittleEndian, oops); err != nil {
-		return nil, err
-	}
-	if err := binary.Write(payload, binary.LittleEndian, count); err != nil {
-		return nil, err
-	}
-
 	m = &message{
-		sequence:    sequence,
+		sequence:    -1,
 		fragment:    0,
 		ofFragments: 1,
 		messageType: WindowReport,
 		payload:     payload.Bytes(),
 	}
-
 	return
 }
 
-func decodeWindowReport(m *message) (lowWater, highWater, oops, count int32, err error) {
-	if len(m.payload) != 16 {
-		return 0, 0, 0, 0, fmt.Errorf("expected 16 byte payload")
-	}
-
-	if value, err := readInt32(m.payload[0:4]); err == nil {
-		lowWater = value
-	} else {
-		return 0, 0, 0, 0, err
+func decodeWindowReport(m *message) (highWater int32, err error) {
+	if len(m.payload) != 4 {
+		return -1, fmt.Errorf("expected 4 byte payload")
 	}
 	if value, err := readInt32(m.payload[4:8]); err == nil {
 		highWater = value
 	} else {
-		return 0, 0, 0, 0, err
+		return -1, err
 	}
-	if value, err := readInt32(m.payload[8:12]); err == nil {
-		oops = value
-	} else {
-		return 0, 0, 0, 0, err
-	}
-	if value, err := readInt32(m.payload[12:16]); err == nil {
-		count = value
-	} else {
-		return 0, 0, 0, 0, err
-	}
-
 	return
 }
 
-func encodeWindowSizeRequest(sequence, newSize int32) (*message, error) {
-	payload := new(bytes.Buffer)
-	if err := binary.Write(payload, binary.LittleEndian, newSize); err != nil {
-		return nil, err
-	}
-
-	m := &message{
-		sequence:    sequence,
+func encodeWindowRequest() *message {
+	return &message{
+		sequence:    -1,
 		fragment:    0,
 		ofFragments: 1,
-		messageType: WindowSizeRequest,
-		payload:     payload.Bytes(),
+		messageType: WindowRequest,
 	}
-
-	return m, nil
-}
-
-func decodeWindowSizeRequest(m *message) (int32, error) {
-	newWindowSize, err := readInt32(m.payload[0:4])
-	if err != nil {
-		return 0, err
-	}
-	return newWindowSize, nil
 }

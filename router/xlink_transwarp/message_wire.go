@@ -45,7 +45,7 @@ const (
 	Payload
 	Acknowledgement
 	WindowReport
-	WindowSizeRequest
+	WindowRequest
 )
 
 const timeoutSeconds = 5

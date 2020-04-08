@@ -35,8 +35,8 @@ type MessageHandler interface {
 	HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandleWindowReport(lowWater, highWater, gaps, count int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandleWindowReport(highWater int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandleWindowRequest(conn *net.UDPConn, addr *net.UDPAddr)
 }
 
 func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -81,20 +81,16 @@ func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, conn *net.U
 	return writeMessage(m, conn, peer)
 }
 
-func writeWindowReport(sequence int32, lowWater, highWater, gaps, count int32, conn *net.UDPConn, peer *net.UDPAddr) error {
-	m, err := encodeWindowReport(sequence, lowWater, highWater, gaps, count)
+func writeWindowReport(highWater int32, conn *net.UDPConn, peer *net.UDPAddr) error {
+	m, err := encodeWindowReport(highWater)
 	if err != nil {
 		return err
 	}
 	return writeMessage(m, conn, peer)
 }
 
-func writeWindowSizeRequest(sequence, newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) error {
-	m, err := encodeWindowSizeRequest(sequence, newWindowSize)
-	if err != nil {
-		return err
-	}
-	return writeMessage(m, conn, peer)
+func writeWindowRequest(conn *net.UDPConn, peer *net.UDPAddr) error {
+	return writeMessage(encodeWindowRequest(), conn, peer)
 }
 
 func writeMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -187,20 +183,16 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		return nil
 
 	case WindowReport:
-		lowWater, highWater, gaps, count, err := decodeWindowReport(m)
+		highWater, err := decodeWindowReport(m)
 		if err != nil {
 			return fmt.Errorf("error decoding window report for peer [%s] (%w)", peer, err)
 		}
-		handler.HandleWindowReport(lowWater, highWater, gaps, count, conn, peer)
+		handler.HandleWindowReport(highWater, conn, peer)
 
 		return nil
 
-	case WindowSizeRequest:
-		newWindowSize, err := decodeWindowSizeRequest(m)
-		if err != nil {
-			return fmt.Errorf("error decoding window size request for peer [%s] (%w)", peer, err)
-		}
-		handler.HandleWindowSizeRequest(newWindowSize, conn, peer)
+	case WindowRequest:
+		handler.HandleWindowRequest(conn, peer)
 
 		return nil
 

@@ -71,14 +71,12 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 	}
 }
 
-func (self *impl) HandleWindowReport(lowWater, highWater, oops, count int32, _ *net.UDPConn, peer *net.UDPAddr) {
-	if oops > 0 {
-		logrus.Infof("[l:%d, h:%d, o:%d, c:%d] <= [%s]", lowWater, highWater, oops, count, peer)
-	}
+func (self *impl) HandleWindowReport(highWater int32, _ *net.UDPConn, peer *net.UDPAddr) {
+	logrus.Infof("[high:%d] <= [%s]", highWater, peer)
 }
 
-func (self *impl) HandleWindowSizeRequest(newWindowSize int32, conn *net.UDPConn, peer *net.UDPAddr) {
-	logrus.Errorf("window size request not connected")
+func (self *impl) HandleWindowRequest(conn *net.UDPConn, peer *net.UDPAddr) {
+	logrus.Errorf("window request not connected")
 }
 
 /*
