@@ -19,26 +19,35 @@ package xlink_transwarp
 import (
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
+	"github.com/sirupsen/logrus"
+	"net"
 	"sync"
+	"time"
 )
 
 type txWindow struct {
-	tree      *btree.Tree
-	highWater int32
-	capacity  int
-	lock      *sync.Mutex
-	available *sync.Cond
+	tree       *btree.Tree
+	highWater  int32
+	capacity   int
+	lastReport time.Time
+	lock       *sync.Mutex
+	available  *sync.Cond
+	conn       *net.UDPConn
+	peer       *net.UDPAddr
 }
 
-func newTxWindow() *txWindow {
-	t := &txWindow{
+func newTxWindow(conn *net.UDPConn, peer *net.UDPAddr) *txWindow {
+	txw := &txWindow{
 		tree:      btree.NewWith(10240, utils.Int32Comparator),
 		highWater: -1,
 		capacity:  8,
 		lock:      new(sync.Mutex),
+		conn:      conn,
+		peer:      peer,
 	}
-	t.available = sync.NewCond(t.lock)
-	return t
+	txw.available = sync.NewCond(txw.lock)
+	go txw.monitor()
+	return txw
 }
 
 func (self *txWindow) tx(m *message) {
@@ -53,19 +62,48 @@ func (self *txWindow) tx(m *message) {
 	self.capacity--
 	if m.sequence > self.highWater {
 		self.highWater = m.sequence
+		logrus.Infof("tx [%d]", m.sequence)
+	} else {
+		logrus.Error("expected sequence [%d], got [%d]", self.highWater+1, m.sequence)
 	}
 }
 
-func (self *txWindow) release(upTo int32) {
+func (self *txWindow) release(through int32) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
+	oldCapacity := self.capacity
 	for _, sequence := range self.tree.Keys() {
-		if sequence.(int32) < upTo {
+		if sequence.(int32) <= through {
 			self.tree.Remove(sequence)
 			self.capacity++
 		}
 	}
+	self.lastReport = time.Now()
+
+	logrus.Infof("released window through [%d], old capacity [%d], new capacity [%d], highWater [%d]", through, oldCapacity, self.capacity, self.highWater)
 
 	self.available.Broadcast()
+}
+
+func (self *txWindow) monitor() {
+	for {
+		time.Sleep(1 * time.Second)
+
+		/*
+		self.lock.Lock()
+		if time.Since(self.lastReport).Seconds() >= 1 {
+			for _, key := range self.tree.Keys() {
+				v, _ := self.tree.Get(key)
+				m := v.(*message)
+				if err := writeMessage(m, nil, self.conn, self.peer); err != nil {
+					logrus.Errorf("error retransmitting (%v)", err)
+				} else {
+					//logrus.Infof("retransmitted [%d]", m.sequence)
+				}
+			}
+		}
+		self.lock.Unlock()
+        */
+	}
 }

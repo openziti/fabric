@@ -35,11 +35,11 @@ func (self *impl) Id() *identity.TokenId {
 }
 
 func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return writePayload(self.nextSequence(), payload, self.conn, self.peer)
+	return writePayload(self.nextSequence(), payload, self.txWindow, self.conn, self.peer)
 }
 
 func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return writeAcknowledgement(self.nextSequence(), acknowledgement, self.conn, self.peer)
+	return writeAcknowledgement(self.nextSequence(), acknowledgement, self.txWindow, self.conn, self.peer)
 }
 
 func (self *impl) Close() error {
@@ -73,6 +73,7 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 
 func (self *impl) HandleWindowReport(highWater int32, _ *net.UDPConn, peer *net.UDPAddr) {
 	logrus.Infof("[high:%d] <= [%s]", highWater, peer)
+	self.txWindow.release(highWater)
 }
 
 func (self *impl) HandleWindowRequest(conn *net.UDPConn, peer *net.UDPAddr) {
@@ -85,8 +86,17 @@ func (self *impl) HandleWindowRequest(conn *net.UDPConn, peer *net.UDPAddr) {
 func (self *impl) listener() {
 	for {
 		if m, peer, err := readMessage(self.conn); err == nil {
-			if err := handleMessage(m, self.conn, peer, self); err != nil {
-				logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+			if m.messageType != WindowReport {
+				mrs := self.rxWindow.rx(m)
+				for _, mr := range mrs {
+					if err := handleMessage(mr, self.conn, peer, self); err != nil {
+						logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+					}
+				}
+ 			} else {
+ 				if err := handleMessage(m, self.conn, peer, self); err != nil {
+					logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+				}
 			}
 		}
 	}
@@ -106,7 +116,7 @@ func (self *impl) pinger() {
 
 func (self *impl) sendPingRequest() error {
 	sequence := self.nextSequence()
-	if err := writePing(sequence, noReplyFor, self.conn, self.peer); err == nil {
+	if err := writePing(sequence, noReplyFor, self.txWindow, self.conn, self.peer); err == nil {
 		self.lastPingTxSequence = sequence
 		self.lastPingTx = time.Now()
 
@@ -121,7 +131,7 @@ func (self *impl) sendPingRequest() error {
 
 func (self *impl) sendPingReply(forSequence int32) error {
 	sequence := self.nextSequence()
-	if err := writePing(sequence, forSequence, self.conn, self.peer); err == nil {
+	if err := writePing(sequence, forSequence, self.txWindow, self.conn, self.peer); err == nil {
 		logrus.Infof("[ping:%d] <= %s", forSequence, self.peer)
 		return nil
 
@@ -155,6 +165,8 @@ func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink
 		lastPingRx: now,
 		lastPingTx: now,
 		forwarder:  f,
+		rxWindow:   newRxWindow(conn, peer),
+		txWindow:   newTxWindow(conn, peer),
 	}
 	return xlinkImpl
 }
@@ -169,6 +181,8 @@ type impl struct {
 	lastPingTx         time.Time
 	lastPingTxSequence int32
 	forwarder          xlink.Forwarder
+	rxWindow           *rxWindow
+	txWindow           *txWindow
 }
 
 const pingDelayMs = 5000

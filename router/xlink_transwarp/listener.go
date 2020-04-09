@@ -69,8 +69,17 @@ func (self *listener) listen() {
 				}
 			} else {
 				if xlinkImpl, found := self.peers[peer.String()]; found {
-					if err := handleMessage(m, self.listener, peer, xlinkImpl); err != nil {
-						logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+					if m.messageType != WindowReport {
+						mrs := xlinkImpl.rxWindow.rx(m)
+						for _, mr := range mrs {
+							if err := handleMessage(mr, self.listener, peer, xlinkImpl); err != nil {
+								logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+							}
+						}
+					} else {
+						if err := handleMessage(m, self.listener, peer, xlinkImpl); err != nil {
+							logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+						}
 					}
 				}
 			}

@@ -41,7 +41,7 @@ func decodeWindowReport(m *message) (highWater int32, err error) {
 	if len(m.payload) != 4 {
 		return -1, fmt.Errorf("expected 4 byte payload")
 	}
-	if value, err := readInt32(m.payload[4:8]); err == nil {
+	if value, err := readInt32(m.payload[0:4]); err == nil {
 		highWater = value
 	} else {
 		return -1, err

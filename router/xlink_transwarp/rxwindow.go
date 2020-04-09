@@ -17,8 +17,11 @@
 package xlink_transwarp
 
 import (
+	"fmt"
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
+	"github.com/sirupsen/logrus"
+	"net"
 	"sync"
 	"time"
 )
@@ -29,15 +32,19 @@ type rxWindow struct {
 	lastReport time.Time
 	lastWater  int32
 	lock       *sync.Mutex
+	conn       *net.UDPConn
+	peer       *net.UDPAddr
 }
 
-func newRxWindow() *rxWindow {
+func newRxWindow(conn *net.UDPConn, peer *net.UDPAddr) *rxWindow {
 	rxw := &rxWindow{
 		tree:       btree.NewWith(10240, utils.Int32Comparator),
 		highWater:  -1,
 		lastReport: time.Now(),
 		lastWater:  -1,
 		lock:       new(sync.Mutex),
+		conn:       conn,
+		peer:       peer,
 	}
 	go rxw.monitor()
 	return rxw
@@ -63,6 +70,13 @@ func (self *rxWindow) rx(m *message) []*message {
 		}
 	}
 
+	out := fmt.Sprintf("incoming [%d], outgoing [", m.sequence)
+	for _, m := range messages {
+		out += fmt.Sprintf(" %d", m.sequence)
+	}
+	out += "]"
+	logrus.Info(out)
+
 	self.report()
 
 	return messages
@@ -79,9 +93,11 @@ func (self *rxWindow) monitor() {
 }
 
 func (self *rxWindow) report() {
-	if time.Since(self.lastReport).Milliseconds() >= 1000 && self.lastWater < self.highWater {
-		// report(self.highWater)
-		self.lastWater = self.highWater
-		self.lastReport = time.Now()
+	if time.Since(self.lastReport).Milliseconds() >= 1000 || self.highWater - self.lastWater >= 6 {
+		if err := writeWindowReport(self.highWater, self.conn, self.peer); err == nil {
+			self.lastWater = self.highWater
+			self.lastReport = time.Now()
+			logrus.Infof("sent window report [highWater=%d]", self.highWater)
+		}
 	}
 }
