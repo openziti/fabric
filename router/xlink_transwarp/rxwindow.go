@@ -54,28 +54,42 @@ func (self *rxWindow) rx(m *message) []*message {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 
-	self.tree.Put(m.sequence, m)
-	next := self.tree.LeftKey().(int32)
-	var messages []*message
-	for _, key := range self.tree.Keys() {
-		if key.(int32) == next {
-			m, _ := self.tree.Get(key)
-			self.tree.Remove(key)
-			messages = append(messages, m.(*message))
-			self.highWater = key.(int32)
-			next++
+	if m.sequence > self.highWater {
+		self.tree.Put(m.sequence, m)
+	} else {
+		logrus.Warnf("[v%d] <-", m.sequence)
+	}
 
-		} else {
-			break
+	var messages []*message
+	if self.tree.Size() > 0 {
+		next := self.highWater+1
+		for _, key := range self.tree.Keys() {
+			if key.(int32) == next {
+				m, _ := self.tree.Get(key)
+				self.tree.Remove(key)
+				messages = append(messages, m.(*message))
+				self.highWater = key.(int32)
+				next++
+
+			} else {
+				break
+			}
 		}
 	}
 
-	out := "["
-	for _, m := range messages {
-		out += fmt.Sprintf(" %d", m.sequence)
+	count := len(messages)
+	if count != 1 {
+		out := "<- ["
+		for _, m := range messages {
+			out += fmt.Sprintf(" %d", m.sequence)
+		}
+		out += fmt.Sprintf(" ] <- [%d]", m.sequence)
+		if count == 0 {
+			logrus.Errorf(out)
+		} else {
+			logrus.Warnf(out)
+		}
 	}
-	out += fmt.Sprintf(" ] <- [%d]", m.sequence)
-	logrus.Info(out)
 
 	self.report()
 
@@ -93,7 +107,7 @@ func (self *rxWindow) monitor() {
 }
 
 func (self *rxWindow) report() {
-	if time.Since(self.lastReport).Milliseconds() >= 1000 || self.highWater - self.lastWater >= 6 {
+	if time.Since(self.lastReport).Milliseconds() >= 1000 || self.highWater-self.lastWater >= 6 {
 		if err := writeWindowReport(self.highWater, self.conn, self.peer); err == nil {
 			self.lastWater = self.highWater
 			self.lastReport = time.Now()

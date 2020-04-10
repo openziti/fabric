@@ -40,7 +40,7 @@ func newTxWindow(conn *net.UDPConn, peer *net.UDPAddr) *txWindow {
 	txw := &txWindow{
 		tree:      btree.NewWith(10240, utils.Int32Comparator),
 		highWater: -1,
-		capacity:  3,
+		capacity:  32,
 		lock:      new(sync.Mutex),
 		conn:      conn,
 		peer:      peer,
@@ -59,13 +59,13 @@ func (self *txWindow) tx(m *message) {
 	}
 
 	self.tree.Put(m.sequence, m)
-	self.capacity--
-	if m.sequence == (self.highWater + 1) {
+	if m.sequence > self.highWater {
 		self.highWater = m.sequence
-		logrus.Infof("[%d] ->", m.sequence)
-	} else {
-		logrus.Warnf("(!%d [%d]) ?->", self.highWater+1, m.sequence)
 	}
+
+	logrus.Infof("[%d ^%d] ->", m.sequence, self.highWater)
+
+	self.capacity--
 }
 
 func (self *txWindow) release(through int32) {
@@ -81,7 +81,21 @@ func (self *txWindow) release(through int32) {
 	}
 	self.lastReport = time.Now()
 
-	logrus.Infof("[/%d ^%d (%d+>%d)] <-", through, self.highWater, oldCapacity, self.capacity)
+	if through < self.highWater {
+		for i := through + 1; i <= self.highWater; i++ {
+			if m, found := self.tree.Get(i); found {
+				if err := writeMessage(m.(*message), nil, self.conn, self.peer); err == nil {
+					logrus.Warnf("[*%d] ->", m.(*message).sequence)
+				} else {
+					logrus.Errorf("error retransmitting [%d] (%v)", m.(*message).sequence, err)
+				}
+			} else {
+				logrus.Errorf("missing [%d] for retransmit", i)
+			}
+		}
+	}
+
+	logrus.Infof("[/%d ^%d (%d+>%d)] <=", through, self.highWater, oldCapacity, self.capacity)
 
 	self.available.Broadcast()
 }
@@ -90,20 +104,10 @@ func (self *txWindow) monitor() {
 	for {
 		time.Sleep(1 * time.Second)
 
-		/*
-			self.lock.Lock()
-			if time.Since(self.lastReport).Seconds() >= 1 {
-				for _, key := range self.tree.Keys() {
-					v, _ := self.tree.Get(key)
-					m := v.(*message)
-					if err := writeMessage(m, nil, self.conn, self.peer); err != nil {
-						logrus.Errorf("error retransmitting (%v)", err)
-					} else {
-						//logrus.Infof("retransmitted [%d]", m.sequence)
-					}
-				}
-			}
-			self.lock.Unlock()
-		*/
+		self.lock.Lock()
+		if time.Since(self.lastReport).Seconds() >= 2 {
+			logrus.Debugf("![/?]")
+		}
+		self.lock.Unlock()
 	}
 }

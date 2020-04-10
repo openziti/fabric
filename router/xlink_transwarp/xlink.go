@@ -76,8 +76,8 @@ func (self *impl) HandleWindowReport(highWater int32, _ *net.UDPConn, _ *net.UDP
 	self.txWindow.release(highWater)
 }
 
-func (self *impl) HandleWindowRequest(conn *net.UDPConn, peer *net.UDPAddr) {
-	logrus.Errorf("window request not connected")
+func (self *impl) HandleWindowRequest(_ *net.UDPConn, _ *net.UDPAddr) {
+	logrus.Warnf("not implemented")
 }
 
 /*
@@ -86,7 +86,7 @@ func (self *impl) HandleWindowRequest(conn *net.UDPConn, peer *net.UDPAddr) {
 func (self *impl) listener() {
 	for {
 		if m, peer, err := readMessage(self.conn); err == nil {
-			if m.messageType != WindowReport {
+			if m.messageType != WindowReport && m.messageType != WindowRequest {
 				mrs := self.rxWindow.rx(m)
 				for _, mr := range mrs {
 					if err := handleMessage(mr, self.conn, peer, self); err != nil {

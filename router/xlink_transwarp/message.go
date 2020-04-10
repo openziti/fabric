@@ -23,6 +23,7 @@ import (
 	"github.com/netfoundry/ziti-fabric/router/xgress"
 	"github.com/netfoundry/ziti-foundation/identity/identity"
 	"github.com/netfoundry/ziti-foundation/transport/udp"
+	"github.com/sirupsen/logrus"
 	"net"
 	"time"
 )
@@ -111,6 +112,8 @@ func writeMessage(m *message, txw *txWindow, conn *net.UDPConn, peer *net.UDPAdd
 		return err
 	}
 
+	logrus.Infof("{ [%s] -> %d{%d} }", peer, m.sequence, m.messageType)
+
 	return nil
 }
 
@@ -119,8 +122,10 @@ func readMessage(conn *net.UDPConn) (*message, *net.UDPAddr, error) {
 	if err := conn.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
 		return nil, nil, fmt.Errorf("error setting read deadline (%w)", err)
 	}
+	logrus.Infof("{ <- ? }")
 	if n, peer, err := conn.ReadFromUDP(data); err == nil {
 		if m, err := decodeMessage(data[:n]); err == nil {
+			logrus.Infof("{ %d{%d} <- [%s] }", m.sequence, m.messageType, peer)
 			return m, peer, nil
 		} else {
 			return nil, nil, fmt.Errorf("error decoding message from [%s] (%w)", peer, err)
@@ -164,7 +169,7 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		if err != nil {
 			return fmt.Errorf("ping expects replyFor in payload [%s] (%w)", peer, err)
 		}
-		handler.HandlePing(m.sequence, replyFor, conn, peer)
+		go handler.HandlePing(m.sequence, replyFor, conn, peer)
 
 		return nil
 

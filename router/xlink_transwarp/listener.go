@@ -69,7 +69,7 @@ func (self *listener) listen() {
 				}
 			} else {
 				if xlinkImpl, found := self.peers[peer.String()]; found {
-					if m.messageType != WindowReport {
+					if m.messageType != WindowReport && m.messageType != WindowRequest {
 						mrs := xlinkImpl.rxWindow.rx(m)
 						for _, mr := range mrs {
 							if err := handleMessage(mr, self.listener, peer, xlinkImpl); err != nil {
@@ -81,6 +81,8 @@ func (self *listener) listen() {
 							logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 						}
 					}
+				} else {
+					logrus.Errorf("no peer for [%s]", peer.String())
 				}
 			}
 		} else {
