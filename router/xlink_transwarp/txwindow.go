@@ -40,7 +40,7 @@ func newTxWindow(conn *net.UDPConn, peer *net.UDPAddr) *txWindow {
 	txw := &txWindow{
 		tree:      btree.NewWith(10240, utils.Int32Comparator),
 		highWater: -1,
-		capacity:  8,
+		capacity:  3,
 		lock:      new(sync.Mutex),
 		conn:      conn,
 		peer:      peer,
@@ -60,11 +60,11 @@ func (self *txWindow) tx(m *message) {
 
 	self.tree.Put(m.sequence, m)
 	self.capacity--
-	if m.sequence > self.highWater {
+	if m.sequence == (self.highWater + 1) {
 		self.highWater = m.sequence
-		logrus.Infof("tx [%d]", m.sequence)
+		logrus.Infof("[%d] ->", m.sequence)
 	} else {
-		logrus.Error("expected sequence [%d], got [%d]", self.highWater+1, m.sequence)
+		logrus.Warnf("(!%d [%d]) ?->", self.highWater+1, m.sequence)
 	}
 }
 
@@ -81,7 +81,7 @@ func (self *txWindow) release(through int32) {
 	}
 	self.lastReport = time.Now()
 
-	logrus.Infof("released window through [%d], old capacity [%d], new capacity [%d], highWater [%d]", through, oldCapacity, self.capacity, self.highWater)
+	logrus.Infof("[/%d ^%d (%d+>%d)] <-", through, self.highWater, oldCapacity, self.capacity)
 
 	self.available.Broadcast()
 }
@@ -91,19 +91,19 @@ func (self *txWindow) monitor() {
 		time.Sleep(1 * time.Second)
 
 		/*
-		self.lock.Lock()
-		if time.Since(self.lastReport).Seconds() >= 1 {
-			for _, key := range self.tree.Keys() {
-				v, _ := self.tree.Get(key)
-				m := v.(*message)
-				if err := writeMessage(m, nil, self.conn, self.peer); err != nil {
-					logrus.Errorf("error retransmitting (%v)", err)
-				} else {
-					//logrus.Infof("retransmitted [%d]", m.sequence)
+			self.lock.Lock()
+			if time.Since(self.lastReport).Seconds() >= 1 {
+				for _, key := range self.tree.Keys() {
+					v, _ := self.tree.Get(key)
+					m := v.(*message)
+					if err := writeMessage(m, nil, self.conn, self.peer); err != nil {
+						logrus.Errorf("error retransmitting (%v)", err)
+					} else {
+						//logrus.Infof("retransmitted [%d]", m.sequence)
+					}
 				}
 			}
-		}
-		self.lock.Unlock()
-        */
+			self.lock.Unlock()
+		*/
 	}
 }

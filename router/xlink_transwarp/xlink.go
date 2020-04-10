@@ -71,8 +71,8 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 	}
 }
 
-func (self *impl) HandleWindowReport(highWater int32, _ *net.UDPConn, peer *net.UDPAddr) {
-	logrus.Infof("[high:%d] <= [%s]", highWater, peer)
+func (self *impl) HandleWindowReport(highWater int32, _ *net.UDPConn, _ *net.UDPAddr) {
+	logrus.Infof("{%s} [/%d] <=", self.id.Token, highWater)
 	self.txWindow.release(highWater)
 }
 

@@ -70,11 +70,11 @@ func (self *rxWindow) rx(m *message) []*message {
 		}
 	}
 
-	out := fmt.Sprintf("incoming [%d], outgoing [", m.sequence)
+	out := "["
 	for _, m := range messages {
 		out += fmt.Sprintf(" %d", m.sequence)
 	}
-	out += "]"
+	out += fmt.Sprintf(" ] <- [%d]", m.sequence)
 	logrus.Info(out)
 
 	self.report()
@@ -97,7 +97,7 @@ func (self *rxWindow) report() {
 		if err := writeWindowReport(self.highWater, self.conn, self.peer); err == nil {
 			self.lastWater = self.highWater
 			self.lastReport = time.Now()
-			logrus.Infof("sent window report [highWater=%d]", self.highWater)
+			logrus.Infof("[/%d] =>", self.highWater)
 		}
 	}
 }
