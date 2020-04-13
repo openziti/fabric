@@ -73,10 +73,7 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 
 func (self *impl) HandleWindowReport(highWater int32, rtt time.Time, _ *net.UDPConn, _ *net.UDPAddr) {
 	logrus.Infof("{%s} [/%d] <= ", self.id.Token, highWater)
-	rttMs := time.Since(rtt).Milliseconds()
-	if rttMs < 30000 {
-		logrus.Warnf("{%s} [~%d ms] <=", self.id.Token, rttMs)
-	}
+	self.txWindow.rtt(highWater, rtt)
 	self.txWindow.release(highWater)
 }
 

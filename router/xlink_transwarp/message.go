@@ -199,10 +199,9 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		var rtt time.Time
 		if rttData != nil {
 			rttMs, err := readInt64(rttData)
-			if err != nil {
-				logrus.Warnf("error reading rtt data [%s] (%v)", peer, err)
+			if err == nil {
+				rtt = fromMilliseconds(rttMs)
 			}
-			rtt = fromMilliseconds(rttMs)
 		}
 		handler.HandleWindowReport(highWater, rtt, conn, peer)
 

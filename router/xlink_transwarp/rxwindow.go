@@ -99,7 +99,7 @@ func (self *rxWindow) rx(m *message) []*message {
 
 func (self *rxWindow) monitor() {
 	for {
-		time.Sleep(1 * time.Second)
+		time.Sleep(100 * time.Second)
 
 		self.lock.Lock()
 		self.report()
@@ -108,7 +108,7 @@ func (self *rxWindow) monitor() {
 }
 
 func (self *rxWindow) report() {
-	if time.Since(self.lastReport).Milliseconds() >= 1000 || self.highWater-self.lastWater >= 6 {
+	if time.Since(self.lastReport).Milliseconds() >= 200 || self.highWater > self.lastWater {
 		var rtt []byte
 		if self.highWaterM != nil && self.highWaterM.headers != nil {
 			if value, found := self.highWaterM.headers[HeaderRtt]; found {

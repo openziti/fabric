@@ -30,6 +30,7 @@ type txWindow struct {
 	highWater  int32
 	capacity   int
 	lastReport time.Time
+	lastWater  int32
 	lock       *sync.Mutex
 	available  *sync.Cond
 	conn       *net.UDPConn
@@ -40,7 +41,8 @@ func newTxWindow(conn *net.UDPConn, peer *net.UDPAddr) *txWindow {
 	txw := &txWindow{
 		tree:      btree.NewWith(10240, utils.Int32Comparator),
 		highWater: -1,
-		capacity:  32,
+		capacity:  12,
+		lastWater: -1,
 		lock:      new(sync.Mutex),
 		conn:      conn,
 		peer:      peer,
@@ -66,6 +68,19 @@ func (self *txWindow) tx(m *message) {
 	logrus.Infof("[%d ^%d] ->", m.sequence, self.highWater)
 
 	self.capacity--
+}
+
+func (self *txWindow) rtt(through int32, rtt time.Time) {
+	self.lock.Lock()
+	defer self.lock.Unlock()
+
+	if through > self.lastWater {
+		self.lastWater = through
+		rttMs := time.Since(rtt).Milliseconds()
+		if rttMs <= 30000 {
+			logrus.Warnf("rtt [/%d] = [%d ms]", through, rttMs)
+		}
+	}
 }
 
 func (self *txWindow) release(through int32) {
