@@ -29,6 +29,7 @@ import (
 type rxWindow struct {
 	tree       *btree.Tree
 	highWater  int32
+	highWaterM *message
 	lastReport time.Time
 	lastWater  int32
 	lock       *sync.Mutex
@@ -62,15 +63,15 @@ func (self *rxWindow) rx(m *message) []*message {
 
 	var messages []*message
 	if self.tree.Size() > 0 {
-		next := self.highWater+1
+		next := self.highWater + 1
 		for _, key := range self.tree.Keys() {
 			if key.(int32) == next {
 				m, _ := self.tree.Get(key)
 				self.tree.Remove(key)
 				messages = append(messages, m.(*message))
 				self.highWater = key.(int32)
+				self.highWaterM = m.(*message)
 				next++
-
 			} else {
 				break
 			}
@@ -108,7 +109,15 @@ func (self *rxWindow) monitor() {
 
 func (self *rxWindow) report() {
 	if time.Since(self.lastReport).Milliseconds() >= 1000 || self.highWater-self.lastWater >= 6 {
-		if err := writeWindowReport(self.highWater, self.conn, self.peer); err == nil {
+		var rtt []byte
+		if self.highWaterM != nil && self.highWaterM.headers != nil {
+			if value, found := self.highWaterM.headers[HeaderRtt]; found {
+				if self.highWaterM.sequence == self.highWater {
+					rtt = value
+				}
+			}
+		}
+		if err := writeWindowReport(self.highWater, rtt, self.conn, self.peer); err == nil {
 			self.lastWater = self.highWater
 			self.lastReport = time.Now()
 			logrus.Infof("[/%d] =>", self.highWater)

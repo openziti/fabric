@@ -36,7 +36,7 @@ type MessageHandler interface {
 	HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
 	HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandleWindowReport(highWater int32, conn *net.UDPConn, addr *net.UDPAddr)
+	HandleWindowReport(highWater int32, rtt time.Time, conn *net.UDPConn, addr *net.UDPAddr)
 	HandleWindowRequest(conn *net.UDPConn, addr *net.UDPAddr)
 }
 
@@ -82,8 +82,8 @@ func writeAcknowledgement(sequence int32, a *xgress.Acknowledgement, txw *txWind
 	return writeMessage(m, txw, conn, peer)
 }
 
-func writeWindowReport(highWater int32, conn *net.UDPConn, peer *net.UDPAddr) error {
-	m, err := encodeWindowReport(highWater)
+func writeWindowReport(highWater int32, rtt []byte, conn *net.UDPConn, peer *net.UDPAddr) error {
+	m, err := encodeWindowReport(highWater, rtt)
 	if err != nil {
 		return err
 	}
@@ -192,11 +192,19 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		return nil
 
 	case WindowReport:
-		highWater, err := decodeWindowReport(m)
+		highWater, rttData, err := decodeWindowReport(m)
 		if err != nil {
 			return fmt.Errorf("error decoding window report for peer [%s] (%w)", peer, err)
 		}
-		handler.HandleWindowReport(highWater, conn, peer)
+		var rtt time.Time
+		if rttData != nil {
+			rttMs, err := readInt64(rttData)
+			if err != nil {
+				logrus.Warnf("error reading rtt data [%s] (%v)", peer, err)
+			}
+			rtt = fromMilliseconds(rttMs)
+		}
+		handler.HandleWindowReport(highWater, rtt, conn, peer)
 
 		return nil
 

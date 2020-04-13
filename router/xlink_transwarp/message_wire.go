@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"time"
 )
 
 type message struct {
@@ -13,6 +14,19 @@ type message struct {
 	messageType messageType
 	headers     map[uint8][]byte
 	payload     []byte
+}
+
+func (self *message) Rtt() (time.Time, error) {
+	if self.headers != nil {
+		if rttData, found := self.headers[HeaderRtt]; found {
+			rttMs, err := readInt64(rttData)
+			if err != nil {
+				return fromMilliseconds(0), err
+			}
+			return fromMilliseconds(rttMs), nil
+		}
+	}
+	return fromMilliseconds(0), fmt.Errorf("no rtt header")
 }
 
 /**
@@ -31,7 +45,7 @@ type message struct {
  * // --- data section ------------------------------------------------------------------------------------ //
  *
  * <headers>									15 -> (15 + headers_length)
- * <body>										(15 + headers_length) -> (15 + headers_length + body_length)
+ * <payload>									(15 + headers_length) -> (15 + headers_length + payload_length)
  */
 var magicV1 = []byte{0x01, 0x02, 0x02, 0x00}
 
@@ -63,14 +77,43 @@ func encodeMessage(m *message) ([]byte, error) {
 	if err := binary.Write(data, binary.LittleEndian, m.sequence); err != nil {
 		return nil, fmt.Errorf("sequence write (%w)", err)
 	}
-	data.Write([]byte{m.fragment, m.ofFragments, uint8(m.messageType)})
-	if err := binary.Write(data, binary.LittleEndian, uint16(0)); err != nil { // headers length
+	if _, err := data.Write([]byte{m.fragment, m.ofFragments, uint8(m.messageType)}); err != nil {
+		return nil, fmt.Errorf("fragments/type write (%w)", err)
+	}
+	var headers []byte
+	if m.headers != nil {
+		var err error
+		headers, err = encodeHeaders(m.headers)
+		if err != nil {
+			return nil, fmt.Errorf("encoding headers (%w)", err)
+		}
+	}
+	headersLength := len(headers)
+	if err := binary.Write(data, binary.LittleEndian, uint16(headersLength)); err != nil { // headers length
 		return nil, fmt.Errorf("headers length write (%w)", err)
 	}
-	if err := binary.Write(data, binary.LittleEndian, uint16(len(m.payload))); err != nil {
+	payloadLength := len(m.payload)
+	if err := binary.Write(data, binary.LittleEndian, uint16(payloadLength)); err != nil {
 		return nil, fmt.Errorf("payload length write (%w)", err)
 	}
-	data.Write(m.payload)
+	if headersLength > 0 {
+		n, err := data.Write(headers)
+		if err != nil {
+			return nil, fmt.Errorf("headers write (%w)", err)
+		}
+		if n != headersLength {
+			return nil, fmt.Errorf("short headers write [%d != %d]", n, headersLength)
+		}
+	}
+	if payloadLength > 0 {
+		n, err := data.Write(m.payload)
+		if err != nil {
+			return nil, fmt.Errorf("payload write (%w)", err)
+		}
+		if n != payloadLength {
+			return nil, fmt.Errorf("short payload write [%d != %d]", n, payloadLength)
+		}
+	}
 
 	buffer := make([]byte, data.Len())
 	_, err := data.Read(buffer)
@@ -140,6 +183,21 @@ func writeInt32(value int32) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
+func readInt64(data []byte) (ret int64, err error) {
+	buf := bytes.NewBuffer(data)
+	err = binary.Read(buf, binary.LittleEndian, &ret)
+	return
+}
+
+func writeInt64(value int64) ([]byte, error) {
+	buf := new(bytes.Buffer)
+	err := binary.Write(buf, binary.LittleEndian, value)
+	if err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
+}
+
 func readUint32(data []byte) (ret uint32, err error) {
 	buf := bytes.NewBuffer(data)
 	err = binary.Read(buf, binary.LittleEndian, &ret)
@@ -150,4 +208,11 @@ func readUint16(data []byte) (ret uint16, err error) {
 	buf := bytes.NewBuffer(data)
 	err = binary.Read(buf, binary.LittleEndian, &ret)
 	return
+}
+
+const millisInSecond = 1000
+const nsInSecond = 1000000
+
+func fromMilliseconds(ms int64) time.Time {
+	return time.Unix(ms/int64(millisInSecond), (ms%int64(millisInSecond))*int64(nsInSecond))
 }
