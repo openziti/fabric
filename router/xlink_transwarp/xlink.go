@@ -35,11 +35,11 @@ func (self *impl) Id() *identity.TokenId {
 }
 
 func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return writePayload(self.nextSequence(), payload, self.txWindow, self.conn, self.peer)
+	return writeXgressPayload(self.nextSequence(), payload, self.txWindow, self.conn, self.peer)
 }
 
 func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return writeAcknowledgement(self.nextSequence(), acknowledgement, self.txWindow, self.conn, self.peer)
+	return writeXgressAcknowledgement(self.nextSequence(), acknowledgement, self.txWindow, self.conn, self.peer)
 }
 
 func (self *impl) Close() error {
@@ -71,8 +71,8 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int3
 	}
 }
 
-func (self *impl) HandleWindowReport(highWater int32, _ *net.UDPConn, _ *net.UDPAddr) {
-	logrus.Infof("{%s} [/%d] <= ", self.id.Token, highWater)
+func (self *impl) HandleWindowReport(forSequence, windowSize int32, _ *net.UDPConn, _ *net.UDPAddr) {
+	logrus.Infof("{%s} [#%d, ~%d] <= ", self.id.Token, forSequence, windowSize)
 }
 
 func (self *impl) HandleWindowRequest(_ *net.UDPConn, _ *net.UDPAddr) {
@@ -85,7 +85,7 @@ func (self *impl) HandleWindowRequest(_ *net.UDPConn, _ *net.UDPAddr) {
 func (self *impl) listener() {
 	for {
 		if m, peer, err := readMessage(self.conn); err == nil {
-			if m.messageType != WindowReport && m.messageType != WindowRequest {
+			if m.messageType != Ack && m.messageType != Probe {
 				mrs := self.rxWindow.rx(m)
 				for _, mr := range mrs {
 					if err := handleMessage(mr, self.conn, peer, self); err != nil {

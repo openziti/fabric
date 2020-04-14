@@ -69,16 +69,16 @@ func (self *listener) listen() {
 				}
 			} else {
 				if xlinkImpl, found := self.peers[peer.String()]; found {
-					if m.messageType != WindowReport && m.messageType != WindowRequest {
-						mrs := xlinkImpl.rxWindow.rx(m)
-						for _, mr := range mrs {
-							if err := handleMessage(mr, self.listener, peer, xlinkImpl); err != nil {
-								logrus.Errorf("error handling message from [%s] (%v)", peer, err)
-							}
-						}
-					} else {
+					if m.messageType == Ack || m.messageType == Probe {
 						if err := handleMessage(m, self.listener, peer, xlinkImpl); err != nil {
 							logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+						}
+					} else {
+						readyMs := xlinkImpl.rxWindow.rx(m)
+						for _, readyM := range readyMs {
+							if err := handleMessage(readyM, self.listener, peer, xlinkImpl); err != nil {
+								logrus.Errorf("error handling message from [%s] (%v)", peer, err)
+							}
 						}
 					}
 				} else {
