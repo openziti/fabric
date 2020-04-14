@@ -22,12 +22,9 @@ import (
 	"fmt"
 )
 
-func encodeWindowReport(highWater int32, rtt []byte) (m *message, err error) {
+func encodeWindowReport(highWater int32) (m *message, err error) {
 	payload := new(bytes.Buffer)
 	if err := binary.Write(payload, binary.LittleEndian, highWater); err != nil {
-		return nil, err
-	}
-	if _, err := payload.Write(rtt); err != nil {
 		return nil, err
 	}
 	m = &message{
@@ -40,16 +37,15 @@ func encodeWindowReport(highWater int32, rtt []byte) (m *message, err error) {
 	return
 }
 
-func decodeWindowReport(m *message) (highWater int32, rtt []byte, err error) {
+func decodeWindowReport(m *message) (highWater int32, err error) {
 	if len(m.payload) < 4 {
-		return -1, nil, fmt.Errorf("expected >=4 byte payload")
+		return -1, fmt.Errorf("expected >=4 byte payload")
 	}
 	if value, err := readInt32(m.payload[0:4]); err == nil {
 		highWater = value
 	} else {
-		return -1, nil, err
+		return -1, err
 	}
-	rtt = m.payload[4:]
 	return
 }
 

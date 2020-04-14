@@ -17,22 +17,13 @@
 package xlink_transwarp
 
 import (
-	"fmt"
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
-	"github.com/sirupsen/logrus"
 	"net"
-	"sync"
-	"time"
 )
 
 type rxWindow struct {
 	tree       *btree.Tree
-	highWater  int32
-	highWaterM *message
-	lastReport time.Time
-	lastWater  int32
-	lock       *sync.Mutex
 	conn       *net.UDPConn
 	peer       *net.UDPAddr
 }
@@ -40,87 +31,12 @@ type rxWindow struct {
 func newRxWindow(conn *net.UDPConn, peer *net.UDPAddr) *rxWindow {
 	rxw := &rxWindow{
 		tree:       btree.NewWith(10240, utils.Int32Comparator),
-		highWater:  -1,
-		lastReport: time.Now(),
-		lastWater:  -1,
-		lock:       new(sync.Mutex),
 		conn:       conn,
 		peer:       peer,
 	}
-	go rxw.monitor()
 	return rxw
 }
 
 func (self *rxWindow) rx(m *message) []*message {
-	self.lock.Lock()
-	defer self.lock.Unlock()
-
-	if m.sequence > self.highWater {
-		self.tree.Put(m.sequence, m)
-	} else {
-		logrus.Warnf("[v%d] <-", m.sequence)
-	}
-
-	var messages []*message
-	if self.tree.Size() > 0 {
-		next := self.highWater + 1
-		for _, key := range self.tree.Keys() {
-			if key.(int32) == next {
-				m, _ := self.tree.Get(key)
-				self.tree.Remove(key)
-				messages = append(messages, m.(*message))
-				self.highWater = key.(int32)
-				self.highWaterM = m.(*message)
-				next++
-			} else {
-				break
-			}
-		}
-	}
-
-	count := len(messages)
-	if count != 1 {
-		out := "<- ["
-		for _, m := range messages {
-			out += fmt.Sprintf(" %d", m.sequence)
-		}
-		out += fmt.Sprintf(" ] <- [%d]", m.sequence)
-		if count == 0 {
-			logrus.Errorf(out)
-		} else {
-			logrus.Warnf(out)
-		}
-	}
-
-	self.report()
-
-	return messages
-}
-
-func (self *rxWindow) monitor() {
-	for {
-		time.Sleep(100 * time.Second)
-
-		self.lock.Lock()
-		self.report()
-		self.lock.Unlock()
-	}
-}
-
-func (self *rxWindow) report() {
-	if time.Since(self.lastReport).Milliseconds() >= 200 || self.highWater > self.lastWater {
-		var rtt []byte
-		if self.highWaterM != nil && self.highWaterM.headers != nil {
-			if value, found := self.highWaterM.headers[HeaderRtt]; found {
-				if self.highWaterM.sequence == self.highWater {
-					rtt = value
-				}
-			}
-		}
-		if err := writeWindowReport(self.highWater, rtt, self.conn, self.peer); err == nil {
-			self.lastWater = self.highWater
-			self.lastReport = time.Now()
-			logrus.Infof("[/%d] =>", self.highWater)
-		}
-	}
+	return []*message{ m }
 }

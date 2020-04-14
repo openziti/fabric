@@ -22,10 +22,6 @@ import (
 	"fmt"
 )
 
-const (
-	HeaderRtt = 0
-)
-
 /*
  * TRANSWARP v1 Headers Wire Format
  *

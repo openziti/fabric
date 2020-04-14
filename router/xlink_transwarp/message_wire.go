@@ -16,19 +16,6 @@ type message struct {
 	payload     []byte
 }
 
-func (self *message) Rtt() (time.Time, error) {
-	if self.headers != nil {
-		if rttData, found := self.headers[HeaderRtt]; found {
-			rttMs, err := readInt64(rttData)
-			if err != nil {
-				return fromMilliseconds(0), err
-			}
-			return fromMilliseconds(rttMs), nil
-		}
-	}
-	return fromMilliseconds(0), fmt.Errorf("no rtt header")
-}
-
 /**
  * TRANSWARP v1 Wire Format
  *

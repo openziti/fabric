@@ -20,7 +20,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"github.com/netfoundry/ziti-fabric/router/xgress"
-	"time"
 )
 
 /*
@@ -63,14 +62,6 @@ func encodePayload(p *xgress.Payload, sequence int32) (m *message, err error) {
 		payload:     payload.Bytes(),
 	}
 
-	if rttHeaderOk(m) {
-		rttData, err := writeInt64(time.Now().UnixNano() / int64(time.Millisecond))
-		if err != nil {
-			return nil, err
-		}
-		m.headers[HeaderRtt] = rttData
-	}
-
 	return
 }
 
@@ -105,16 +96,4 @@ func decodePayload(m *message) (p *xgress.Payload, err error) {
 	}
 
 	return p, nil
-}
-
-func rttHeaderOk(m *message) bool {
-	if m.headers == nil {
-		m.headers = make(map[uint8][]byte)
-		return true
- 	} else {
- 		if _, found := m.headers[HeaderRtt]; !found {
- 			return true
-		}
-	}
-	return false
 }
