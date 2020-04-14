@@ -33,11 +33,11 @@ type HelloHandler interface {
 }
 
 type MessageHandler interface {
-	HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandleWindowReport(forSequence, windowSize int32, conn *net.UDPConn, addr *net.UDPAddr)
-	HandleWindowRequest(conn *net.UDPConn, addr *net.UDPAddr)
+	HandlePing(sequence int32, replyFor int32)
+	HandlePayload(p *xgress.Payload)
+	HandleAcknowledgement(a *xgress.Acknowledgement)
+	HandleWindowReport(forSequence, windowSize int32)
+	HandleWindowRequest()
 }
 
 func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -52,46 +52,49 @@ func writeHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) 
 	}, nil, conn, peer)
 }
 
-func writePing(sequence, replyFor int32, txw *txWindow, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writePing(replyFor int32, xli *impl) (sequence int32, err error) {
 	payload := new(bytes.Buffer)
-	if err := binary.Write(payload, binary.LittleEndian, replyFor); err != nil {
-		return fmt.Errorf("reply for write (%w)", err)
+	err = binary.Write(payload, binary.LittleEndian, replyFor)
+	if err != nil {
+		return
 	}
-	return writeMessage(&message{
+	sequence = xli.nextSequence()
+	err = writeMessage(&message{
 		sequence:    sequence,
 		fragment:    0,
 		ofFragments: 1,
 		messageType: Ping,
 		payload:     payload.Bytes(),
-	}, txw, conn, peer)
+	}, xli.txWindow, xli.conn, xli.peer)
+	return
 }
 
-func writeAck(forSequence, windowSize int32, conn *net.UDPConn, peer *net.UDPAddr) error {
+func writeAck(forSequence, windowSize int32, xli *impl) error {
 	m, err := encodeAck(forSequence, windowSize)
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, nil, conn, peer)
+	return writeMessage(m, nil, xli.conn, xli.peer)
 }
 
-func writeProbe(conn *net.UDPConn, peer *net.UDPAddr) error {
-	return writeMessage(encodeProbe(), nil, conn, peer)
+func writeProbe(xli *impl) error {
+	return writeMessage(encodeProbe(), nil, xli.conn, xli.peer)
 }
 
-func writeXgressPayload(sequence int32, p *xgress.Payload, txw *txWindow, conn *net.UDPConn, peer *net.UDPAddr) error {
-	m, err := encodeXgressPayload(p, sequence)
+func writeXgressPayload(p *xgress.Payload, xli *impl) error {
+	m, err := encodeXgressPayload(p, xli.nextSequence())
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, txw, conn, peer)
+	return writeMessage(m, xli.txWindow, xli.conn, xli.peer)
 }
 
-func writeXgressAcknowledgement(sequence int32, a *xgress.Acknowledgement, txw *txWindow, conn *net.UDPConn, peer *net.UDPAddr) error {
-	m, err := encodeXgressAcnowledgement(a, sequence)
+func writeXgressAcknowledgement(a *xgress.Acknowledgement, xli *impl) error {
+	m, err := encodeXgressAcnowledgement(a, xli.nextSequence())
 	if err != nil {
 		return err
 	}
-	return writeMessage(m, txw, conn, peer)
+	return writeMessage(m, xli.txWindow, xli.conn, xli.peer)
 }
 
 func writeMessage(m *message, txw *txWindow, conn *net.UDPConn, peer *net.UDPAddr) error {
@@ -168,7 +171,7 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		if err != nil {
 			return fmt.Errorf("ping expects replyFor in payload [%s] (%w)", peer, err)
 		}
-		go handler.HandlePing(m.sequence, replyFor, conn, peer)
+		go handler.HandlePing(m.sequence, replyFor)
 
 		return nil
 
@@ -177,12 +180,12 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		if err != nil {
 			return fmt.Errorf("error decoding window report for peer [%s] (%w)", peer, err)
 		}
-		handler.HandleWindowReport(forSequence, windowSize, conn, peer)
+		handler.HandleWindowReport(forSequence, windowSize)
 
 		return nil
 
 	case Probe:
-		handler.HandleWindowRequest(conn, peer)
+		handler.HandleWindowRequest()
 
 		return nil
 
@@ -191,7 +194,7 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		if err != nil {
 			return fmt.Errorf("error decoding payload for peer [%s] (%w)", peer, err)
 		}
-		handler.HandlePayload(p, m.sequence, conn, peer)
+		handler.HandlePayload(p)
 
 		return nil
 
@@ -200,7 +203,7 @@ func handleMessage(m *message, conn *net.UDPConn, peer *net.UDPAddr, handler Mes
 		if err != nil {
 			return fmt.Errorf("error decoding acknowledgement for peer [%s] (%w)", peer, err)
 		}
-		handler.HandleAcknowledgement(a, m.sequence, conn, peer)
+		handler.HandleAcknowledgement(a)
 
 		return nil
 

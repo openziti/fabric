@@ -35,11 +35,11 @@ func (self *impl) Id() *identity.TokenId {
 }
 
 func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return writeXgressPayload(self.nextSequence(), payload, self.txWindow, self.conn, self.peer)
+	return writeXgressPayload(payload, self)
 }
 
 func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return writeXgressAcknowledgement(self.nextSequence(), acknowledgement, self.txWindow, self.conn, self.peer)
+	return writeXgressAcknowledgement(acknowledgement, self)
 }
 
 func (self *impl) Close() error {
@@ -49,7 +49,7 @@ func (self *impl) Close() error {
 /*
  * xlink_transwarp.MessageHandler
  */
-func (self *impl) HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, addr *net.UDPAddr) {
+func (self *impl) HandlePing(sequence int32, replyFor int32) {
 	if replyFor == -1 {
 		if err := self.sendPingReply(sequence); err != nil {
 			logrus.Errorf("error sending ping (%v)", err)
@@ -59,23 +59,23 @@ func (self *impl) HandlePing(sequence int32, replyFor int32, conn *net.UDPConn, 
 	}
 }
 
-func (self *impl) HandlePayload(p *xgress.Payload, sequence int32, conn *net.UDPConn, addr *net.UDPAddr) {
+func (self *impl) HandlePayload(p *xgress.Payload) {
 	if err := self.forwarder.ForwardPayload(xgress.Address(self.id.Token), p); err != nil {
 		logrus.Errorf("[l/%s] => error forwarding payload (%v)", self.id.Token, err)
 	}
 }
 
-func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement, sequence int32, conn *net.UDPConn, addr *net.UDPAddr) {
+func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement) {
 	if err := self.forwarder.ForwardAcknowledgement(xgress.Address(self.id.Token), a); err != nil {
 		logrus.Errorf("[l/%s] => error forwarding acknowledgement (%v)", self.id.Token, err)
 	}
 }
 
-func (self *impl) HandleWindowReport(forSequence, windowSize int32, _ *net.UDPConn, _ *net.UDPAddr) {
+func (self *impl) HandleWindowReport(forSequence, windowSize int32) {
 	logrus.Infof("{%s} [#%d, ~%d] <= ", self.id.Token, forSequence, windowSize)
 }
 
-func (self *impl) HandleWindowRequest(_ *net.UDPConn, _ *net.UDPAddr) {
+func (self *impl) HandleWindowRequest() {
 	logrus.Warnf("not implemented")
 }
 
@@ -114,8 +114,7 @@ func (self *impl) pinger() {
 }
 
 func (self *impl) sendPingRequest() error {
-	sequence := self.nextSequence()
-	if err := writePing(sequence, noReplyFor, self.txWindow, self.conn, self.peer); err == nil {
+	if sequence, err := writePing(noReplyFor, self); err == nil {
 		self.lastPingTxSequence = sequence
 		self.lastPingTx = time.Now()
 
@@ -129,11 +128,9 @@ func (self *impl) sendPingRequest() error {
 }
 
 func (self *impl) sendPingReply(forSequence int32) error {
-	sequence := self.nextSequence()
-	if err := writePing(sequence, forSequence, self.txWindow, self.conn, self.peer); err == nil {
+	if _, err := writePing(forSequence, self); err == nil {
 		logrus.Infof("[ping:%d] <= %s", forSequence, self.peer)
 		return nil
-
 	} else {
 		return fmt.Errorf("error sending ping reply to [%s] (%w)", self.peer, err)
 	}
