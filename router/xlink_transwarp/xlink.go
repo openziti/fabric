@@ -72,7 +72,10 @@ func (self *impl) HandleAcknowledgement(a *xgress.Acknowledgement) {
 }
 
 func (self *impl) HandleWindowReport(forSequence, windowSize int32) {
-	logrus.Infof("{%s} [#%d, ~%d] <= ", self.id.Token, forSequence, windowSize)
+	if windowSize < startingWindowCapacity-1 {
+		logrus.Infof("{%s} [#%d, ~%d] <= ", self.id.Token, forSequence, windowSize)
+	}
+	self.txWindow.ack(forSequence)
 }
 
 func (self *impl) HandleWindowRequest() {
@@ -92,8 +95,8 @@ func (self *impl) listener() {
 						logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 					}
 				}
- 			} else {
- 				if err := handleMessage(m, self.conn, peer, self); err != nil {
+			} else {
+				if err := handleMessage(m, self.conn, peer, self); err != nil {
 					logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 				}
 			}
@@ -154,17 +157,17 @@ func (self *impl) nextSequence() int32 {
 
 func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink.Forwarder) *impl {
 	now := time.Now()
-	xlinkImpl := &impl{
+	xli := &impl{
 		id:         id,
 		conn:       conn,
 		peer:       peer,
 		lastPingRx: now,
 		lastPingTx: now,
 		forwarder:  f,
-		rxWindow:   newRxWindow(conn, peer),
 		txWindow:   newTxWindow(conn, peer),
 	}
-	return xlinkImpl
+	xli.rxWindow = newRxWindow(xli)
+	return xli
 }
 
 type impl struct {

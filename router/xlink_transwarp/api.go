@@ -115,7 +115,7 @@ func writeMessage(m *message, txw *txWindow, conn *net.UDPConn, peer *net.UDPAdd
 		return err
 	}
 
-	logrus.Infof("{ [%s] -> %d{%d} }", peer, m.sequence, m.messageType)
+	logrus.Debugf("{ [%s] -> %d{%d} }", peer, m.sequence, m.messageType)
 
 	return nil
 }
@@ -127,7 +127,7 @@ func readMessage(conn *net.UDPConn) (*message, *net.UDPAddr, error) {
 	}
 	if n, peer, err := conn.ReadFromUDP(data); err == nil {
 		if m, err := decodeMessage(data[:n]); err == nil {
-			logrus.Infof("{ %d{%d} <- [%s] }", m.sequence, m.messageType, peer)
+			logrus.Debugf("{ %d{%d} <- [%s] }", m.sequence, m.messageType, peer)
 			return m, peer, nil
 		} else {
 			return nil, nil, fmt.Errorf("error decoding message from [%s] (%w)", peer, err)
