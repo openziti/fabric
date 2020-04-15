@@ -89,9 +89,9 @@ func (self *impl) listener() {
 	for {
 		if m, peer, err := readMessage(self.conn); err == nil {
 			if m.messageType != Ack && m.messageType != Probe {
-				mrs := self.rxWindow.rx(m)
-				for _, mr := range mrs {
-					if err := handleMessage(mr, self.conn, peer, self); err != nil {
+				readyMs := self.rxWindow.rx(m)
+				for _, readyM := range readyMs {
+					if err := handleMessage(readyM, self.conn, peer, self); err != nil {
 						logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 					}
 				}

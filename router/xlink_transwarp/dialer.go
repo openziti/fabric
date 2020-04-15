@@ -46,7 +46,7 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 								return fmt.Errorf("error accepting outgoing Xlink (%w)", err)
 							}
 							go xlinkImpl.listener()
-							go xlinkImpl.pinger()
+							//go xlinkImpl.pinger()
 
 							return nil
 

@@ -17,9 +17,11 @@
 package xlink_transwarp
 
 import (
+	"fmt"
 	"github.com/emirpasic/gods/trees/btree"
 	"github.com/emirpasic/gods/utils"
 	"github.com/sirupsen/logrus"
+	"strconv"
 	"sync"
 )
 
@@ -52,6 +54,9 @@ func (self *rxWindow) rx(m *message) []*message {
 	var output []*message
 	if self.tree.Size() > 0 {
 		next := self.tree.LeftKey().(int32)
+		if next <= self.highWater {
+			logrus.Fatalf("how?")
+		}
 		for _, key := range self.tree.Keys() {
 			if key.(int32) == next {
 				m, _ := self.tree.Get(key)
@@ -63,6 +68,15 @@ func (self *rxWindow) rx(m *message) []*message {
 				break
 			}
 		}
+	}
+
+	if len(output) != 1 || (len(output) > 0 && output[0].sequence != m.sequence) {
+		msg := fmt.Sprintf("#%d, ^%d, tree %v, outputting [", m.sequence, self.highWater, self.tree.Keys())
+		for _, m := range output {
+			msg += " "+strconv.Itoa(int(m.sequence))
+		}
+		msg += " ]"
+		logrus.Info(msg)
 	}
 	return output
 }
