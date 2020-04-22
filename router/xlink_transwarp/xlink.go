@@ -35,11 +35,21 @@ func (self *impl) Id() *identity.TokenId {
 }
 
 func (self *impl) SendPayload(payload *xgress.Payload) error {
-	return writeXgressPayload(payload, self)
+	m, err := encodeXgressPayload(payload, self.nextSequence())
+	if err != nil {
+		return err
+	}
+	self.outQueue <- m
+	return nil
 }
 
 func (self *impl) SendAcknowledgement(acknowledgement *xgress.Acknowledgement) error {
-	return writeXgressAcknowledgement(acknowledgement, self)
+	m, err := encodeXgressAcnowledgement(acknowledgement, self.nextSequence())
+	if err != nil {
+		return err
+	}
+	self.outQueue <- m
+	return nil
 }
 
 func (self *impl) Close() error {
@@ -100,6 +110,8 @@ func (self *impl) listener() {
 					logrus.Errorf("error handling message from [%s] (%v)", peer, err)
 				}
 			}
+		} else {
+			logrus.Errorf("error listening (%v)", err)
 		}
 	}
 }
@@ -155,6 +167,17 @@ func (self *impl) nextSequence() int32 {
 	return sequence
 }
 
+func (self *impl) sender() {
+	for {
+		select {
+		case msg := <-self.outQueue:
+			if err := writeMessage(msg, self.txWindow, self.conn, self.peer); err != nil {
+				logrus.Errorf("error sending message [#%d] (%v)", msg.sequence, err)
+			}
+		}
+	}
+}
+
 func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink.Forwarder) (*impl, error) {
 	out := make(chan interface{}, 128)
 
@@ -173,13 +196,16 @@ func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink
 		lastPingTx: now,
 		forwarder:  f,
 		txWindow:   newTxWindow(conn, peer, out),
+		outQueue:   make(chan *message, 16),
 	}
 	xli.rxWindow = newRxWindow(xli, out)
+	go xli.sender()
 	return xli, nil
 }
 
 type impl struct {
 	id                 *identity.TokenId
+	outQueue           chan *message
 	conn               *net.UDPConn
 	peer               *net.UDPAddr
 	sequence           int32

@@ -91,9 +91,7 @@ func (self *listener) listen() {
 				}
 			}
 		} else {
-			if nerr, ok := err.(net.Error); ok && !nerr.Timeout() {
-				logrus.Errorf("error reading message (%v)", err)
-			}
+			logrus.Errorf("error reading message (%v)", err)
 		}
 	}
 }

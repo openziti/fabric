@@ -123,7 +123,7 @@ func (self *traceController) run() {
 			case traceTx:
 				out = fmt.Sprintf("%-20s #%d", "tx", t.sequence)
 				if t.retransmit {
-					out += " retransmit"
+					out += " (retransmit)"
 				}
 
 			case traceTxAck:
@@ -131,6 +131,9 @@ func (self *traceController) run() {
 
 			case traceRx:
 				out = fmt.Sprintf("%-20s #%d", "rx", t.sequence)
+				if t.discard {
+					out += "(discard)"
+				}
 
 			case traceRxAck:
 				out = fmt.Sprintf("%-20s #%d", "rxAck", t.forSequence)
