@@ -30,14 +30,16 @@ type rxWindow struct {
 	lock      *sync.Mutex
 	highWater int32
 	xli       *impl
+	trace     chan interface{}
 }
 
-func newRxWindow(xli *impl) *rxWindow {
+func newRxWindow(xli *impl, trace chan interface{}) *rxWindow {
 	rxw := &rxWindow{
 		tree:      btree.NewWith(10240, utils.Int32Comparator),
 		lock:      new(sync.Mutex),
 		highWater: -1,
 		xli:       xli,
+		trace:     trace,
 	}
 	return rxw
 }
@@ -73,11 +75,14 @@ func (self *rxWindow) rx(m *message) []*message {
 	if len(output) != 1 || (len(output) > 0 && output[0].sequence != m.sequence) {
 		msg := fmt.Sprintf("#%d, ^%d, tree %v, outputting [", m.sequence, self.highWater, self.tree.Keys())
 		for _, m := range output {
-			msg += " "+strconv.Itoa(int(m.sequence))
+			msg += " " + strconv.Itoa(int(m.sequence))
 		}
 		msg += " ]"
 		logrus.Info(msg)
 	}
+
+	self.trace <- buildTraceRx(self)
+
 	return output
 }
 

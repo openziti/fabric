@@ -156,6 +156,9 @@ func (self *impl) nextSequence() int32 {
 }
 
 func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink.Forwarder) *impl {
+	out := make(chan interface{}, 128)
+	go newTrace(id, out).run()
+
 	now := time.Now()
 	xli := &impl{
 		id:         id,
@@ -164,9 +167,9 @@ func newImpl(id *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr, f xlink
 		lastPingRx: now,
 		lastPingTx: now,
 		forwarder:  f,
-		txWindow:   newTxWindow(conn, peer),
+		txWindow:   newTxWindow(conn, peer, out),
 	}
-	xli.rxWindow = newRxWindow(xli)
+	xli.rxWindow = newRxWindow(xli, out)
 	return xli
 }
 

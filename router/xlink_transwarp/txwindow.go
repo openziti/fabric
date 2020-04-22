@@ -40,6 +40,7 @@ type txWindow struct {
 	monitorReady     *sync.Cond
 	conn             *net.UDPConn
 	peer             *net.UDPAddr
+	trace            chan interface{}
 }
 
 type txMonitorRequest struct {
@@ -53,13 +54,14 @@ type txMonitorState struct {
 	m       *message
 }
 
-func newTxWindow(conn *net.UDPConn, peer *net.UDPAddr) *txWindow {
+func newTxWindow(conn *net.UDPConn, peer *net.UDPAddr, trace chan interface{}) *txWindow {
 	txw := &txWindow{
-		tree:        btree.NewWith(10240, utils.Int32Comparator),
-		lock:        new(sync.Mutex),
-		capacity:    startingWindowCapacity,
-		conn:        conn,
-		peer:        peer,
+		tree:     btree.NewWith(10240, utils.Int32Comparator),
+		lock:     new(sync.Mutex),
+		capacity: startingWindowCapacity,
+		conn:     conn,
+		peer:     peer,
+		trace:    trace,
 	}
 	txw.capacityReady = sync.NewCond(txw.lock)
 	txw.monitorReady = sync.NewCond(txw.lock)
@@ -78,6 +80,8 @@ func (self *txWindow) tx(m *message) {
 	self.tree.Put(m.sequence, m)
 	self.addMonitored(m)
 	self.capacity--
+
+	self.trace <- buildTraceTx(self)
 }
 
 func (self *txWindow) ack(forSequence int32) {
@@ -93,6 +97,8 @@ func (self *txWindow) ack(forSequence int32) {
 	} else {
 		logrus.Warnf("[!@ %d] <=", forSequence)
 	}
+
+	self.trace <- buildTraceTx(self)
 }
 
 func (self *txWindow) addMonitored(m *message) {
