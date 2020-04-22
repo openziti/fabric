@@ -50,6 +50,9 @@ func (self *rxWindow) rx(m *message) []*message {
 
 	if m.sequence > self.highWater {
 		self.tree.Put(m.sequence, m)
+		self.trace <- traceRx{m.sequence, false}
+	} else {
+		self.trace <- traceRx{m.sequence, true}
 	}
 	self.ack(m)
 
@@ -89,6 +92,7 @@ func (self *rxWindow) rx(m *message) []*message {
 func (self *rxWindow) ack(m *message) {
 	if err := writeAck(m.sequence, startingWindowCapacity-int32(self.tree.Size()), self.xli); err == nil {
 		logrus.Debugf("[@ %d] ->", m.sequence)
+		self.trace <- traceTxAck{m.sequence}
 	} else {
 		logrus.Errorf("error sending ack for [#%d] (%v)", m.sequence, err)
 	}

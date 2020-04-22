@@ -45,15 +45,20 @@ func (self *listener) GetAdvertisement() string {
  * xlink_transwarp.HelloHandler
  */
 func (self *listener) HandleHello(linkId *identity.TokenId, conn *net.UDPConn, peer *net.UDPAddr) {
-	xlinkImpl := newImpl(linkId, conn, peer, self.forwarder)
-	if err := self.accepter.Accept(xlinkImpl); err == nil {
-		self.peers[peer.String()] = xlinkImpl
-		if err := writeHello(linkId, self.listener, peer); err == nil {
-			//go xlinkImpl.pinger()
-			logrus.Infof("[hello->l/%s] -> %s", linkId.Token, peer)
+	if xlinkImpl, err  := newImpl(linkId, conn, peer, self.forwarder); err == nil {
+		if err := self.accepter.Accept(xlinkImpl); err == nil {
+			self.peers[peer.String()] = xlinkImpl
+			if err := writeHello(linkId, self.listener, peer); err == nil {
+				//go xlinkImpl.pinger()
+				logrus.Infof("[hello->l/%s] -> %s", linkId.Token, peer)
+			} else {
+				logrus.Errorf("error sending hello for [l/%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+			}
 		} else {
-			logrus.Errorf("error sending hello for [l/%s] to peer at [%s] (%v)", linkId.Token, peer, err)
+			logrus.Errorf("error accepting [%s] (%v)", linkId.Token, err)
 		}
+	} else {
+		logrus.Errorf("error creating Xlink instance [%s] (%v)", linkId.Token, err)
 	}
 }
 

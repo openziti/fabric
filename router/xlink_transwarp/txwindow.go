@@ -27,7 +27,7 @@ import (
 )
 
 const startingWindowCapacity = 6
-const retransmissionDelay = 20
+const retransmissionDelay = 10
 
 type txWindow struct {
 	tree             *btree.Tree
@@ -81,6 +81,7 @@ func (self *txWindow) tx(m *message) {
 	self.addMonitored(m)
 	self.capacity--
 
+	self.trace <- buildTraceTxMsg(m, false)
 	self.trace <- buildTraceTx(self)
 }
 
@@ -94,6 +95,8 @@ func (self *txWindow) ack(forSequence int32) {
 		self.capacity++
 		self.capacityReady.Broadcast()
 
+		self.trace <- traceRxAck{forSequence}
+
 	} else {
 		logrus.Warnf("[!@ %d] <=", forSequence)
 	}
@@ -105,7 +108,7 @@ func (self *txWindow) addMonitored(m *message) {
 	self.monitorQueue = append(self.monitorQueue, &txMonitorState{timeout: time.Now().Add(retransmissionDelay * time.Millisecond), m: m})
 	sort.Slice(self.monitorQueue, func(i, j int) bool {
 		return self.monitorQueue[i].timeout.Before(self.monitorQueue[j].timeout)
-	})
+		})
 	self.monitorReady.Signal()
 }
 
@@ -149,6 +152,7 @@ func (self *txWindow) retransmitter() {
 			if !self.monitorCancelled {
 				if err := writeMessage(self.monitorSubject.m, nil, self.conn, self.peer); err == nil {
 					logrus.Warnf("[* %d] =>", self.monitorSubject.m.sequence)
+					self.trace <- traceTx{self.monitorSubject.m.sequence, true}
 				} else {
 					logrus.Errorf("[!* %d] => (%v)", self.monitorSubject.m.sequence, err)
 				}
