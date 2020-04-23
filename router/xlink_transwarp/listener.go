@@ -32,6 +32,11 @@ func (self *listener) Listen() error {
 	if err != nil {
 		return fmt.Errorf("error listening (%w)", err)
 	}
+	if err := listener.SetReadBuffer(2048 * 1024); err == nil {
+		logrus.Warnf("set read buffer")
+	} else {
+		logrus.Errorf("unable to set read buffer (%v)", err)
+	}
 	self.listener = listener
 	go self.listen()
 	return nil

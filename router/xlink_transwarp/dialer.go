@@ -34,6 +34,11 @@ func (self *dialer) Dial(addressString string, linkId *identity.TokenId) error {
 		logrus.Infof("dialing link [%s] at [%s]", name, address)
 
 		if conn, err := net.ListenUDP("udp", self.config.bindAddress); err == nil {
+			if err := conn.SetReadBuffer(2048 * 1024); err == nil {
+				logrus.Warnf("set read buffer")
+			} else {
+				logrus.Errorf("unable to set read buffer (%v)", err)
+			}
 			waitCh := make(chan struct{}, 0)
 			self.waiters[linkId.Token] = waitCh
 			if err := writeHello(linkId, conn, address); err == nil {
