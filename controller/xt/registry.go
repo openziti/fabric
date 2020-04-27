@@ -1,3 +1,19 @@
+/*
+	Copyright NetFoundry, Inc.
+
+	Licensed under the Apache License, Version 2.0 (the "License");
+	you may not use this file except in compliance with the License.
+	You may obtain a copy of the License at
+
+	https://www.apache.org/licenses/LICENSE-2.0
+
+	Unless required by applicable law or agreed to in writing, software
+	distributed under the License is distributed on an "AS IS" BASIS,
+	WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+	See the License for the specific language governing permissions and
+	limitations under the License.
+*/
+
 package xt
 
 import (
@@ -37,9 +53,6 @@ type defaultRegistry struct {
 
 func (registry *defaultRegistry) RegisterFactory(factory Factory) {
 	registry.factories.put(factory.GetStrategyName(), factory)
-	for _, alias := range factory.GetStrategyAliases() {
-		registry.factories.put(alias, factory)
-	}
 }
 
 func (registry *defaultRegistry) GetStrategy(name string) (Strategy, error) {
@@ -59,9 +72,6 @@ func (registry *defaultRegistry) GetStrategy(name string) (Strategy, error) {
 
 		result = factory.NewStrategy()
 		registry.strategies.put(factory.GetStrategyName(), result)
-		for _, alias := range factory.GetStrategyAliases() {
-			registry.strategies.put(alias, result)
-		}
 	}
 
 	return result, nil
