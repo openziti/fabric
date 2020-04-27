@@ -24,7 +24,7 @@ func (stores *stores) migrate(step *boltz.MigrationStep) int {
 	if step.CurrentVersion == 2 {
 		return 2
 	}
-	step.SetError(errors.Errorf("Unsupported fabric datastore version: %v", step.CurrentVersion))
+	step.SetError(errors.Errorf("unsupported fabric datastore version: %v", step.CurrentVersion))
 	return 0
 }
 
