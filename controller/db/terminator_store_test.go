@@ -52,7 +52,6 @@ func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 	err := ctx.Update(terminator)
 	ctx.EqualError(err, "cannot update terminator with blank id")
 
-	terminator.Id = uuid.New().String()
 	terminator.Binding = ""
 	err = ctx.Create(terminator)
 	ctx.EqualError(err, "the value '' for 'binding' is invalid: binding is required")
@@ -80,7 +79,6 @@ func (ctx *TestContext) testCreateInvalidTerminators(t *testing.T) {
 	err = ctx.Create(terminator)
 	ctx.EqualError(err, fmt.Sprintf("service with id %v not found", terminator.Service))
 
-	terminator.Id = uuid.New().String()
 	terminator.Service = service.Id
 	terminator.Router = uuid.New().String()
 	err = ctx.Create(terminator)
@@ -106,7 +104,6 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.router = ctx.requireNewRouter()
 
 	e.terminator = &Terminator{}
-	e.terminator.Id = uuid.New().String()
 	e.terminator.Service = e.service.Id
 	e.terminator.Router = e.router.Id
 	e.terminator.Binding = uuid.New().String()
@@ -116,7 +113,6 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.router2 = ctx.requireNewRouter()
 
 	e.terminator2 = &Terminator{}
-	e.terminator2.Id = uuid.New().String()
 	e.terminator2.Service = e.service.Id
 	e.terminator2.Router = e.router2.Id
 	e.terminator2.Binding = uuid.New().String()
@@ -126,7 +122,6 @@ func (ctx *TestContext) createTestTerminators() *terminatorTestEntities {
 	e.service2 = ctx.requireNewService()
 
 	e.terminator3 = &Terminator{}
-	e.terminator3.Id = uuid.New().String()
 	e.terminator3.Service = e.service2.Id
 	e.terminator3.Router = e.router2.Id
 	e.terminator3.Binding = uuid.New().String()
