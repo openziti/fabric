@@ -41,9 +41,11 @@ type Terminator interface {
 	GetCreatedAt() time.Time
 }
 
-type WeightedTerminator interface {
+type CostedTerminator interface {
 	Terminator
-	GetRouteWeight() uint32
+	GetRouteCost() uint32
+	GetPrecedence() Precedence
+	GetTerminatorStats() Stats
 }
 
 type StrategyChangeEvent interface {
@@ -55,13 +57,17 @@ type StrategyChangeEvent interface {
 }
 
 type Strategy interface {
-	Select(terminators []WeightedTerminator, totalWeight uint32) (Terminator, error)
+	Select(terminators []CostedTerminator) (Terminator, error)
 	HandleTerminatorChange(event StrategyChangeEvent) error
 	NotifyEvent(event TerminatorEvent)
 }
 
 type Precedence interface {
 	getCostIntervalStart() uint16
+	IsFailed() bool
+	IsDefault() bool
+	IsRequired() bool
+	Unbias(cost uint16) uint16
 }
 
 type TerminatorEvent interface {
@@ -75,9 +81,15 @@ type EventVisitor interface {
 	VisitSessionEnded(event TerminatorEvent)
 }
 
+type Stats interface {
+	GetCost() uint16
+	GetPrecedence() Precedence
+}
+
 type Costs interface {
 	ClearCost(terminatorId string)
 	GetCost(terminatorId string) uint16
+	GetStats(terminatorId string) Stats
 	GetPrecedence(terminatorId string) Precedence
 	SetPrecedence(terminatorId string, precedence Precedence)
 	SetPrecedenceCost(terminatorId string, weight uint8)

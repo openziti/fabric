@@ -46,18 +46,33 @@ type strategy struct {
 	xt.DefaultEventVisitor
 }
 
-func (s strategy) Select(terminators []xt.WeightedTerminator, totalWeight uint32) (xt.Terminator, error) {
+func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
+	terminators = xt.GetRelatedTerminators(terminators)
 	if len(terminators) == 1 {
 		return terminators[0], nil
 	}
-	selected := uint32(rand.Int31n(int32(totalWeight)))
-	currentWeight := uint32(0)
-	for _, terminator := range terminators {
-		currentWeight += terminator.GetRouteWeight()
-		if selected <= currentWeight {
-			return terminator, nil
+
+	var costIdx []float32
+	totalCost := float32(0)
+	for _, t := range terminators {
+		unbiasedCost := float32(t.GetPrecedence().Unbias(t.GetCost()))
+		costIdx = append(costIdx, unbiasedCost)
+		totalCost += unbiasedCost
+	}
+
+	total := float32(0)
+	for idx, cost := range costIdx {
+		total += 1 - (cost / totalCost)
+		costIdx[idx] = total
+	}
+
+	selected := rand.Float32()
+	for idx, cost := range costIdx {
+		if selected < cost {
+			return terminators[idx], nil
 		}
 	}
+
 	return terminators[0], nil
 }
 

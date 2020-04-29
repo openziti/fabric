@@ -49,7 +49,7 @@ type strategy struct {
 	xt.DefaultEventVisitor
 }
 
-func (s strategy) Select(terminators []xt.WeightedTerminator, totalWeight uint32) (xt.Terminator, error) {
+func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
 	return terminators[0], nil
 }
 

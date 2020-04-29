@@ -21,6 +21,12 @@ import (
 	"math"
 )
 
+const (
+	failedIntervalStart   = 10_000
+	defaultIntervalStart  = 5000
+	requiredIntervalStart = 0
+)
+
 var globalCosts = &costs{
 	costMap: cmap.New(),
 }
@@ -31,6 +37,22 @@ func GlobalCosts() Costs {
 
 type precedence struct {
 	costIntervalStart uint16
+}
+
+func (p precedence) Unbias(cost uint16) uint16 {
+	return cost - p.costIntervalStart
+}
+
+func (p precedence) IsFailed() bool {
+	return p.costIntervalStart == failedIntervalStart
+}
+
+func (p precedence) IsDefault() bool {
+	return p.costIntervalStart == defaultIntervalStart
+}
+
+func (p precedence) IsRequired() bool {
+	return p.costIntervalStart == requiredIntervalStart
 }
 
 func (p precedence) getCostIntervalStart() uint16 {
@@ -45,14 +67,6 @@ var Precedences = struct {
 	//          terminator as Required
 	Required Precedence
 
-	// Preferred should be used more often than Default, but Default may end up with higher costs
-	// if other costs, such as latency are taken into account.
-	// Example: If some terminator(s) are more expensive then other terminators coulde be marked Preferred
-	//          and the expensive one(s) marked Default. If latency on routers to the cheaper terminators
-	//          gets to high, or the cheaper terminators are moved to Failed, then the more expensive
-	//          terminiators might be used
-	Preferred Precedence
-
 	// Default precedence is where terminators start
 	Default Precedence
 
@@ -60,16 +74,23 @@ var Precedences = struct {
 	// Example: A strategy might move a terminator to Failed if three dials in a row fail
 	Failed Precedence
 }{
-	Required:  precedence{costIntervalStart: 0},
-	Preferred: precedence{costIntervalStart: 5000},
-	Default:   precedence{costIntervalStart: 5050},
-	Failed:    precedence{costIntervalStart: 10_000},
+	Required: precedence{costIntervalStart: requiredIntervalStart},
+	Default:  precedence{costIntervalStart: defaultIntervalStart},
+	Failed:   precedence{costIntervalStart: failedIntervalStart},
 }
 
 type terminatorStats struct {
 	cost           uint16
 	precedence     Precedence
 	precedenceCost uint8
+}
+
+func (stats *terminatorStats) GetCost() uint16 {
+	return stats.cost
+}
+
+func (stats *terminatorStats) GetPrecedence() Precedence {
+	return stats.precedence
 }
 
 type costs struct {
@@ -86,6 +107,18 @@ func (self *costs) GetCost(terminatorId string) uint16 {
 		return 0
 	}
 	return stats.cost
+}
+
+func (self *costs) GetStats(terminatorId string) Stats {
+	stats := self.getStats(terminatorId)
+	if stats == nil {
+		return &terminatorStats{
+			cost:           Precedences.Default.getCostIntervalStart(),
+			precedence:     Precedences.Default,
+			precedenceCost: 0,
+		}
+	}
+	return stats
 }
 
 func (self *costs) getStats(terminatorId string) *terminatorStats {
@@ -146,4 +179,19 @@ func (self *costs) calculateCost(precedence Precedence, cost uint8) uint16 {
 		return math.MaxUint16
 	}
 	return uint16(nextCost)
+}
+
+// In a list which is sorted by precedence, returns the terminators which have the
+// same precedence as that of the first entry in the list
+func GetRelatedTerminators(list []CostedTerminator) []CostedTerminator {
+	first := list[0]
+	var result = []CostedTerminator{first}
+	for _, t := range list[1:] {
+		if t.GetPrecedence() == first.GetPrecedence() {
+			result = append(result, t)
+		} else {
+			break
+		}
+	}
+	return result
 }
