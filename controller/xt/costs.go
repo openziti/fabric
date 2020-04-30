@@ -22,9 +22,9 @@ import (
 )
 
 const (
-	failedIntervalStart   = 10_000
-	defaultIntervalStart  = 5000
-	requiredIntervalStart = 0
+	failedMinCost  = math.MaxUint16 * 2
+	defaultMinCost = math.MaxUint16
+	requireMinCost = 0
 )
 
 var globalCosts = &costs{
@@ -36,27 +36,32 @@ func GlobalCosts() Costs {
 }
 
 type precedence struct {
-	costIntervalStart uint16
+	minCost uint32
+	maxCost uint32
 }
 
-func (p precedence) Unbias(cost uint16) uint16 {
-	return cost - p.costIntervalStart
+func (p precedence) Unbias(cost uint32) uint32 {
+	return cost - p.minCost
 }
 
 func (p precedence) IsFailed() bool {
-	return p.costIntervalStart == failedIntervalStart
+	return p.minCost == failedMinCost
 }
 
 func (p precedence) IsDefault() bool {
-	return p.costIntervalStart == defaultIntervalStart
+	return p.minCost == defaultMinCost
 }
 
 func (p precedence) IsRequired() bool {
-	return p.costIntervalStart == requiredIntervalStart
+	return p.minCost == requireMinCost
 }
 
-func (p precedence) getCostIntervalStart() uint16 {
-	return p.costIntervalStart
+func (p precedence) getMinCost() uint32 {
+	return p.minCost
+}
+
+func (p precedence) getMaxCost() uint32 {
+	return p.maxCost
 }
 
 // Precedences define the precedence levels
@@ -74,18 +79,27 @@ var Precedences = struct {
 	// Example: A strategy might move a terminator to Failed if three dials in a row fail
 	Failed Precedence
 }{
-	Required: precedence{costIntervalStart: requiredIntervalStart},
-	Default:  precedence{costIntervalStart: defaultIntervalStart},
-	Failed:   precedence{costIntervalStart: failedIntervalStart},
+	Required: precedence{
+		minCost: requireMinCost,
+		maxCost: requireMinCost + (math.MaxUint16 - 1),
+	},
+	Default: precedence{
+		minCost: defaultMinCost,
+		maxCost: defaultMinCost + (math.MaxUint16 - 1),
+	},
+	Failed: precedence{
+		minCost: failedMinCost,
+		maxCost: failedMinCost + (math.MaxUint16 - 1),
+	},
 }
 
 type terminatorStats struct {
-	cost           uint16
+	cost           uint32
 	precedence     Precedence
-	precedenceCost uint8
+	precedenceCost uint16
 }
 
-func (stats *terminatorStats) GetCost() uint16 {
+func (stats *terminatorStats) GetCost() uint32 {
 	return stats.cost
 }
 
@@ -101,7 +115,7 @@ func (self *costs) ClearCost(terminatorId string) {
 	self.costMap.Remove(terminatorId)
 }
 
-func (self *costs) GetCost(terminatorId string) uint16 {
+func (self *costs) GetCost(terminatorId string) uint32 {
 	stats := self.getStats(terminatorId)
 	if stats == nil {
 		return 0
@@ -113,7 +127,7 @@ func (self *costs) GetStats(terminatorId string) Stats {
 	stats := self.getStats(terminatorId)
 	if stats == nil {
 		return &terminatorStats{
-			cost:           Precedences.Default.getCostIntervalStart(),
+			cost:           Precedences.Default.getMinCost(),
 			precedence:     Precedences.Default,
 			precedenceCost: 0,
 		}
@@ -139,14 +153,14 @@ func (self *costs) GetPrecedence(terminatorId string) Precedence {
 
 func (self *costs) SetPrecedence(terminatorId string, precedence Precedence) {
 	stats := self.getStats(terminatorId)
-	var precedenceCost uint8
+	var precedenceCost uint16
 	if stats != nil {
 		precedenceCost = stats.precedenceCost
 	}
 	self.costMap.Set(terminatorId, self.newStats(precedence, precedenceCost))
 }
 
-func (self *costs) SetPrecedenceCost(terminatorId string, cost uint8) {
+func (self *costs) SetPrecedenceCost(terminatorId string, cost uint16) {
 	stats := self.getStats(terminatorId)
 	var p Precedence
 	if stats == nil {
@@ -157,7 +171,18 @@ func (self *costs) SetPrecedenceCost(terminatorId string, cost uint8) {
 	self.costMap.Set(terminatorId, self.newStats(p, cost))
 }
 
-func (self *costs) GetPrecedenceCost(terminatorId string) uint8 {
+func (self *costs) UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16) {
+	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
+		if !exist {
+			cost := updateF(0)
+			return self.newStats(Precedences.Default, cost)
+		}
+		stats := valueInMap.(*terminatorStats)
+		return self.newStats(stats.precedence, updateF(stats.precedenceCost))
+	})
+}
+
+func (self *costs) GetPrecedenceCost(terminatorId string) uint16 {
 	stats := self.getStats(terminatorId)
 	if stats == nil {
 		return 0
@@ -165,20 +190,16 @@ func (self *costs) GetPrecedenceCost(terminatorId string) uint8 {
 	return stats.precedenceCost
 }
 
-func (self *costs) newStats(precedence Precedence, cost uint8) *terminatorStats {
+func (self *costs) newStats(precedence Precedence, cost uint16) *terminatorStats {
+	if cost == math.MaxUint16 {
+		cost--
+	}
+
 	return &terminatorStats{
-		cost:           self.calculateCost(precedence, cost),
+		cost:           precedence.getMinCost() + uint32(cost),
 		precedence:     precedence,
 		precedenceCost: cost,
 	}
-}
-
-func (self *costs) calculateCost(precedence Precedence, cost uint8) uint16 {
-	nextCost := uint32(precedence.getCostIntervalStart()) + uint32(cost)
-	if nextCost > math.MaxUint16 {
-		return math.MaxUint16
-	}
-	return uint16(nextCost)
 }
 
 // In a list which is sorted by precedence, returns the terminators which have the

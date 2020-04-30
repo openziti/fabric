@@ -76,13 +76,13 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 		staticCost = uint16(request.StaticCost)
 	}
 
-	var dynamicCost uint8
+	var dynamicCost uint16
 	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_DynamicCost) != 0 {
-		if request.DynamicCost > math.MaxUint8 {
-			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid dynamic cost %v. Must be less than %v", request.DynamicCost, math.MaxUint8))
+		if request.DynamicCost > math.MaxUint16 {
+			handler_common.SendFailure(msg, ch, fmt.Sprintf("invalid dynamic cost %v. Must be less than %v", request.DynamicCost, math.MaxUint16))
 			return
 		}
-		dynamicCost = uint8(request.DynamicCost)
+		dynamicCost = uint16(request.DynamicCost)
 	}
 
 	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_StaticCost) != 0 {

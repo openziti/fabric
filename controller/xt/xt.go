@@ -63,11 +63,12 @@ type Strategy interface {
 }
 
 type Precedence interface {
-	getCostIntervalStart() uint16
+	getMinCost() uint32
+	getMaxCost() uint32
 	IsFailed() bool
 	IsDefault() bool
 	IsRequired() bool
-	Unbias(cost uint16) uint16
+	Unbias(cost uint32) uint32
 }
 
 type TerminatorEvent interface {
@@ -82,16 +83,24 @@ type EventVisitor interface {
 }
 
 type Stats interface {
-	GetCost() uint16
+	GetCost() uint32
 	GetPrecedence() Precedence
 }
 
 type Costs interface {
 	ClearCost(terminatorId string)
-	GetCost(terminatorId string) uint16
+	GetCost(terminatorId string) uint32
 	GetStats(terminatorId string) Stats
 	GetPrecedence(terminatorId string) Precedence
 	SetPrecedence(terminatorId string, precedence Precedence)
-	SetPrecedenceCost(terminatorId string, weight uint8)
-	GetPrecedenceCost(terminatorId string) uint8
+	SetPrecedenceCost(terminatorId string, weight uint16)
+	UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16)
+	GetPrecedenceCost(terminatorId string) uint16
+}
+
+type FailureCosts interface {
+	Failure(terminatorId string) uint16
+	Success(terminatorId string) uint16
+	Clear(terminatorId string)
+	CreditOverTime(credit uint8, period time.Duration) *time.Ticker
 }

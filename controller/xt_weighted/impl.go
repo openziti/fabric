@@ -18,8 +18,10 @@ package xt_weighted
 
 import (
 	"github.com/netfoundry/ziti-fabric/controller/xt"
+	"github.com/netfoundry/ziti-fabric/controller/xt_common"
 	"math"
 	"math/rand"
+	"time"
 )
 
 /**
@@ -39,11 +41,18 @@ func (f factory) GetStrategyName() string {
 }
 
 func (f factory) NewStrategy() xt.Strategy {
-	return strategy{}
+	strategy := strategy{
+		CostVisitor: &xt_common.CostVisitor{
+			FailureCosts: xt.NewFailureCosts(math.MaxUint16/4, 20, 2),
+			SessionCost:  2,
+		},
+	}
+	strategy.CostVisitor.FailureCosts.CreditOverTime(5, time.Minute)
+	return strategy
 }
 
 type strategy struct {
-	xt.DefaultEventVisitor
+	*xt_common.CostVisitor
 }
 
 func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, error) {
@@ -55,7 +64,7 @@ func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, erro
 	var costIdx []float32
 	totalCost := float32(0)
 	for _, t := range terminators {
-		unbiasedCost := float32(t.GetPrecedence().Unbias(t.GetCost()))
+		unbiasedCost := float32(t.GetPrecedence().Unbias(t.GetRouteCost()))
 		costIdx = append(costIdx, unbiasedCost)
 		totalCost += unbiasedCost
 	}
@@ -77,27 +86,7 @@ func (s strategy) Select(terminators []xt.CostedTerminator) (xt.Terminator, erro
 }
 
 func (s strategy) NotifyEvent(event xt.TerminatorEvent) {
-	event.Accept(s)
-}
-
-func (s strategy) VisitDialFailed(event xt.TerminatorEvent) {
-	weights := xt.GlobalCosts()
-	weight := weights.GetPrecedenceCost(event.GetTerminator().GetId())
-	if weight > 0 {
-		nextWeight := int(weight) + 20
-		if nextWeight < 0 {
-			nextWeight = 0
-		}
-		weights.SetPrecedenceCost(event.GetTerminator().GetId(), uint8(nextWeight))
-	}
-}
-
-func (s strategy) VisitDialSucceeded(event xt.TerminatorEvent) {
-	weights := xt.GlobalCosts()
-	weight := weights.GetPrecedenceCost(event.GetTerminator().GetId())
-	if weight < math.MaxUint8 {
-		weights.SetPrecedenceCost(event.GetTerminator().GetId(), weight-1)
-	}
+	event.Accept(s.CostVisitor)
 }
 
 func (s strategy) HandleTerminatorChange(xt.StrategyChangeEvent) error {
