@@ -52,6 +52,11 @@ type Controller struct {
 }
 
 func NewController(cfg *Config) (*Controller, error) {
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
+
 	c := &Controller{
 		config:    cfg,
 		shutdownC: make(chan struct{}),
@@ -161,11 +166,6 @@ func (c *Controller) registerComponents() error {
 	if err := c.RegisterXctrl(xctrl_example.NewExample()); err != nil {
 		return err
 	}
-
-	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
 
 	return nil
 }
