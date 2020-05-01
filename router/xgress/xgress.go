@@ -38,10 +38,12 @@ type Address string
 
 type Listener interface {
 	Listen(address string, bindHandler BindHandler) error
+	Close() error
 }
 
 type Dialer interface {
 	Dial(destination string, sessionId *identity.TokenId, address Address, bindHandler BindHandler) error
+	IsTerminatorValid(id string, destination string) bool
 }
 
 type Factory interface {
