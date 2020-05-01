@@ -52,15 +52,12 @@ type Controller struct {
 }
 
 func NewController(cfg *Config) (*Controller, error) {
-	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
-	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
-
 	c := &Controller{
 		config:    cfg,
 		shutdownC: make(chan struct{}),
 	}
+
+	c.registerXts()
 
 	if n, err := network.NewNetwork(cfg.Id, cfg.Network, cfg.Db, cfg.Metrics); err == nil {
 		c.network = n
@@ -155,6 +152,13 @@ func (c *Controller) startProfiling() {
 	if c.config.Profile.Memory.Path != "" {
 		go profiler.NewMemoryWithShutdown(c.config.Profile.Memory.Path, c.config.Profile.Memory.Interval, c.shutdownC).Run()
 	}
+}
+
+func (c *Controller) registerXts() {
+	xt.GlobalRegistry().RegisterFactory(xt_smartrouting.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_ha.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_random.NewFactory())
+	xt.GlobalRegistry().RegisterFactory(xt_weighted.NewFactory())
 }
 
 func (c *Controller) registerComponents() error {
