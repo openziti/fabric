@@ -7,10 +7,10 @@ go 1.14
 require (
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.3.5
-	github.com/google/go-cmp v0.5.0
+	github.com/google/go-cmp v0.5.1
 	github.com/google/uuid v1.1.1
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
-	github.com/openziti/foundation v0.11.13
+	github.com/openziti/foundation v0.11.14
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.6.0
