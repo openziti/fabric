@@ -2,11 +2,11 @@ module github.com/openziti/fabric
 
 go 1.14
 
-// replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
 require (
 	github.com/emirpasic/gods v1.12.0
-	github.com/golang/protobuf v1.3.5
+	github.com/golang/protobuf v1.4.0
 	github.com/google/go-cmp v0.5.1
 	github.com/google/uuid v1.1.1
 	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
