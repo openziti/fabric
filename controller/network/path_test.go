@@ -51,32 +51,36 @@ func TestShortestPath(t *testing.T) {
 	network.Routers.markConnected(r3)
 
 	link := newLink(&identity.TokenId{Token: "l0"})
+	link.Cost = 2
 	link.DstLatency = 10
-	link.SrcLatency = 10
+	link.SrcLatency = 11
 	link.Src = r0
 	link.Dst = r1
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
 	link = newLink(&identity.TokenId{Token: "l1"})
-	link.DstLatency = 20
-	link.SrcLatency = 20
+	link.Cost = 5
+	link.DstLatency = 15
+	link.SrcLatency = 16
 	link.Src = r0
 	link.Dst = r2
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
 	link = newLink(&identity.TokenId{Token: "l2"})
+	link.Cost = 9
 	link.DstLatency = 20
-	link.SrcLatency = 20
+	link.SrcLatency = 21
 	link.Src = r1
 	link.Dst = r3
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
 	link = newLink(&identity.TokenId{Token: "l3"})
-	link.DstLatency = 40
-	link.SrcLatency = 40
+	link.Cost = 13
+	link.DstLatency = 25
+	link.SrcLatency = 26
 	link.Src = r2
 	link.Dst = r3
 	link.addState(newLinkState(Connected))
@@ -88,5 +92,9 @@ func TestShortestPath(t *testing.T) {
 	req.Equal(path[0], r0)
 	req.Equal(path[1], r1)
 	req.Equal(path[2], r3)
-	req.Equal(int64(62), cost)
+
+	expected := 1 + 1 + // start and end router cost
+		10 + 11 + 2 + // link1 cost and src and dest latency
+		9 + 20 + 21 // link2 cost and src and dest latency
+	req.Equal(int64(expected), cost)
 }

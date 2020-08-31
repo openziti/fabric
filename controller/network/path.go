@@ -50,6 +50,7 @@ func (network *Network) shortestPath(srcR *Router, dstR *Router) ([]*Router, int
 			if _, found := unvisited[r]; found {
 				cost := int64(r.CostFactor)
 				if l, found := network.linkController.leastExpensiveLink(r, u); found {
+					cost += int64(l.Cost)
 					cost += l.SrcLatency
 					cost += l.DstLatency
 				}

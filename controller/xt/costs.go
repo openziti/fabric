@@ -30,6 +30,9 @@ const (
 
 var globalCosts = &costs{
 	costMap: cmap.New(),
+	precedenceChangeHandler: func(string, Precedence) {
+		panic("precedence change handler not set")
+	},
 }
 
 func GlobalCosts() Costs {
@@ -68,6 +71,10 @@ func (p *precedence) getMinCost() uint32 {
 
 func (p *precedence) getMaxCost() uint32 {
 	return p.maxCost
+}
+
+func (p *precedence) GetBiasedCost(cost uint16) uint32 {
+	return p.getMinCost() + uint32(cost)
 }
 
 // Precedences define the precedence levels
@@ -110,122 +117,52 @@ var Precedences = struct {
 	},
 }
 
-type terminatorStats struct {
-	cost           uint32
-	precedence     Precedence
-	precedenceCost uint16
-}
-
-func (stats *terminatorStats) GetCost() uint32 {
-	return stats.cost
-}
-
-func (stats *terminatorStats) GetPrecedence() Precedence {
-	return stats.precedence
+func GetPrecedenceForName(name string) Precedence {
+	if Precedences.Required.String() == name {
+		return Precedences.Required
+	}
+	if Precedences.Failed.String() == name {
+		return Precedences.Failed
+	}
+	return Precedences.Default
 }
 
 type costs struct {
-	costMap cmap.ConcurrentMap
+	costMap                 cmap.ConcurrentMap
+	precedenceChangeHandler func(terminatorId string, precedence Precedence)
+}
+
+func (self *costs) SetPrecedenceChangeHandler(f func(terminatorId string, precedence Precedence)) {
+	self.precedenceChangeHandler = f
 }
 
 func (self *costs) ClearCost(terminatorId string) {
 	self.costMap.Remove(terminatorId)
 }
 
-func (self *costs) GetCost(terminatorId string) uint32 {
-	stats := self.getStats(terminatorId)
-	if stats == nil {
-		return Precedences.Default.getMinCost()
-	}
-	return stats.cost
-}
-
-func (self *costs) GetStats(terminatorId string) Stats {
-	stats := self.getStats(terminatorId)
-	if stats == nil {
-		return &terminatorStats{
-			cost:           Precedences.unknown.getMinCost(),
-			precedence:     Precedences.unknown,
-			precedenceCost: 0,
-		}
-	}
-	return stats
-}
-
-func (self *costs) getStats(terminatorId string) *terminatorStats {
-	val, found := self.costMap.Get(terminatorId)
-	if !found {
-		return nil
-	}
-	return val.(*terminatorStats)
-}
-
-func (self *costs) GetPrecedence(terminatorId string) Precedence {
-	stats := self.getStats(terminatorId)
-	if stats == nil {
-		return Precedences.Default
-	}
-	return stats.precedence
-}
-
 func (self *costs) SetPrecedence(terminatorId string, precedence Precedence) {
-	stats := self.getStats(terminatorId)
-	var precedenceCost uint16
-	if stats != nil {
-		precedenceCost = stats.precedenceCost
-	}
-	self.costMap.Set(terminatorId, self.newStats(precedence, precedenceCost))
+	self.precedenceChangeHandler(terminatorId, precedence)
 }
 
 func (self *costs) SetPrecedenceCost(terminatorId string, cost uint16) {
-	stats := self.getStats(terminatorId)
-	var p Precedence
-	if stats == nil {
-		p = Precedences.Default
-	} else {
-		p = stats.precedence
-	}
-	self.costMap.Set(terminatorId, self.newStats(p, cost))
+	self.costMap.Set(terminatorId, cost)
 }
 
 func (self *costs) UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16) {
 	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 		if !exist {
-			cost := updateF(0)
-			return self.newStats(Precedences.Default, cost)
+			return updateF(0)
 		}
-		stats := valueInMap.(*terminatorStats)
-		return self.newStats(stats.precedence, updateF(stats.precedenceCost))
-	})
-}
-
-func (self *costs) TerminatorCreated(terminatorId string) {
-	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
-		if !exist {
-			return self.newStats(Precedences.Default, 0)
-		}
-		return valueInMap
+		currentCost := valueInMap.(uint16)
+		return updateF(currentCost)
 	})
 }
 
 func (self *costs) GetPrecedenceCost(terminatorId string) uint16 {
-	stats := self.getStats(terminatorId)
-	if stats == nil {
-		return 0
+	if cost, found := self.costMap.Get(terminatorId); found {
+		return cost.(uint16)
 	}
-	return stats.precedenceCost
-}
-
-func (self *costs) newStats(precedence Precedence, cost uint16) *terminatorStats {
-	if cost == math.MaxUint16 {
-		cost--
-	}
-
-	return &terminatorStats{
-		cost:           precedence.getMinCost() + uint32(cost),
-		precedence:     precedence,
-		precedenceCost: cost,
-	}
+	return 0
 }
 
 // In a list which is sorted by precedence, returns the terminators which have the
