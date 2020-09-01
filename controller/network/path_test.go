@@ -51,36 +51,36 @@ func TestShortestPath(t *testing.T) {
 	network.Routers.markConnected(r3)
 
 	link := newLink(&identity.TokenId{Token: "l0"})
-	link.Cost = 2
-	link.DstLatency = 10
-	link.SrcLatency = 11
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
 	link.Src = r0
 	link.Dst = r1
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
 	link = newLink(&identity.TokenId{Token: "l1"})
-	link.Cost = 5
-	link.DstLatency = 15
-	link.SrcLatency = 16
+	link.SetStaticCost(5)
+	link.SetDstLatency(15 * 1_000_000)
+	link.SetSrcLatency(16 * 1_000_000)
 	link.Src = r0
 	link.Dst = r2
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
 	link = newLink(&identity.TokenId{Token: "l2"})
-	link.Cost = 9
-	link.DstLatency = 20
-	link.SrcLatency = 21
+	link.SetStaticCost(9)
+	link.SetDstLatency(20 * 1_000_000)
+	link.SetSrcLatency(21 * 1_000_000)
 	link.Src = r1
 	link.Dst = r3
 	link.addState(newLinkState(Connected))
 	network.linkController.add(link)
 
 	link = newLink(&identity.TokenId{Token: "l3"})
-	link.Cost = 13
-	link.DstLatency = 25
-	link.SrcLatency = 26
+	link.SetStaticCost(13)
+	link.SetDstLatency(25 * 1_000_000)
+	link.SetSrcLatency(26 * 1_000_000)
 	link.Src = r2
 	link.Dst = r3
 	link.addState(newLinkState(Connected))
@@ -93,8 +93,7 @@ func TestShortestPath(t *testing.T) {
 	req.Equal(path[1], r1)
 	req.Equal(path[2], r3)
 
-	expected := 1 + 1 + // start and end router cost
-		10 + 11 + 2 + // link1 cost and src and dest latency
+	expected := 10 + 11 + 2 + // link1 cost and src and dest latency
 		9 + 20 + 21 // link2 cost and src and dest latency
 	req.Equal(int64(expected), cost)
 }

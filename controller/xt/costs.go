@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	unknownMinCost = math.MaxUint16 * 32
+	unknownMinCost = math.MaxUint16 * 12
 	failedMinCost  = math.MaxUint16 * 8
 	defaultMinCost = math.MaxUint16 * 4
 	requireMinCost = 0
@@ -73,8 +73,12 @@ func (p *precedence) getMaxCost() uint32 {
 	return p.maxCost
 }
 
-func (p *precedence) GetBiasedCost(cost uint16) uint32 {
-	return p.getMinCost() + uint32(cost)
+func (p *precedence) GetBiasedCost(cost uint32) uint32 {
+	result := p.getMinCost() + cost
+	if result > p.maxCost {
+		return p.maxCost
+	}
+	return result
 }
 
 // Precedences define the precedence levels
@@ -98,22 +102,22 @@ var Precedences = struct {
 	Required: &precedence{
 		name:    "required",
 		minCost: requireMinCost,
-		maxCost: requireMinCost + (math.MaxUint16 - 1),
+		maxCost: defaultMinCost - 1,
 	},
 	Default: &precedence{
 		name:    "default",
 		minCost: defaultMinCost,
-		maxCost: defaultMinCost + (math.MaxUint16 - 1),
+		maxCost: failedMinCost - 1,
 	},
 	Failed: &precedence{
 		name:    "failed",
 		minCost: failedMinCost,
-		maxCost: failedMinCost + (math.MaxUint16 - 1),
+		maxCost: unknownMinCost - 1,
 	},
 	unknown: &precedence{
 		name:    "unknown",
 		minCost: unknownMinCost,
-		maxCost: unknownMinCost + (math.MaxUint16 - 1),
+		maxCost: unknownMinCost + (math.MaxUint16 * 4) - 1,
 	},
 }
 
@@ -144,11 +148,11 @@ func (self *costs) SetPrecedence(terminatorId string, precedence Precedence) {
 	self.precedenceChangeHandler(terminatorId, precedence)
 }
 
-func (self *costs) SetPrecedenceCost(terminatorId string, cost uint16) {
+func (self *costs) SetDynamicCost(terminatorId string, cost uint16) {
 	self.costMap.Set(terminatorId, cost)
 }
 
-func (self *costs) UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16) {
+func (self *costs) UpdateDynamicCost(terminatorId string, updateF func(uint16) uint16) {
 	self.costMap.Upsert(terminatorId, nil, func(exist bool, valueInMap interface{}, newValue interface{}) interface{} {
 		if !exist {
 			return updateF(0)
@@ -158,7 +162,7 @@ func (self *costs) UpdatePrecedenceCost(terminatorId string, updateF func(uint16
 	})
 }
 
-func (self *costs) GetPrecedenceCost(terminatorId string) uint16 {
+func (self *costs) GetDynamicCost(terminatorId string) uint16 {
 	if cost, found := self.costMap.Get(terminatorId); found {
 		return cost.(uint16)
 	}

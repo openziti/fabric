@@ -109,7 +109,7 @@ func (h *setTerminatorCostHandler) HandleReceive(msg *channel2.Message, ch chann
 	}
 
 	if request.UpdateMask&int32(mgmt_pb.TerminatorChangeMask_DynamicCost) != 0 {
-		xt.GlobalCosts().SetPrecedenceCost(request.TerminatorId, dynamicCost)
+		xt.GlobalCosts().SetDynamicCost(request.TerminatorId, dynamicCost)
 	}
 
 	handler_common.SendSuccess(msg, ch, "")

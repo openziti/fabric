@@ -390,13 +390,12 @@ func (network *Network) selectPath(srcR *Router, svc *Service) (xt.Strategy, xt.
 			paths[terminator.GetRouterId()] = pathAndCost
 		}
 
-		staticTerminatorCost := uint32(terminator.Cost)
-		precedenceCost := xt.GlobalCosts().GetPrecedenceCost(terminator.Id)
-		dynamicTerminatorCost := terminator.Precedence.GetBiasedCost(precedenceCost)
-		fullCost := pathAndCost.cost + dynamicTerminatorCost + staticTerminatorCost
+		dynamicCost := xt.GlobalCosts().GetDynamicCost(terminator.Id)
+		unbiasedCost := uint32(terminator.Cost) + uint32(dynamicCost) + pathAndCost.cost
+		biasedCost := terminator.Precedence.GetBiasedCost(unbiasedCost)
 		costedTerminator := &RoutingTerminator{
 			Terminator: terminator,
-			RouteCost:  fullCost,
+			RouteCost:  biasedCost,
 		}
 		weightedTerminators = append(weightedTerminators, costedTerminator)
 	}
@@ -688,9 +687,9 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 		metricId := "link." + link.Id.Token + ".latency"
 		if latency, ok := metrics.Histograms[metricId]; ok {
 			if link.Src.Id == router.Id {
-				link.SrcLatency = int64(latency.Mean) / 1_000_000 // convert to millis
+				link.SetSrcLatency(int64(latency.Mean)) // latency is in nanoseconds
 			} else if link.Dst.Id == router.Id {
-				link.DstLatency = int64(latency.Mean) / 1_000_000 // convert to millis
+				link.SetDstLatency(int64(latency.Mean)) // latency is in nanoseconds
 			} else {
 				log.Warnf("link not for router")
 			}

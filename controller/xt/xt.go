@@ -72,7 +72,7 @@ type Precedence interface {
 	IsDefault() bool
 	IsRequired() bool
 	Unbias(cost uint32) uint32
-	GetBiasedCost(cost uint16) uint32
+	GetBiasedCost(cost uint32) uint32
 }
 
 type TerminatorEvent interface {
@@ -95,9 +95,9 @@ type Costs interface {
 	SetPrecedenceChangeHandler(f func(terminatorId string, precedence Precedence))
 	ClearCost(terminatorId string)
 	SetPrecedence(terminatorId string, precedence Precedence)
-	SetPrecedenceCost(terminatorId string, weight uint16)
-	UpdatePrecedenceCost(terminatorId string, updateF func(uint16) uint16)
-	GetPrecedenceCost(terminatorId string) uint16
+	SetDynamicCost(terminatorId string, weight uint16)
+	UpdateDynamicCost(terminatorId string, updateF func(uint16) uint16)
+	GetDynamicCost(terminatorId string) uint16
 }
 
 type FailureCosts interface {
