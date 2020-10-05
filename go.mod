@@ -2,7 +2,7 @@ module github.com/openziti/fabric
 
 go 1.14
 
-// replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
 require (
 	github.com/emirpasic/gods v1.12.0
