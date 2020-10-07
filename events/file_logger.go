@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/openziti/foundation/util/iomonad"
@@ -92,7 +91,7 @@ func (handler *FabricHandler) NewEventHandler(config map[interface{}]interface{}
 
 func (handler *FabricHandler) SessionCreated(sessionId *identity.TokenId, clientId *identity.TokenId, serviceId string, circuit *network.Circuit) {
 
-	message := &events.SessionMessage{
+	message := SessionMessage{
 		Namespace: "fabric.sessions",
 		EventType: "created",
 		SessionId: sessionId.Token,
@@ -106,7 +105,7 @@ func (handler *FabricHandler) SessionCreated(sessionId *identity.TokenId, client
 
 func (handler *FabricHandler) SessionDeleted(sessionId *identity.TokenId, clientId *identity.TokenId) {
 
-	message := &events.SessionMessage{
+	message := SessionMessage{
 		Namespace: "fabric.sessions",
 		EventType: "deleted",
 		SessionId: sessionId.Token,
@@ -119,7 +118,7 @@ func (handler *FabricHandler) SessionDeleted(sessionId *identity.TokenId, client
 
 func (handler *FabricHandler) CircuitUpdated(sessionId *identity.TokenId, circuit *network.Circuit) {
 
-	message := &events.SessionMessage{
+	message := SessionMessage{
 		Namespace: "fabric.sessions",
 		EventType: "circuitUpdated",
 		SessionId: sessionId.Token,
