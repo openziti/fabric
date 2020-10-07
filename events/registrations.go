@@ -8,8 +8,8 @@ import (
 
 func init() {
 
-	RegisterEventType("fabric.session", registerSessionEventHandler)
-	RegisterEventType("metrics", registerMetricsEventHandler)
+	RegisterEventType("fabric.sessions", registerSessionEventHandler)
+	RegisterEventType("fabric.metrics", registerMetricsEventHandler)
 
 	// RegisterEventType("fabric.session", registerJsonLoggerEventHandlerType)
 
