@@ -49,8 +49,9 @@ func (eventHandlerConfig *eventHandlerConfig) createHandler() (interface{}, erro
 	//handlerType := fmt.Sprintf("%v", handlerTypeVal)
 	//logger.Infof("Create handler of type: %s", handlerType)
 
+	// @FIXME - fix factory loader
 	// handlerFactory, ok := eventHandlerTypeFactories[handlerType]
-	handlerFactory, ok  := registerJsonLoggerEventHandlerType(handlerMap)
+	handlerFactory, ok  := registerFileLoggerEventHandlerType(handlerMap)
 
 	//if !ok {
 	//	logger.Errorf("invalid handler type %v for handler %v provided", handlerType, eventHandlerConfig.id)
@@ -169,10 +170,6 @@ func WireEventHandlers() error {
 			return err
 		}
 	}
-
-	//eventTypes = nil
-	//eventHandlerTypeFactories = nil
-	//eventHandlerConfigs = nil
 
 	return nil
 }
