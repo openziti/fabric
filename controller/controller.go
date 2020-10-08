@@ -122,9 +122,7 @@ func (c *Controller) Run() error {
 	go mgmtAccepter.Run()
 	/* */
 
-
-	// event stuff
-	pfxlog.Logger().Info("WIRE UP EVENT HANDLERS")
+	// event handlers
 	events.WireEventHandlers()
 
 	c.network.Run()
@@ -202,14 +200,11 @@ func (c *Controller) loadXtvMappings() error {
 }
 
 func (c *Controller) loadEventHandlers() {
-	logger := pfxlog.Logger()
 
 	if e, ok := c.config.src["events"]; ok {
-		logger.Infof("CONFIG EVENTS for %v", e)
 		if em, ok := e.(map[interface{}]interface{}); ok {
 			for k, v := range em {
 				if handlerConfig, ok := v.(map[interface{}]interface{}); ok {
-					logger.Infof("REGISTERING EVENT HANDLERS for %s", k)
 					events.RegisterEventHandler(k, handlerConfig)
 				}
 			}

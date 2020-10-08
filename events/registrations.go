@@ -11,7 +11,7 @@ func init() {
 	RegisterEventType("fabric.sessions", registerSessionEventHandler)
 	RegisterEventType("fabric.metrics", registerMetricsEventHandler)
 
-	// RegisterEventType("fabric.session", registerJsonLoggerEventHandlerType)
+	// RegisterEventHandlerType("fabricHandler", registerFileLoggerEventHandlerType)
 
 	//RegisterEventType("fabric.traces", func(val interface{}, _ map[interface{}]interface{}) error {
 	//	handler, ok := val.(trace.EventHandler)

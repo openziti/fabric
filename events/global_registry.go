@@ -40,23 +40,23 @@ func (eventHandlerConfig *eventHandlerConfig) createHandler() (interface{}, erro
 		return nil, errors.Errorf("event configuration for %v is not a map", eventHandlerConfig.id)
 	}
 
-	// handlerTypeVal, ok := handlerMap["type"]
+	handlerTypeVal, ok := handlerMap["type"]
 	if !ok {
 		logger.Errorf("no handler type for %v provided", eventHandlerConfig.id)
 		return nil, errors.Errorf("no handler type for %v provided", eventHandlerConfig.id)
 	}
 
-	//handlerType := fmt.Sprintf("%v", handlerTypeVal)
-	//logger.Infof("Create handler of type: %s", handlerType)
+	handlerType := fmt.Sprintf("%v", handlerTypeVal)
+	logger.Infof("Create handler of type: %s", handlerType)
 
 	// @FIXME - fix factory loader
 	// handlerFactory, ok := eventHandlerTypeFactories[handlerType]
 	handlerFactory, ok  := registerFileLoggerEventHandlerType(handlerMap)
 
-	//if !ok {
-	//	logger.Errorf("invalid handler type %v for handler %v provided", handlerType, eventHandlerConfig.id)
-	//	return nil, errors.Errorf("invalid handler type %v for handler %v provided", handlerType, eventHandlerConfig.id)
-	//}
+	if !ok {
+		logger.Errorf("invalid handler type %v for handler %v provided", handlerType, eventHandlerConfig.id)
+		return nil, errors.Errorf("invalid handler type %v for handler %v provided", handlerType, eventHandlerConfig.id)
+	}
 
 	return handlerFactory.NewEventHandler(handlerMap)
 }
@@ -96,7 +96,7 @@ func (eventHandlerConfig *eventHandlerConfig) processSubscriptions(handler inter
 
 		if registrationHandler, ok := eventTypes[eventType]; ok {
 			if err := registrationHandler(handler, subMap); err != nil {
-				logger.Error("Failed to register event handler, %v", err)
+				logger.Errorf("Failed to register event handler, %v", err)
 				return err
 			}else {
 				logger.Infof("Registration of event handler %s succeeded", eventTypeVal)
@@ -120,7 +120,8 @@ func RegisterEventType(eventType string, registrationHandler registrationHandler
 	eventTypes[eventType] = registrationHandler
 }
 
-//func RegisterEventHandlerType(eventHandlerType string, factory func(config map[interface{}]interface{}) EventHandlerFactory) {
+// func RegisterEventHandlerType(eventHandlerType string, factory func(config map[interface{}]interface{}) EventHandlerFactory) {
+//func RegisterEventHandlerType(eventHandlerType string, factory func(config map[interface{}]interface{}) EventHandlerFactory)  {
 //	registryLock.Lock()
 //	defer registryLock.Unlock()
 //	eventHandlerTypeFactories[eventHandlerType] = factory
@@ -162,11 +163,11 @@ func WireEventHandlers() error {
 	for _, eventHandlerConfig := range eventHandlerConfigs {
 		handler, err := eventHandlerConfig.createHandler()
 		if err != nil {
-			logger.Errorf("Unable to create event handler: %s", err)
+			logger.Errorf("Unable to create event handler: %v", err)
 			return err
 		}
 		if err := eventHandlerConfig.processSubscriptions(handler); err != nil {
-			logger.Errorf("Unable to process subscription for event handler: %s", err)
+			logger.Errorf("Unable to process subscription for event handler: %v", err)
 			return err
 		}
 	}

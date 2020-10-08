@@ -14,6 +14,9 @@ import (
 
 func registerFileLoggerEventHandlerType(config map[interface{}]interface{}) (EventHandlerFactory, bool)  {
 
+	logger := pfxlog.Logger()
+	logger.Info("Registering event handler for fabric events")
+
 	rep := &FabricHandler{
 		config: config,
 	}

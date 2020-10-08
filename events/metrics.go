@@ -13,6 +13,7 @@ func registerMetricsEventHandler(val interface{}, config map[interface{}]interfa
 		return errors.Errorf("type %v doesn't implement github.com/openziti/foundation/metrics/Handler interface.", reflect.TypeOf(val))
 	}
 
+	// @TODO - enable source based and metric based filtering
 	//var sourceFilter = ""
 	//if sourceRegexVal, ok := config["sourceFilter"]; ok {
 	//	sourceFilter, ok = sourceRegexVal.(string)
