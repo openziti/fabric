@@ -1,5 +1,6 @@
 name: update-dependency
 on:
+  push:
   workflow_dispatch:
     inputs:
       updated-dependency:
