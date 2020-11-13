@@ -1,4 +1,4 @@
-name: build
+name: update-dependency
 on:
   workflow_dispatch:
     inputs:
