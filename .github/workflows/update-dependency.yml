@@ -27,7 +27,7 @@ jobs:
           gh_ci_key: ${{ secrets.GH_CI_KEY }}
         run: |
           $(go env GOPATH)/bin/ziti-ci configure-git
-          $(go env GOPATH)/bin/ziti-ci update-go-dependency  ${{ github.event.inputs.updated-dependency }}"
+          $(go env GOPATH)/bin/ziti-ci update-go-dependency  ${{ github.event.inputs.updated-dependency }}
 
       - name: Build and Test
         run: go test ./...
