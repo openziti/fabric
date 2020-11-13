@@ -33,5 +33,4 @@ jobs:
         run: go test ./...
 
       - name: Complete Dependency Update
-        run: |
-          $(go env GOPATH)/bin/ziti-ci complete-update-go-dependency
+        run: $(go env GOPATH)/bin/ziti-ci complete-update-go-dependency
