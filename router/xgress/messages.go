@@ -20,6 +20,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/foundation/util/info"
 	"github.com/openziti/foundation/util/uuidz"
 	"github.com/sirupsen/logrus"
 	"math"
@@ -29,9 +30,11 @@ const (
 	MinHeaderKey = 2000
 	MaxHeaderKey = MinHeaderKey + int32(math.MaxUint8)
 
-	HeaderKeySessionId = 2256
-	HeaderKeySequence  = 2257
-	HeaderKeyFlags     = 2258
+	HeaderKeySessionId      = 2256
+	HeaderKeySequence       = 2257
+	HeaderKeyFlags          = 2258
+	HeaderKeyRecvBufferSize = 2259
+	HeaderKeyRTT            = 2260
 
 	ContentTypePayloadType         = 1100
 	ContentTypeAcknowledgementType = 1101
@@ -65,8 +68,10 @@ const (
 )
 
 type Header struct {
-	SessionId string
-	Flags     uint32
+	SessionId      string
+	Flags          uint32
+	RecvBufferSize uint32
+	RTT            uint16
 }
 
 func (header *Header) GetSessionId() string {
@@ -95,6 +100,11 @@ func (header *Header) unmarshallHeader(msg *channel2.Message) error {
 
 	header.SessionId = string(sessionId)
 	header.Flags = flags
+	if header.RecvBufferSize, ok = msg.GetUint32Header(HeaderKeyRecvBufferSize); !ok {
+		header.RecvBufferSize = math.MaxUint32
+	}
+
+	header.RTT, _ = msg.GetUint16Header(HeaderKeyRTT)
 
 	return nil
 }
@@ -103,6 +113,12 @@ func (header *Header) marshallHeader(msg *channel2.Message) {
 	msg.Headers[HeaderKeySessionId] = []byte(header.SessionId)
 	if header.Flags != 0 {
 		msg.PutUint32Header(HeaderKeyFlags, header.Flags)
+	}
+
+	msg.PutUint32Header(HeaderKeyRecvBufferSize, header.RecvBufferSize)
+
+	if header.RTT > 0 {
+		msg.PutUint16Header(HeaderKeyRTT, header.RTT)
 	}
 }
 
@@ -148,7 +164,7 @@ func (ack *Acknowledgement) unmarshallSequence(data []byte) error {
 	ack.Sequence = make([]int32, len(data)/4)
 
 	nextReadBuf := data
-	for i, _ := range ack.Sequence {
+	for i := range ack.Sequence {
 		ack.Sequence[i] = int32(binary.BigEndian.Uint32(nextReadBuf))
 		nextReadBuf = nextReadBuf[4:]
 	}
@@ -174,6 +190,15 @@ func UnmarshallAcknowledgement(msg *channel2.Message) (*Acknowledgement, error) 
 	return ack, nil
 }
 
+func (ack *Acknowledgement) GetLoggerFields() logrus.Fields {
+	return logrus.Fields{
+		"session":            ack.SessionId,
+		"linkRecvBufferSize": ack.RecvBufferSize,
+		"seq":                fmt.Sprintf("%+v", ack.Sequence),
+		"RTT":                ack.RTT,
+	}
+}
+
 type Payload struct {
 	Header
 	Sequence int32
@@ -186,6 +211,7 @@ func (payload *Payload) GetSequence() int32 {
 }
 
 func (payload *Payload) Marshall() *channel2.Message {
+	payload.RTT = uint16(info.NowInMilliseconds())
 	msg := channel2.NewMessage(ContentTypePayloadType, payload.Data)
 	for key, value := range payload.Headers {
 		msgHeaderKey := MinHeaderKey + int32(key)
@@ -193,6 +219,7 @@ func (payload *Payload) Marshall() *channel2.Message {
 	}
 	payload.marshallHeader(msg)
 	msg.PutUint64Header(HeaderKeySequence, uint64(payload.Sequence))
+
 	return msg
 }
 
@@ -247,8 +274,9 @@ func SetOriginatorFlag(flags uint32, originator Originator) uint32 {
 
 func (payload *Payload) GetLoggerFields() logrus.Fields {
 	return logrus.Fields{
-		"seq":    payload.Sequence,
-		"origin": payload.GetOriginator(),
-		"uuid":   uuidz.ToString(payload.Headers[HeaderKeyUUID]),
+		"session": payload.SessionId,
+		"seq":     payload.Sequence,
+		"origin":  payload.GetOriginator(),
+		"uuid":    uuidz.ToString(payload.Headers[HeaderKeyUUID]),
 	}
 }

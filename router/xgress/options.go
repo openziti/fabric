@@ -22,10 +22,25 @@ import (
 
 // Options contains common Xgress configuration options
 type Options struct {
-	Mtu            int32
-	Retransmission bool
-	RandomDrops    bool
-	Drop1InN       int32
+	Mtu         int32
+	RandomDrops bool
+	Drop1InN    int32
+	TxQueueSize int32
+
+	TxPortalStartSize      uint32
+	TxPortalMaxSize        uint32
+	TxPortalMinSize        uint32
+	TxPortalIncreaseThresh uint32
+	TxPortalIncreaseScale  float64
+	TxPortalRetxThresh     uint32
+	TxPortalRetxScale      float64
+	TxPortalDupAckThresh   uint32
+	TxPortalDupAckScale    float64
+
+	RxBufferSize uint32
+	RetxInitial  uint32
+	RetxScale    float64
+	RetxAddMs    uint32
 }
 
 func LoadOptions(data OptionsData) *Options {
@@ -37,14 +52,55 @@ func LoadOptions(data OptionsData) *Options {
 		if value, found := data["mtu"]; found {
 			options.Mtu = int32(value.(int))
 		}
-		if value, found := data["retransmission"]; found {
-			options.Retransmission = value.(bool)
-		}
 		if value, found := data["randomDrops"]; found {
 			options.RandomDrops = value.(bool)
 		}
 		if value, found := data["drop1InN"]; found {
 			options.Drop1InN = int32(value.(int))
+		}
+		if value, found := data["txQueueSize"]; found {
+			options.TxQueueSize = int32(value.(int))
+		}
+
+		if value, found := data["txPortalStartSize"]; found {
+			options.TxPortalStartSize = uint32(value.(int))
+		}
+		if value, found := data["txPortalMinSize"]; found {
+			options.TxPortalMinSize = uint32(value.(int))
+		}
+		if value, found := data["txPortalMaxSize"]; found {
+			options.TxPortalMaxSize = uint32(value.(int))
+		}
+		if value, found := data["txPortalIncreaseThresh"]; found {
+			options.TxPortalIncreaseThresh = uint32(value.(int))
+		}
+		if value, found := data["txPortalIncreaseScale"]; found {
+			options.TxPortalIncreaseScale = value.(float64)
+		}
+		if value, found := data["txPortalRetxThresh"]; found {
+			options.TxPortalRetxThresh = uint32(value.(int))
+		}
+		if value, found := data["txPortalRetxScale"]; found {
+			options.TxPortalRetxScale = value.(float64)
+		}
+		if value, found := data["txPortalDupAckThresh"]; found {
+			options.TxPortalDupAckThresh = uint32(value.(int))
+		}
+		if value, found := data["txPortalDupAckScale"]; found {
+			options.TxPortalDupAckScale = value.(float64)
+		}
+
+		if value, found := data["rxBufferSize"]; found {
+			options.RxBufferSize = uint32(value.(int))
+		}
+		if value, found := data["retxInitial"]; found {
+			options.RetxInitial = uint32(value.(int))
+		}
+		if value, found := data["retxScale"]; found {
+			options.RetxScale = value.(float64)
+		}
+		if value, found := data["retxAddMs"]; found {
+			options.RetxAddMs = uint32(value.(int))
 		}
 	}
 
@@ -53,10 +109,22 @@ func LoadOptions(data OptionsData) *Options {
 
 func DefaultOptions() *Options {
 	return &Options{
-		Mtu:            64 * 1024,
-		Retransmission: true,
-		RandomDrops:    false,
-		Drop1InN:       100,
+		Mtu:                    64 * 1024,
+		RandomDrops:            false,
+		Drop1InN:               100,
+		TxQueueSize:            1,
+		TxPortalStartSize:      16 * 1024,
+		TxPortalMinSize:        16 * 1024,
+		TxPortalMaxSize:        4 * 1024 * 1024,
+		TxPortalIncreaseThresh: 224,
+		TxPortalIncreaseScale:  1.0,
+		TxPortalRetxThresh:     64,
+		TxPortalRetxScale:      0.75,
+		TxPortalDupAckThresh:   64,
+		TxPortalDupAckScale:    0.9,
+		RxBufferSize:           4 * 1024 * 1024,
+		RetxScale:              2.0,
+		RetxAddMs:              100,
 	}
 }
 

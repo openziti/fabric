@@ -416,7 +416,11 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string) 
 	}
 
 	if len(svc.Terminators) == 0 {
-		return nil, nil, nil, errors.Errorf("service %v has no Terminators", svc.Id)
+		return nil, nil, nil, errors.Errorf("service %v has no terminators", svc.Id)
+	}
+
+	if len(weightedTerminators) == 0 && len(errList) == 0 {
+		return nil, nil, nil, errors.Errorf("service %v has no terminators for identity %v", svc.Id, identity)
 	}
 
 	if len(weightedTerminators) == 0 {
@@ -839,7 +843,7 @@ func (e MultipleErrors) Error() string {
 	buf := strings.Builder{}
 	buf.WriteString("multiple errors occurred")
 	for idx, err := range e {
-		buf.WriteString(fmt.Sprintf(" %v: %v", idx, err))
+		buf.WriteString(fmt.Sprintf(" %v: %v\n", idx, err))
 	}
 	return buf.String()
 }
