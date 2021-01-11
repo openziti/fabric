@@ -12,7 +12,7 @@ require (
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.1.4
 	github.com/michaelquigley/pfxlog v0.3.1
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/foundation v0.14.25
