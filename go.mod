@@ -2,7 +2,9 @@ module github.com/openziti/fabric
 
 go 1.15
 
-// replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
+
+replace github.com/openziti/dilithium => ../dilithium
 
 require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
@@ -11,7 +13,7 @@ require (
 	github.com/golang/protobuf v1.4.3
 	github.com/google/go-cmp v0.5.4
 	github.com/google/uuid v1.1.2
-	github.com/michaelquigley/pfxlog v0.0.0-20190813191113-2be43bd0dccc
+	github.com/michaelquigley/pfxlog v0.3.1
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/foundation v0.14.24
 	github.com/orcaman/concurrent-map v0.0.0-20190826125027-8c72a8bb44f6
