@@ -57,7 +57,7 @@ type OptionsData map[interface{}]interface{}
 // The BindHandlers are invoked to install the appropriate handlers.
 //
 type BindHandler interface {
-	HandleXgressBind(sessionId *identity.TokenId, address Address, originator Originator, x *Xgress)
+	HandleXgressBind(x *Xgress)
 }
 
 // ReceiveHandler is invoked by an xgress whenever data is received from the connected peer. Generally a ReceiveHandler
