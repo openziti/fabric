@@ -18,17 +18,20 @@ package xgress
 
 import (
 	"encoding/json"
+	"github.com/pkg/errors"
+	"time"
 )
 
 // Options contains common Xgress configuration options
 type Options struct {
-	Mtu            int32
-	Retransmission bool
-	RandomDrops    bool
-	Drop1InN       int32
+	Mtu               int32
+	Retransmission    bool
+	RandomDrops       bool
+	Drop1InN          int32
+	GetSessionTimeout time.Duration
 }
 
-func LoadOptions(data OptionsData) *Options {
+func LoadOptions(data OptionsData) (*Options, error) {
 	options := DefaultOptions()
 
 	if value, found := data["options"]; found {
@@ -46,17 +49,26 @@ func LoadOptions(data OptionsData) *Options {
 		if value, found := data["drop1InN"]; found {
 			options.Drop1InN = int32(value.(int))
 		}
+
+		if value, found := data["getSessionTimeout"]; found {
+			getSessionTimeout, err := time.ParseDuration(value.(string))
+			if err != nil {
+				return nil, errors.Wrap(err, "invalid 'getSessionTimeout' value")
+			}
+			options.GetSessionTimeout = getSessionTimeout
+		}
 	}
 
-	return options
+	return options, nil
 }
 
 func DefaultOptions() *Options {
 	return &Options{
-		Mtu:            64 * 1024,
-		Retransmission: true,
-		RandomDrops:    false,
-		Drop1InN:       100,
+		Mtu:               64 * 1024,
+		Retransmission:    true,
+		RandomDrops:       false,
+		Drop1InN:          100,
+		GetSessionTimeout: 30 * time.Second,
 	}
 }
 
