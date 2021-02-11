@@ -51,6 +51,7 @@ type Network struct {
 	routerChanged          chan *Router
 	linkController         *linkController
 	linkChanged            chan *Link
+	forwardingFaults       chan *ForwardingFaultReport
 	sessionController      *sessionController
 	sequence               *sequence.Sequence
 	eventDispatcher        event.Dispatcher
@@ -79,9 +80,10 @@ func NewNetwork(nodeId *identity.TokenId, options *Options, database boltz.Db, m
 		Controllers:       controllers,
 		nodeId:            nodeId,
 		options:           options,
-		routerChanged:     make(chan *Router),
+		routerChanged:     make(chan *Router, 16),
 		linkController:    newLinkController(),
-		linkChanged:       make(chan *Link),
+		linkChanged:       make(chan *Link, 16),
+		forwardingFaults:  make(chan *ForwardingFaultReport, 16),
 		sessionController: newSessionController(),
 		sequence:          sequence.NewSequence(),
 		eventDispatcher:   eventDispatcher,
@@ -334,6 +336,7 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 			retryCount++
 			if retryCount > 3 {
 				return nil, err
+
 			} else {
 				continue
 			}
@@ -364,6 +367,10 @@ func (network *Network) CreateSession(srcR *Router, clientId *identity.TokenId, 
 		log.Debugf("created session [s/%s] ==> %s", sessionId.Token, ss.Circuit)
 		return ss, nil
 	}
+}
+
+func (network *Network) ReportForwardingFaults(ffr *ForwardingFaultReport) {
+	network.forwardingFaults <- ffr
 }
 
 func parseIdentityAndService(service string) (string, string) {
@@ -594,10 +601,15 @@ func (network *Network) Run() {
 				log.Errorf("unexpected error rerouting link (%s)", err)
 			}
 
+		case ffr := <-network.forwardingFaults:
+			network.fault(ffr)
+			network.clean()
+
 		case <-time.After(time.Duration(network.options.CycleSeconds) * time.Second):
 			network.assemble()
 			network.clean()
 			network.smart()
+
 		case _, ok := <-network.shutdownChan:
 			if !ok {
 				return
