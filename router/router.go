@@ -91,7 +91,7 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 
 	xgress.InitPayloadIngester(closeNotify)
 	xgress.InitAcker(fwd, metricsRegistry, closeNotify)
-	xgress.InitRetransmitter(fwd, metricsRegistry, closeNotify)
+	xgress.InitRetransmitter(fwd, fwd, metricsRegistry, closeNotify)
 
 	return &Router{
 		config:          config,
