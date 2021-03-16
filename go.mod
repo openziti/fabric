@@ -2,6 +2,8 @@ module github.com/openziti/fabric
 
 go 1.16
 
+replace go.etcd.io/bbolt => ../bbolt
+
 //replace github.com/openziti/foundation => ../foundation
 
 require (
