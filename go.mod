@@ -2,9 +2,11 @@ module github.com/openziti/fabric
 
 go 1.16
 
-replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
+//replace github.com/openziti/dilithium => ../dilithium
 
 //replace github.com/openziti/foundation => ../foundation
+
+replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
