@@ -15,6 +15,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.5
 	github.com/google/uuid v1.2.0
+	github.com/gorilla/handlers v1.5.0
 	github.com/michaelquigley/pfxlog v0.3.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/foundation v0.15.48
