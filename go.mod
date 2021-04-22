@@ -18,7 +18,7 @@ require (
 	github.com/gorilla/handlers v1.5.0
 	github.com/michaelquigley/pfxlog v0.3.7
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/foundation v0.15.48
+	github.com/openziti/foundation v0.15.49
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
