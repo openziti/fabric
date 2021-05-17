@@ -89,6 +89,9 @@ type Config struct {
 		ReportInterval   time.Duration
 		MessageQueueSize int
 	}
+	Development struct {
+		SuppressStackDumpOnExit bool
+	}
 	src map[interface{}]interface{}
 }
 
@@ -327,6 +330,15 @@ func LoadConfig(path string) (*Config, error) {
 			}
 		}
 	}
+
+	if value, found := cfgmap["development"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["suppressStackDumpOnExit"]; found {
+				cfg.Development.SuppressStackDumpOnExit = value.(bool)
+			}
+		}
+	}
+
 	return cfg, nil
 }
 
