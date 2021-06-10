@@ -262,7 +262,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 				txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
 
 			if buffer.successfulAcks >= buffer.x.Options.TxPortalIncreaseThresh {
-				logrus.Infof("successfulAcks = [%d]", buffer.successfulAcks)
+				logrus.Infof("success:[%d], tx:[%d], rx:[%d], w:[%d]", buffer.successfulAcks, buffer.linkSendBufferSize, buffer.linkRecvBufferSize, buffer.windowsSize)
 				buffer.successfulAcks = 0
 				delta := uint32(float64(buffer.accumulator) * buffer.x.Options.TxPortalIncreaseScale)
 				buffer.windowsSize += delta
