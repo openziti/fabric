@@ -262,6 +262,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 				txPayload.payload.Sequence, len(txPayload.payload.Data), buffer.linkSendBufferSize)
 
 			if buffer.successfulAcks >= buffer.x.Options.TxPortalIncreaseThresh {
+				logrus.Infof("successfulAcks = [%d]", buffer.successfulAcks)
 				buffer.successfulAcks = 0
 				delta := uint32(float64(buffer.accumulator) * buffer.x.Options.TxPortalIncreaseScale)
 				buffer.windowsSize += delta
@@ -277,6 +278,7 @@ func (buffer *LinkSendBuffer) receiveAcknowledgement(ack *Acknowledgement) {
 			duplicateAcksMeter.Mark(1)
 			buffer.duplicateAcks++
 			if buffer.duplicateAcks >= buffer.x.Options.TxPortalDupAckThresh {
+				logrus.Warnf("duplicateAcks = [%d]", buffer.duplicateAcks)
 				buffer.accumulator = 0
 				buffer.duplicateAcks = 0
 				buffer.scale(buffer.x.Options.TxPortalDupAckScale)
@@ -305,6 +307,7 @@ func (buffer *LinkSendBuffer) retransmit() {
 				retransmitted++
 				buffer.retransmits++
 				if buffer.retransmits >= buffer.x.Options.TxPortalRetxThresh {
+					logrus.Warnf("retransmits = [%d]", buffer.retransmits)
 					buffer.accumulator = 0
 					buffer.retransmits = 0
 					buffer.scale(buffer.x.Options.TxPortalRetxScale)
