@@ -9,6 +9,7 @@ go 1.16
 replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
+	github.com/AppsFlyer/go-sundheit v0.4.0 // indirect
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.12.0
