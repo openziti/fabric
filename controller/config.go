@@ -59,8 +59,15 @@ type Config struct {
 		Listener transport.Address
 		Options  *channel2.Options
 	}
-	Metrics *metrics.Config
-	src     map[interface{}]interface{}
+	Metrics      *metrics.Config
+	HealthChecks struct {
+		BoltCheck struct {
+			Interval     time.Duration
+			Timeout      time.Duration
+			InitialDelay time.Duration
+		}
+	}
+	src map[interface{}]interface{}
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -107,7 +114,7 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	config := &Config{
+	cfg := &Config{
 		Network: network.DefaultOptions(),
 		src:     cfgmap,
 	}
@@ -115,13 +122,13 @@ func LoadConfig(path string) (*Config, error) {
 	if id, err := identity.LoadIdentity(identityConfig); err != nil {
 		return nil, fmt.Errorf("unable to load identity (%s)", err)
 	} else {
-		config.Id = identity.NewIdentity(id)
+		cfg.Id = identity.NewIdentity(id)
 	}
 
 	if value, found := cfgmap["network"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if options, err := network.LoadOptions(submap); err == nil {
-				config.Network = options
+				cfg.Network = options
 			} else {
 				return nil, fmt.Errorf("invalid 'network' stanza (%s)", err)
 			}
@@ -140,7 +147,7 @@ func LoadConfig(path string) (*Config, error) {
 		if err != nil {
 			return nil, err
 		}
-		config.Db = str
+		cfg.Db = str
 	} else {
 		panic("config must provide [db]")
 	}
@@ -148,7 +155,7 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["trace"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["path"]; found {
-				handler, err := channel2.NewTraceHandler(value.(string), config.Id)
+				handler, err := channel2.NewTraceHandler(value.(string), cfg.Id)
 				if err != nil {
 					return nil, err
 				}
@@ -156,7 +163,7 @@ func LoadConfig(path string) (*Config, error) {
 				handler.AddDecoder(&ctrl_pb.Decoder{})
 				handler.AddDecoder(&xgress.Decoder{})
 				handler.AddDecoder(&mgmt_pb.Decoder{})
-				config.Trace.Handler = handler
+				cfg.Trace.Handler = handler
 			}
 		}
 	}
@@ -166,19 +173,19 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["memory"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					if value, found := submap["path"]; found {
-						config.Profile.Memory.Path = value.(string)
+						cfg.Profile.Memory.Path = value.(string)
 					}
 					if value, found := submap["intervalMs"]; found {
-						config.Profile.Memory.Interval = time.Duration(value.(int)) * time.Millisecond
+						cfg.Profile.Memory.Interval = time.Duration(value.(int)) * time.Millisecond
 					} else {
-						config.Profile.Memory.Interval = 15 * time.Second
+						cfg.Profile.Memory.Interval = 15 * time.Second
 					}
 				}
 			}
 			if value, found := submap["cpu"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
 					if value, found := submap["path"]; found {
-						config.Profile.CPU.Path = value.(string)
+						cfg.Profile.CPU.Path = value.(string)
 					}
 				}
 			}
@@ -192,23 +199,23 @@ func LoadConfig(path string) (*Config, error) {
 				if err != nil {
 					return nil, err
 				}
-				config.Ctrl.Listener = listener
+				cfg.Ctrl.Listener = listener
 			} else {
 				panic("config must provide [ctrl/listener]")
 			}
 
-			config.Ctrl.Options = channel2.DefaultOptions()
+			cfg.Ctrl.Options = channel2.DefaultOptions()
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					config.Ctrl.Options = channel2.LoadOptions(submap)
-					if err := config.Ctrl.Options.Validate(); err != nil {
+					cfg.Ctrl.Options = channel2.LoadOptions(submap)
+					if err := cfg.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
 			}
 
-			if config.Trace.Handler != nil {
-				config.Ctrl.Options.PeekHandlers = append(config.Ctrl.Options.PeekHandlers, config.Trace.Handler)
+			if cfg.Trace.Handler != nil {
+				cfg.Ctrl.Options.PeekHandlers = append(cfg.Ctrl.Options.PeekHandlers, cfg.Trace.Handler)
 			}
 		} else {
 			panic("config [ctrl] section in unexpected format")
@@ -224,16 +231,16 @@ func LoadConfig(path string) (*Config, error) {
 				if err != nil {
 					return nil, err
 				}
-				config.Mgmt.Listener = listener
+				cfg.Mgmt.Listener = listener
 			} else {
 				panic("config must provide [mgmt/listener]")
 			}
 
-			config.Mgmt.Options = channel2.DefaultOptions()
+			cfg.Mgmt.Options = channel2.DefaultOptions()
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					config.Mgmt.Options = channel2.LoadOptions(submap)
-					if err := config.Mgmt.Options.Validate(); err != nil {
+					cfg.Mgmt.Options = channel2.LoadOptions(submap)
+					if err := cfg.Mgmt.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [mgmt/options] (%v)", err)
 					}
 				}
@@ -248,7 +255,7 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["metrics"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if metricsCfg, err := metrics.LoadConfig(submap); err == nil {
-				config.Metrics = metricsCfg
+				cfg.Metrics = metricsCfg
 			} else {
 				return nil, fmt.Errorf("error loading metrics config (%s)", err)
 			}
@@ -257,5 +264,39 @@ func LoadConfig(path string) (*Config, error) {
 		}
 	}
 
-	return config, nil
+	cfg.HealthChecks.BoltCheck.Interval = 30 * time.Second
+	cfg.HealthChecks.BoltCheck.Timeout = 20 * time.Second
+	cfg.HealthChecks.BoltCheck.InitialDelay = 30 * time.Second
+
+	configMap := config.NewConfigMap(config.ToStringIntfMap(cfgmap))
+
+	if healthCheckConfig := configMap.Child("healthChecks"); healthCheckConfig != nil {
+		if boltCheckConfig := configMap.Child("bolt"); boltCheckConfig != nil {
+			if val, found := boltCheckConfig.GetDuration("interval"); found {
+				cfg.HealthChecks.BoltCheck.Interval = val
+			}
+			if val, found := boltCheckConfig.GetDuration("timeout"); found {
+				cfg.HealthChecks.BoltCheck.Timeout = val
+			}
+			if val, found := boltCheckConfig.GetDuration("initialDelay"); found {
+				cfg.HealthChecks.BoltCheck.InitialDelay = val
+			}
+		}
+	}
+
+	if configMap.HasError() {
+		return nil, err
+	}
+
+	configMap = config.NewConfigMap(config.ToStringIntfMap(cfgmap))
+
+	cfg.HealthChecks.BoltCheck.Interval = configMap.Duration("healthChecks.boltCheck.interval", 30*time.Second)
+	cfg.HealthChecks.BoltCheck.Timeout = configMap.Duration("healthChecks.boltCheck.timeout", 20*time.Second)
+	cfg.HealthChecks.BoltCheck.InitialDelay = configMap.Duration("healthChecks.boltCheck.timeout", 30*time.Second)
+
+	if configMap.HasError() {
+		return nil, err
+	}
+
+	return cfg, nil
 }

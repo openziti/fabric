@@ -4,7 +4,7 @@ go 1.16
 
 //replace github.com/openziti/dilithium => ../dilithium
 
-//replace github.com/openziti/foundation => ../foundation
+replace github.com/openziti/foundation => ../foundation
 
 replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
