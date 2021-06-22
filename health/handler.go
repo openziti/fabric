@@ -87,7 +87,7 @@ func (self *HealthCheckApiHandler) ServeHTTP(w http.ResponseWriter, request *htt
 		check["healthy"] = result.IsHealthy()
 		if !shortFormat {
 			check["lastCheckDuration"] = fmt.Sprintf("%v", result.Duration)
-			check["lastCheckTime"] = result.Timestamp.Format(time.RFC3339)
+			check["lastCheckTime"] = result.Timestamp.UTC().Format(time.RFC3339)
 
 			if result.Error != nil {
 				check["err"] = result.Error
