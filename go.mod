@@ -15,10 +15,10 @@ require (
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
-	github.com/google/uuid v1.2.0
+	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.5.1
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/foundation v0.15.61
+	github.com/openziti/foundation v0.15.62
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
