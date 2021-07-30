@@ -241,6 +241,15 @@ func (network *Network) ConnectedRouter(id string) bool {
 }
 
 func (network *Network) ConnectRouter(r *Router) {
+	if connected := network.Routers.getConnected(r.Id); connected != nil {
+		pfxlog.Logger().WithField("routerId", r.Id).
+			Warn("new router ctrl channel connection for already connected router. closing old connection")
+		// already connected. Disconnect this one so we don't have dueling control channels
+		if ch := connected.Control; ch != nil {
+			_ = ch.Close()
+		}
+	}
+
 	network.Routers.markConnected(r)
 	network.routerChanged <- r
 
