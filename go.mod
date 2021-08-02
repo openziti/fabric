@@ -9,16 +9,16 @@ go 1.16
 replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
-	github.com/AppsFlyer/go-sundheit v0.4.0 // indirect
+	github.com/AppsFlyer/go-sundheit v0.4.0
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.12.0
 	github.com/golang/protobuf v1.5.2
 	github.com/google/go-cmp v0.5.6
-	github.com/google/uuid v1.2.0
-	github.com/michaelquigley/pfxlog v0.3.7
+	github.com/google/uuid v1.3.0
+	github.com/michaelquigley/pfxlog v0.6.0
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/foundation v0.15.56
+	github.com/openziti/foundation v0.15.65
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
