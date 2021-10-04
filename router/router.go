@@ -22,10 +22,15 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"fmt"
+	"io"
+	"math/rand"
+	"time"
+
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/edge/router/xgress_geneve"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/health"
@@ -51,9 +56,6 @@ import (
 	"github.com/openziti/foundation/util/info"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io"
-	"math/rand"
-	"time"
 )
 
 type Router struct {
@@ -258,6 +260,7 @@ func (self *Router) registerComponents() error {
 	xgress.GlobalRegistry().Register("proxy_udp", xgress_proxy_udp.NewFactory(self))
 	xgress.GlobalRegistry().Register("transport", xgress_transport.NewFactory(self.config.Id, self, self.config.Transport))
 	xgress.GlobalRegistry().Register("transport_udp", xgress_transport_udp.NewFactory(self.config.Id, self))
+	xgress.GlobalRegistry().Register("geneve", xgress_geneve.Factory{})
 
 	if err := self.RegisterXweb(xweb.NewXwebImpl(self.xwebFactoryRegistry)); err != nil {
 		return err
