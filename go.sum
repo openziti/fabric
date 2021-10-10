@@ -165,8 +165,8 @@ github.com/natefinch/lumberjack v2.0.0+incompatible/go.mod h1:Wi9p2TTF5DG5oU+6Yf
 github.com/oklog/ulid v1.3.1/go.mod h1:CirwcVhetQ6Lv90oh/F+FBtV6XMibvdAFo93nm5qn4U=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e h1:ST9+54UtCr96S5+Wa7LQtpGS6/xK7Z+KQXvOAtYgJlA=
 github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e/go.mod h1:G5EMThwa9y8QZGBClrRx5EY+Yw9kAhnjy3bSjsnlVTQ=
-github.com/openziti/foundation v0.15.79 h1:RlHjGq/cXDPcFNQjQmb/xTSRiRbOOXj6sZb7vbOxLoU=
-github.com/openziti/foundation v0.15.79/go.mod h1:ruy6cSHAJ40DIOb9232INkrn4wsWeGmZWLJbTycoNNc=
+github.com/openziti/foundation v0.15.80 h1:iFjByd2+pk7OekuykIdhVdfdlz+p9N6isN5rPzTEHoQ=
+github.com/openziti/foundation v0.15.80/go.mod h1:ruy6cSHAJ40DIOb9232INkrn4wsWeGmZWLJbTycoNNc=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231 h1:fa50YL1pzKW+1SsBnJDOHppJN9stOEwS+CRWyUtyYGU=
 github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231/go.mod h1:Lu3tH6HLW3feq74c2GC+jIMS/K2CFcDWnWD9XkenwhI=
 github.com/pascaldekloe/goe v0.0.0-20180627143212-57f6aae5913c/go.mod h1:lzWF7FIEvWOWxwDKqyGYQf6ZUaNfKdP144TG7ZOy1lc=
