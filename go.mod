@@ -6,7 +6,7 @@ go 1.17
 
 //replace github.com/openziti/foundation => ../foundation
 
-replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
+//replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.4.0
