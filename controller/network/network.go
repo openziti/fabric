@@ -211,8 +211,8 @@ func (network *Network) GetAllCircuits() []*Circuit {
 	return network.circuitController.all()
 }
 
-func (network *Network) RouteResult(r *Router, circuitId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
-	return network.routeSenderController.forwardRouteResult(r, circuitId, attempt, success, rerr, peerData)
+func (network *Network) RouteResult(rs *RouteStatus) bool {
+	return network.routeSenderController.forwardRouteResult(rs)
 }
 
 func (network *Network) newRouteSender(circuitId string) *routeSender {

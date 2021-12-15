@@ -38,14 +38,14 @@ func newRouteSenderController() *routeSenderController {
 	return &routeSenderController{senders: cmap.New()}
 }
 
-func (self *routeSenderController) forwardRouteResult(r *Router, circuitId string, attempt uint32, success bool, rerr string, peerData xt.PeerData) bool {
-	v, found := self.senders.Get(circuitId)
+func (self *routeSenderController) forwardRouteResult(rs *RouteStatus) bool {
+	v, found := self.senders.Get(rs.CircuitId)
 	if found {
 		routeSender := v.(*routeSender)
-		routeSender.in <- &routeStatus{r: r, circuitId: circuitId, attempt: attempt, success: success, rerr: rerr, peerData: peerData}
+		routeSender.in <- rs
 		return true
 	}
-	logrus.Warnf("did not find route sender for [s/%s]", circuitId)
+	logrus.Warnf("did not find route sender for [s/%s]", rs.CircuitId)
 	return false
 }
 
@@ -62,7 +62,7 @@ type routeSender struct {
 	path            *Path
 	routeMsgs       []*ctrl_pb.Route
 	timeout         time.Duration
-	in              chan *routeStatus
+	in              chan *RouteStatus
 	attendance      map[string]bool
 	serviceCounters ServiceCounters
 }
@@ -71,7 +71,7 @@ func newRouteSender(circuitId string, timeout time.Duration, serviceCounters Ser
 	return &routeSender{
 		circuitId:       circuitId,
 		timeout:         timeout,
-		in:              make(chan *routeStatus, 16),
+		in:              make(chan *RouteStatus, 16),
 		attendance:      make(map[string]bool),
 		serviceCounters: serviceCounters,
 	}
@@ -96,33 +96,33 @@ attendance:
 	for {
 		select {
 		case status := <-self.in:
-			if status.success {
-				if status.attempt == attempt {
-					logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.r.Id, status.attempt, status.circuitId)
+			if status.Success {
+				if status.Attempt == attempt {
+					logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.Router.Id, status.Attempt, status.CircuitId)
 
-					self.attendance[status.r.Id] = true
-					if status.r == tr {
-						peerData = status.peerData
+					self.attendance[status.Router.Id] = true
+					if status.Router == tr {
+						peerData = status.PeerData
 						strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
 						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
 					}
 				} else {
-					logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
+					logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
 				}
 
 			} else {
-				if status.attempt == attempt {
-					logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.r.Id, status.attempt, status.circuitId, status.rerr)
+				if status.Attempt == attempt {
+					logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
 
-					if status.r == tr {
+					if status.Router == tr {
 						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
 						self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
 					}
 					cleanups = self.cleanups(path)
 
-					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.r.Id, status.rerr)
+					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.Router.Id, status.Err)
 				} else {
-					logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.r.Id, status.attempt, attempt, status.circuitId)
+					logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
 				}
 			}
 
@@ -174,13 +174,14 @@ func (self *routeSender) cleanups(path *Path) map[string]struct{} {
 	return cleanups
 }
 
-type routeStatus struct {
-	r         *Router
-	circuitId string
-	attempt   uint32
-	success   bool
-	rerr      string
-	peerData  xt.PeerData
+type RouteStatus struct {
+	Router    *Router
+	CircuitId string
+	Attempt   uint32
+	Success   bool
+	Err       string
+	PeerData  xt.PeerData
+	ErrorCode byte
 }
 
 type routeTimeoutError struct {

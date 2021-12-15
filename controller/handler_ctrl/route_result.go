@@ -51,8 +51,7 @@ func (self *routeResultHandler) HandleReceive(msg *channel2.Message, _ channel2.
 func (self *routeResultHandler) handleRouteResult(msg *channel2.Message) {
 	if v, found := msg.Headers[ctrl_msg.RouteResultAttemptHeader]; found {
 		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
-		rerrv, _ := msg.Headers[ctrl_msg.RouteResultErrorHeader]
-		rerr := string(rerrv)
+		rerr, _ := msg.GetStringHeader(ctrl_msg.RouteResultErrorHeader)
 
 		var attempt uint32
 		buf := bytes.NewBuffer(v)
@@ -60,15 +59,24 @@ func (self *routeResultHandler) handleRouteResult(msg *channel2.Message) {
 			circuitId := string(msg.Body)
 			peerData := xt.PeerData{}
 			for k, v := range msg.Headers {
-				if k > 0 && k != ctrl_msg.RouteResultSuccessHeader && k != ctrl_msg.RouteResultErrorHeader && k != ctrl_msg.RouteResultAttemptHeader {
+				if k > 0 && (k < ctrl_msg.RouteResultSuccessHeader || k > ctrl_msg.RouteResultErrorCodeHeader) {
 					peerData[uint32(k)] = v
 				}
 			}
-			routing := self.network.RouteResult(self.r, circuitId, attempt, success, rerr, peerData)
+			errCode, _ := msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader)
+			rs := &network.RouteStatus{
+				Router:    self.r,
+				CircuitId: circuitId,
+				Attempt:   attempt,
+				Success:   success,
+				Err:       rerr,
+				PeerData:  peerData,
+				ErrorCode: errCode,
+			}
+			routing := self.network.RouteResult(rs)
 			if !routing && attempt != network.SmartRerouteAttempt {
 				go self.notRoutingCircuit(circuitId)
 			}
-
 		} else {
 			logrus.Errorf("error reading attempt number from route result (%v)", err)
 			return

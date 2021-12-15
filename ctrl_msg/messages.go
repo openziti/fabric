@@ -30,6 +30,12 @@ const (
 	RouteResultAttemptHeader    = 1101
 	RouteResultSuccessHeader    = 1102
 	RouteResultErrorHeader      = 1103
+	RouteResultErrorCodeHeader  = 1104
+
+	ErrorTypeGeneric           = 0
+	ErrorTypeInvalidTerminator = 1
+	ErrorTypeDialTimedOut      = 2
+	ErrorTypeConnectionRefused = 3
 )
 
 func NewCircuitSuccessMsg(sessionId, address string) *channel2.Message {
@@ -54,5 +60,13 @@ func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *ch
 	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
 	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
 	msg.Headers[RouteResultErrorHeader] = []byte(rerr)
+	return msg
+}
+
+func NewRouteResultDialFailedMessage(sessionId string, attempt int, rerr string, errType byte) *channel2.Message {
+	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
+	msg.PutStringHeader(RouteResultErrorHeader, rerr)
+	msg.PutByteHeader(RouteResultErrorCodeHeader, errType)
 	return msg
 }
