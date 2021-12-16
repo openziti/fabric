@@ -19,7 +19,6 @@ package handler_ctrl
 import (
 	"crypto/sha1"
 	"crypto/x509"
-	"errors"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
@@ -27,6 +26,7 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/pkg/errors"
 )
 
 type ConnectHandler struct {
@@ -44,7 +44,7 @@ func NewConnectHandler(identity identity.Identity, network *network.Network, xct
 }
 
 func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
-	log := pfxlog.ContextLogger(hello.IdToken)
+	log := pfxlog.Logger().WithField("routerId", hello.IdToken)
 
 	id := hello.IdToken
 
@@ -61,7 +61,7 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 			log.Debugf("%d): peer common name [%s]", i, c.Subject.CommonName)
 		}
 	} else {
-		log.Warnf("peer has no certificates")
+		log.Warn("peer has no certificates")
 	}
 	/* */
 
@@ -71,23 +71,27 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 		if router != nil {
 			name = router.Name
 		}
+		log.WithField("routerName", name).Error("router already connected")
 		return fmt.Errorf("router already connected id: %s, name: %s", id, name)
 	}
 
 	if r, err := self.network.GetRouter(id); err == nil {
 		if r.Fingerprint == nil {
-			return errors.New("router enrollment incomplete")
+			log.Error("router enrollment incomplete")
+			return errors.Errorf("router enrollment incomplete, routerId: %v", id)
 		}
 		if *r.Fingerprint != fingerprint {
-			return errors.New("unenrolled router")
+			log.WithField("fp", *r.Fingerprint).WithField("givenFp", fingerprint).Error("router fingerprint mismatch")
+			return errors.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprint: %v", id, fingerprint)
 		}
 	} else {
-		return errors.New("unenrolled router")
+		log.Error("unknown/unenrolled router")
+		return errors.Errorf("unknown/unenrolled router, routerId: %v", id)
 	}
 
 	// verify cert chain
 	if len(certificates) == 0 {
-		return errors.New("no certificates provided, unable to verify dialer")
+		return errors.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
 	}
 
 	config := self.identity.ServerTLSConfig()
