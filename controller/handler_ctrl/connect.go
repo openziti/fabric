@@ -44,16 +44,39 @@ func NewConnectHandler(identity identity.Identity, network *network.Network, xct
 }
 
 func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
-	log := pfxlog.Logger().WithField("routerId", hello.IdToken)
-
 	id := hello.IdToken
 
-	/*
-	 * Control channel connections dump the client-supplied certificate details. We'll
-	 * soon be using these certificates for router enrollment.
-	 */
+	// verify cert chain
+	if len(certificates) == 0 {
+		return errors.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
+	}
+
+	config := self.identity.ServerTLSConfig()
+
+	opts := x509.VerifyOptions{
+		Roots:         config.RootCAs,
+		Intermediates: x509.NewCertPool(),
+		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
+	}
+
+	var errorList errorz.MultipleErrors
+
+	for _, cert := range certificates {
+		if _, err := cert.Verify(opts); err == nil {
+			return nil
+		} else {
+			errorList = append(errorList, err)
+		}
+	}
+
+	if len(errorList) > 0 {
+		return errorList.ToError()
+	}
+
+	log := pfxlog.Logger().WithField("routerId", hello.IdToken)
+
 	fingerprint := ""
-	if certificates != nil {
+	if len(certificates) > 0 {
 		log.Debugf("peer has [%d] certificates", len(certificates))
 		for i, c := range certificates {
 			fingerprint = fmt.Sprintf("%x", sha1.Sum(c.Raw))
@@ -63,7 +86,6 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 	} else {
 		log.Warn("peer has no certificates")
 	}
-	/* */
 
 	if self.network.ConnectedRouter(id) {
 		router := self.network.GetConnectedRouter(id)
@@ -89,29 +111,5 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 		return errors.Errorf("unknown/unenrolled router, routerId: %v", id)
 	}
 
-	// verify cert chain
-	if len(certificates) == 0 {
-		return errors.Errorf("no certificates provided, unable to verify dialer, routerId: %v", id)
-	}
-
-	config := self.identity.ServerTLSConfig()
-
-	opts := x509.VerifyOptions{
-		Roots:         config.RootCAs,
-		Intermediates: x509.NewCertPool(),
-		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
-	}
-
-	var errorList errorz.MultipleErrors
-
-	for _, cert := range certificates {
-		if _, err := cert.Verify(opts); err == nil {
-			return nil
-		} else {
-			errorList = append(errorList, err)
-		}
-	}
-
-	//goland:noinspection GoNilness
-	return errorList.ToError()
+	return nil
 }
