@@ -59,32 +59,29 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
+	hasValidCert := false
 	var errorList errorz.MultipleErrors
 
 	for _, cert := range certificates {
 		if _, err := cert.Verify(opts); err == nil {
-			return nil
+			hasValidCert = true
 		} else {
 			errorList = append(errorList, err)
 		}
 	}
 
-	if len(errorList) > 0 {
+	if !hasValidCert && len(errorList) > 0 {
 		return errorList.ToError()
 	}
 
 	log := pfxlog.Logger().WithField("routerId", hello.IdToken)
 
 	fingerprint := ""
-	if len(certificates) > 0 {
-		log.Debugf("peer has [%d] certificates", len(certificates))
-		for i, c := range certificates {
-			fingerprint = fmt.Sprintf("%x", sha1.Sum(c.Raw))
-			log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
-			log.Debugf("%d): peer common name [%s]", i, c.Subject.CommonName)
-		}
-	} else {
-		log.Warn("peer has no certificates")
+	log.Debugf("peer has [%d] certificates", len(certificates))
+	for i, c := range certificates {
+		fingerprint = fmt.Sprintf("%x", sha1.Sum(c.Raw))
+		log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
+		log.Debugf("%d): peer common name [%s]", i, c.Subject.CommonName)
 	}
 
 	if self.network.ConnectedRouter(id) {
