@@ -26,7 +26,9 @@ import (
 	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/errorz"
+	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
+	log "github.com/sirupsen/logrus"
 )
 
 type ConnectHandler struct {
@@ -59,30 +61,27 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 		KeyUsages:     []x509.ExtKeyUsage{x509.ExtKeyUsageAny},
 	}
 
-	hasValidCert := false
+	var validFingerPrints []string
 	var errorList errorz.MultipleErrors
 
-	for _, cert := range certificates {
+	for i, cert := range certificates {
 		if _, err := cert.Verify(opts); err == nil {
-			hasValidCert = true
+			fingerprint := fmt.Sprintf("%x", sha1.Sum(cert.Raw))
+			validFingerPrints = append(validFingerPrints, fingerprint)
+			log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
+			log.Debugf("%d): peer common name [%s]", i, cert.Subject.CommonName)
 		} else {
 			errorList = append(errorList, err)
 		}
 	}
 
-	if !hasValidCert && len(errorList) > 0 {
+	if len(errorList) > 0 {
 		return errorList.ToError()
 	}
 
 	log := pfxlog.Logger().WithField("routerId", hello.IdToken)
 
-	fingerprint := ""
-	log.Debugf("peer has [%d] certificates", len(certificates))
-	for i, c := range certificates {
-		fingerprint = fmt.Sprintf("%x", sha1.Sum(c.Raw))
-		log.Debugf("%d): peer certificate fingerprint [%s]", i, fingerprint)
-		log.Debugf("%d): peer common name [%s]", i, c.Subject.CommonName)
-	}
+	log.Debugf("peer has [%d] valid certificates out of [%v] submitted", len(validFingerPrints), len(certificates))
 
 	if self.network.ConnectedRouter(id) {
 		router := self.network.GetConnectedRouter(id)
@@ -99,9 +98,9 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 			log.Error("router enrollment incomplete")
 			return errors.Errorf("router enrollment incomplete, routerId: %v", id)
 		}
-		if *r.Fingerprint != fingerprint {
-			log.WithField("fp", *r.Fingerprint).WithField("givenFp", fingerprint).Error("router fingerprint mismatch")
-			return errors.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprint: %v", id, fingerprint)
+		if !stringz.Contains(validFingerPrints, *r.Fingerprint) {
+			log.WithField("fp", *r.Fingerprint).WithField("givenFps", validFingerPrints).Error("router fingerprint mismatch")
+			return errors.Errorf("incorrect fingerprint/unenrolled router, routerId: %v, given fingerprints: %v", id, validFingerPrints)
 		}
 	} else {
 		log.Error("unknown/unenrolled router")
