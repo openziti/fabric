@@ -28,7 +28,6 @@ import (
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/stringz"
 	"github.com/pkg/errors"
-	log "github.com/sirupsen/logrus"
 )
 
 type ConnectHandler struct {
@@ -47,6 +46,8 @@ func NewConnectHandler(identity identity.Identity, network *network.Network, xct
 
 func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates []*x509.Certificate) error {
 	id := hello.IdToken
+
+	log := pfxlog.Logger().WithField("routerId", id)
 
 	// verify cert chain
 	if len(certificates) == 0 {
@@ -75,11 +76,9 @@ func (self *ConnectHandler) HandleConnection(hello *channel2.Hello, certificates
 		}
 	}
 
-	if len(errorList) > 0 {
+	if len(validFingerPrints) == 0 && len(errorList) > 0 {
 		return errorList.ToError()
 	}
-
-	log := pfxlog.Logger().WithField("routerId", hello.IdToken)
 
 	log.Debugf("peer has [%d] valid certificates out of [%v] submitted", len(validFingerPrints), len(certificates))
 
