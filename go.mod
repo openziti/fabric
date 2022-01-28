@@ -13,6 +13,7 @@ go 1.17
 require (
 	github.com/AppsFlyer/go-sundheit v0.4.0
 	github.com/Jeffail/gabs/v2 v2.6.1
+	github.com/andybalholm/brotli v1.0.4
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.12.0
 	github.com/go-resty/resty/v2 v2.7.0
