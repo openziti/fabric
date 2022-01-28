@@ -6,6 +6,8 @@ go 1.17
 
 //replace github.com/openziti/foundation => ../foundation
 
+//replace github.com/openziti/channel => ../channel
+
 //replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
@@ -19,6 +21,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.6.3
 	github.com/natefinch/lumberjack v2.0.0+incompatible
+	github.com/openziti/channel v0.17.1-0.20220127192458-59ffac7bb5d0
 	github.com/openziti/foundation v0.16.17
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
