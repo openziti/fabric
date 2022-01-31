@@ -21,7 +21,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/michaelquigley/pfxlog v0.6.3
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel v0.18.2
+	github.com/openziti/channel v0.18.3-0.20220131195247-7a717c4eb31c
 	github.com/openziti/foundation v0.16.18
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
