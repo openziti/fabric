@@ -22,7 +22,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.3
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.4
-	github.com/openziti/foundation v0.16.18
+	github.com/openziti/foundation v0.17.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
