@@ -22,13 +22,13 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.3
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.4
-	github.com/openziti/foundation v0.17.0
+	github.com/openziti/foundation v0.17.1
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.7.0
-	go.etcd.io/bbolt v1.3.5-0.20200615073812-232d8fc87f50
+	go.etcd.io/bbolt v1.3.6
 	google.golang.org/protobuf v1.27.1
 	gopkg.in/yaml.v2 v2.4.0
 )
