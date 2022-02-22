@@ -1492,6 +1492,7 @@ func init() {
       "type": "object",
       "required": [
         "name",
+        "fingerprint",
         "cost"
       ],
       "properties": {
@@ -1500,8 +1501,7 @@ func init() {
           "maximum": 65535
         },
         "fingerprint": {
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "name": {
           "type": "string"
@@ -5208,6 +5208,7 @@ func init() {
       "type": "object",
       "required": [
         "name",
+        "fingerprint",
         "cost"
       ],
       "properties": {
@@ -5217,8 +5218,7 @@ func init() {
           "minimum": 0
         },
         "fingerprint": {
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "name": {
           "type": "string"

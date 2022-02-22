@@ -1135,13 +1135,13 @@ definitions:
     type: object
     required:
       - name
+      - fingerprint
       - cost
     properties:
       name:
         type: string
       fingerprint:
         type: string
-        x-nullable: true
       cost:
         type: integer
         minimum: 0

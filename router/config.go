@@ -19,12 +19,6 @@ package router
 import (
 	"bytes"
 	"fmt"
-	"io"
-	"io/ioutil"
-	"os"
-	"sync/atomic"
-	"time"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
@@ -36,6 +30,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
+	"io"
+	"io/ioutil"
+	"os"
+	"sync/atomic"
+	"time"
 )
 
 const (

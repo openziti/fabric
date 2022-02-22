@@ -50,7 +50,8 @@ type RouterUpdate struct {
 	Cost *int64 `json:"cost"`
 
 	// fingerprint
-	Fingerprint *string `json:"fingerprint,omitempty"`
+	// Required: true
+	Fingerprint *string `json:"fingerprint"`
 
 	// name
 	// Required: true
@@ -65,6 +66,10 @@ func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
 	if err := m.validateCost(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateFingerprint(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -93,6 +98,15 @@ func (m *RouterUpdate) validateCost(formats strfmt.Registry) error {
 	}
 
 	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterUpdate) validateFingerprint(formats strfmt.Registry) error {
+
+	if err := validate.Required("fingerprint", "body", m.Fingerprint); err != nil {
 		return err
 	}
 

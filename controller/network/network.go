@@ -19,10 +19,6 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
@@ -45,6 +41,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
 )
 
 const SmartRerouteAttempt = 99969996
