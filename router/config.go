@@ -22,7 +22,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"strconv"
 	"sync/atomic"
 	"time"
 
@@ -122,7 +121,6 @@ type Config struct {
 		}
 	}
 	Plugins []string
-	Cost    uint16
 	src     map[interface{}]interface{}
 	path    string
 }
@@ -580,17 +578,6 @@ func LoadConfig(path string) (*Config, error) {
 		} else {
 			pfxlog.Logger().Warn("invalid plugins value")
 		}
-	}
-
-	if value, found := cfgmap["cost"]; found {
-		var (
-			val64 uint64
-			err   error
-		)
-		if val64, err = strconv.ParseUint(value.(string), 10, 16); err != nil {
-			return nil, errors.Wrap(err, "invalid value for cost")
-		}
-		cfg.Cost = uint16(val64)
 	}
 
 	return cfg, nil
