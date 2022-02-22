@@ -44,9 +44,10 @@ import (
 type RouterUpdate struct {
 
 	// cost
+	// Required: true
 	// Maximum: 65535
 	// Minimum: 0
-	Cost *int64 `json:"cost,omitempty"`
+	Cost *int64 `json:"cost"`
 
 	// fingerprint
 	Fingerprint *string `json:"fingerprint,omitempty"`
@@ -82,8 +83,9 @@ func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 }
 
 func (m *RouterUpdate) validateCost(formats strfmt.Registry) error {
-	if swag.IsZero(m.Cost) { // not required
-		return nil
+
+	if err := validate.Required("cost", "body", m.Cost); err != nil {
+		return err
 	}
 
 	if err := validate.MinimumInt("cost", "body", *m.Cost, 0, false); err != nil {

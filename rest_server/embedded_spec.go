@@ -1491,13 +1491,13 @@ func init() {
     "routerUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "cost"
       ],
       "properties": {
         "cost": {
           "type": "integer",
-          "maximum": 65535,
-          "x-nullable": true
+          "maximum": 65535
         },
         "fingerprint": {
           "type": "string",
@@ -5207,14 +5207,14 @@ func init() {
     "routerUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "cost"
       ],
       "properties": {
         "cost": {
           "type": "integer",
           "maximum": 65535,
-          "minimum": 0,
-          "x-nullable": true
+          "minimum": 0
         },
         "fingerprint": {
           "type": "string",

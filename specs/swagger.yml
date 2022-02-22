@@ -1135,6 +1135,7 @@ definitions:
     type: object
     required:
       - name
+      - cost
     properties:
       name:
         type: string
@@ -1145,7 +1146,6 @@ definitions:
         type: integer
         minimum: 0
         maximum: 65535
-        x-nullable: true
       tags:
         $ref: '#/definitions/tags'
   routerPatch:

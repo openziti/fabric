@@ -53,10 +53,6 @@ func (entity *Router) GetEntityType() string {
 	return EntityTypeRouters
 }
 
-func (entity *Router) GetPriority() uint16 {
-	return entity.Cost
-}
-
 type RouterStore interface {
 	boltz.CrudStore
 	GetNameIndex() boltz.ReadIndex
