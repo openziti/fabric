@@ -19,7 +19,6 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/db"
