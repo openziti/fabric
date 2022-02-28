@@ -45,7 +45,7 @@ type testEntityHelper struct {
 }
 
 func (self *testEntityHelper) addTestRouter() *Router {
-	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0)
+	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0, true)
 	self.network.Routers.markConnected(router)
 	self.routerIdx++
 	return router

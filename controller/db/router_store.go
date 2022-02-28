@@ -23,16 +23,18 @@ import (
 )
 
 const (
-	EntityTypeRouters      = "routers"
-	FieldRouterFingerprint = "fingerprint"
-	FieldRouterCost        = "cost"
+	EntityTypeRouters         = "routers"
+	FieldRouterFingerprint    = "fingerprint"
+	FieldRouterCost           = "cost"
+	FieldRouterAllowTraversal = "allowTraversal"
 )
 
 type Router struct {
 	boltz.BaseExtEntity
-	Name        string
-	Fingerprint *string
-	Cost        uint16
+	Name           string
+	Fingerprint    *string
+	Cost           uint16
+	AllowTraversal bool
 }
 
 func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
@@ -40,6 +42,7 @@ func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
+	entity.AllowTraversal = bucket.GetBoolWithDefault(FieldRouterAllowTraversal, true)
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
@@ -47,6 +50,7 @@ func (entity *Router) SetValues(ctx *boltz.PersistContext) {
 	ctx.SetString(FieldName, entity.Name)
 	ctx.SetStringP(FieldRouterFingerprint, entity.Fingerprint)
 	ctx.SetInt32(FieldRouterCost, int32(entity.Cost))
+	ctx.SetBool(FieldRouterAllowTraversal, entity.AllowTraversal)
 }
 
 func (entity *Router) GetEntityType() string {

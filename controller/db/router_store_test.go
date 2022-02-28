@@ -45,8 +45,9 @@ func (ctx *TestContext) testCreateInvalidRouters(t *testing.T) {
 	defer ctx.cleanupAll()
 
 	router := &Router{
-		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
-		Name:          uuid.New().String(),
+		BaseExtEntity:  boltz.BaseExtEntity{Id: uuid.New().String()},
+		Name:           uuid.New().String(),
+		AllowTraversal: true,
 	}
 
 	ctx.RequireCreate(router)

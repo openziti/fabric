@@ -43,6 +43,10 @@ import (
 // swagger:model routerUpdate
 type RouterUpdate struct {
 
+	// allow traversal
+	// Required: true
+	AllowTraversal *bool `json:"allowTraversal"`
+
 	// cost
 	// Required: true
 	// Maximum: 65535
@@ -65,6 +69,10 @@ type RouterUpdate struct {
 func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
 
+	if err := m.validateAllowTraversal(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateCost(formats); err != nil {
 		res = append(res, err)
 	}
@@ -84,6 +92,15 @@ func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
+	return nil
+}
+
+func (m *RouterUpdate) validateAllowTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("allowTraversal", "body", m.AllowTraversal); err != nil {
+		return err
+	}
+
 	return nil
 }
 

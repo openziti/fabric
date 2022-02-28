@@ -1402,9 +1402,13 @@ func init() {
       "required": [
         "id",
         "name",
-        "cost"
+        "cost",
+        "allowTraversal"
       ],
       "properties": {
+        "allowTraversal": {
+          "type": "boolean"
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535
@@ -1436,9 +1440,13 @@ func init() {
             "name",
             "fingerprint",
             "connected",
-            "cost"
+            "cost",
+            "allowTraversal"
           ],
           "properties": {
+            "allowTraversal": {
+              "type": "boolean"
+            },
             "connected": {
               "type": "boolean"
             },
@@ -1471,6 +1479,10 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "allowTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -1493,9 +1505,13 @@ func init() {
       "required": [
         "name",
         "fingerprint",
-        "cost"
+        "cost",
+        "allowTraversal"
       ],
       "properties": {
+        "allowTraversal": {
+          "type": "boolean"
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535
@@ -5115,9 +5131,13 @@ func init() {
       "required": [
         "id",
         "name",
-        "cost"
+        "cost",
+        "allowTraversal"
       ],
       "properties": {
+        "allowTraversal": {
+          "type": "boolean"
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -5150,9 +5170,13 @@ func init() {
             "name",
             "fingerprint",
             "connected",
-            "cost"
+            "cost",
+            "allowTraversal"
           ],
           "properties": {
+            "allowTraversal": {
+              "type": "boolean"
+            },
             "connected": {
               "type": "boolean"
             },
@@ -5186,6 +5210,10 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "allowTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -5209,9 +5237,13 @@ func init() {
       "required": [
         "name",
         "fingerprint",
-        "cost"
+        "cost",
+        "allowTraversal"
       ],
       "properties": {
+        "allowTraversal": {
+          "type": "boolean"
+        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
