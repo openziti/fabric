@@ -42,7 +42,7 @@ func (entity *Router) LoadValues(_ boltz.CrudStore, bucket *boltz.TypedBucket) {
 	entity.Name = bucket.GetStringOrError(FieldName)
 	entity.Fingerprint = bucket.GetString(FieldRouterFingerprint)
 	entity.Cost = uint16(bucket.GetInt32WithDefault(FieldRouterCost, 0))
-	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, true)
+	entity.NoTraversal = bucket.GetBoolWithDefault(FieldRouterNoTraversal, false)
 }
 
 func (entity *Router) SetValues(ctx *boltz.PersistContext) {
