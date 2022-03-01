@@ -1403,12 +1403,9 @@ func init() {
         "id",
         "name",
         "cost",
-        "allowTraversal"
+        "noTraversal"
       ],
       "properties": {
-        "allowTraversal": {
-          "type": "boolean"
-        },
         "cost": {
           "type": "integer",
           "maximum": 65535
@@ -1422,6 +1419,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -1441,12 +1441,9 @@ func init() {
             "fingerprint",
             "connected",
             "cost",
-            "allowTraversal"
+            "noTraversal"
           ],
           "properties": {
-            "allowTraversal": {
-              "type": "boolean"
-            },
             "connected": {
               "type": "boolean"
             },
@@ -1462,6 +1459,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -1479,10 +1479,6 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
-        "allowTraversal": {
-          "type": "boolean",
-          "x-nullable": true
-        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -1495,6 +1491,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -1506,12 +1506,9 @@ func init() {
         "name",
         "fingerprint",
         "cost",
-        "allowTraversal"
+        "noTraversal"
       ],
       "properties": {
-        "allowTraversal": {
-          "type": "boolean"
-        },
         "cost": {
           "type": "integer",
           "maximum": 65535
@@ -1521,6 +1518,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5132,12 +5132,9 @@ func init() {
         "id",
         "name",
         "cost",
-        "allowTraversal"
+        "noTraversal"
       ],
       "properties": {
-        "allowTraversal": {
-          "type": "boolean"
-        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -5152,6 +5149,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5171,12 +5171,9 @@ func init() {
             "fingerprint",
             "connected",
             "cost",
-            "allowTraversal"
+            "noTraversal"
           ],
           "properties": {
-            "allowTraversal": {
-              "type": "boolean"
-            },
             "connected": {
               "type": "boolean"
             },
@@ -5194,6 +5191,9 @@ func init() {
             "name": {
               "type": "string"
             },
+            "noTraversal": {
+              "type": "boolean"
+            },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
             }
@@ -5210,10 +5210,6 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
-        "allowTraversal": {
-          "type": "boolean",
-          "x-nullable": true
-        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -5227,6 +5223,10 @@ func init() {
         "name": {
           "type": "string"
         },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
+        },
         "tags": {
           "$ref": "#/definitions/tags"
         }
@@ -5238,12 +5238,9 @@ func init() {
         "name",
         "fingerprint",
         "cost",
-        "allowTraversal"
+        "noTraversal"
       ],
       "properties": {
-        "allowTraversal": {
-          "type": "boolean"
-        },
         "cost": {
           "type": "integer",
           "maximum": 65535,
@@ -5254,6 +5251,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"

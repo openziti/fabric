@@ -44,10 +44,10 @@ func TestSimplePath2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, true)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, true)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r1)
 
 	l0 := newLink("l0")
@@ -107,13 +107,13 @@ func TestTransitPath2(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	assert.Nil(t, err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, true)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, true)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 0, true)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 0, false)
 	network.Routers.markConnected(r2)
 
 	l0 := newLink("l0")
@@ -177,13 +177,13 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, path.EgressId, rm2.Forwards[1].DstAddress)
 }
 
-func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, allowTraversal bool) *Router {
+func newRouterForTest(id string, fingerprint string, advLstnr transport.Address, ctrl channel.Channel, cost uint16, noTraversal bool) *Router {
 	r := &Router{
-		BaseEntity:     models.BaseEntity{Id: id},
-		Fingerprint:    &fingerprint,
-		Control:        ctrl,
-		Cost:           cost,
-		AllowTraversal: allowTraversal,
+		BaseEntity:  models.BaseEntity{Id: id},
+		Fingerprint: &fingerprint,
+		Control:     ctrl,
+		Cost:        cost,
+		NoTraversal: noTraversal,
 	}
 	if advLstnr != nil {
 		r.AdvertisedListener = advLstnr.String()
@@ -244,16 +244,16 @@ func TestShortestPath(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, true)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
 	network.Routers.markConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, true)
+	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
 	network.Routers.markConnected(r3)
 
 	link := newLink("l0")
@@ -320,16 +320,16 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, true)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
 	network.Routers.markConnected(r2)
 
-	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, true)
+	r3 := newRouterForTest("r3", "", transportAddr, nil, 4, false)
 	network.Routers.markConnected(r3)
 
 	link := newLink("l0")
@@ -396,10 +396,10 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r1)
 
 	link := newLink("l0")
@@ -438,10 +438,10 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r1)
 
 	link := newLink("l0")
@@ -480,13 +480,13 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, false)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 3, true)
 	network.Routers.markConnected(r2)
 
 	link := newLink("l0")
@@ -536,13 +536,13 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	transportAddr, err := tcp.AddressParser{}.Parse(addr)
 	req.NoError(err)
 
-	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, false)
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
 	network.Routers.markConnected(r0)
 
-	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r1)
 
-	r2 := newRouterForTest("r2", "", transportAddr, nil, 2, false)
+	r2 := newRouterForTest("r2", "", transportAddr, nil, 2, true)
 	network.Routers.markConnected(r2)
 
 	link := newLink("l0")

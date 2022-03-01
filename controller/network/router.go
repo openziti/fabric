@@ -43,7 +43,7 @@ type Router struct {
 	VersionInfo        *common.VersionInfo
 	routerLinks        RouterLinks
 	Cost               uint16
-	AllowTraversal     bool
+	NoTraversal        bool
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -54,31 +54,31 @@ func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entit
 	entity.Name = boltRouter.Name
 	entity.Fingerprint = boltRouter.Fingerprint
 	entity.Cost = boltRouter.Cost
-	entity.AllowTraversal = boltRouter.AllowTraversal
+	entity.NoTraversal = boltRouter.NoTraversal
 	entity.FillCommon(boltRouter)
 	return nil
 }
 
 func (entity *Router) toBolt() boltz.Entity {
 	return &db.Router{
-		BaseExtEntity:  *boltz.NewExtEntity(entity.Id, entity.Tags),
-		Name:           entity.Name,
-		Fingerprint:    entity.Fingerprint,
-		Cost:           entity.Cost,
-		AllowTraversal: entity.AllowTraversal,
+		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
+		Name:          entity.Name,
+		Fingerprint:   entity.Fingerprint,
+		Cost:          entity.Cost,
+		NoTraversal:   entity.NoTraversal,
 	}
 }
 
-func NewRouter(id, name, fingerprint string, cost uint16, allowTraversal bool) *Router {
+func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
 	if name == "" {
 		name = id
 	}
 	result := &Router{
-		BaseEntity:     models.BaseEntity{Id: id},
-		Name:           name,
-		Fingerprint:    &fingerprint,
-		Cost:           cost,
-		AllowTraversal: allowTraversal,
+		BaseEntity:  models.BaseEntity{Id: id},
+		Name:        name,
+		Fingerprint: &fingerprint,
+		Cost:        cost,
+		NoTraversal: noTraversal,
 	}
 	result.routerLinks.allLinks.Store([]*Link{})
 	result.routerLinks.linkByRouter.Store(map[string][]*Link{})
@@ -325,7 +325,7 @@ func (ctrl *RouterController) UpdateCachedRouter(id string) {
 				cached.Name = router.Name
 				cached.Fingerprint = router.Fingerprint
 				cached.Cost = router.Cost
-				cached.AllowTraversal = router.AllowTraversal
+				cached.NoTraversal = router.NoTraversal
 			} else {
 				log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
 			}

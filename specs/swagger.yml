@@ -1096,7 +1096,7 @@ definitions:
           - fingerprint
           - connected
           - cost
-          - allowTraversal
+          - noTraversal
         properties:
           name:
             type: string
@@ -1108,7 +1108,7 @@ definitions:
             type: integer
             minimum: 0
             maximum: 65535
-          allowTraversal:
+          noTraversal:
             type: boolean
           listenerAddress:
             type: string
@@ -1120,7 +1120,7 @@ definitions:
       - id
       - name
       - cost
-      - allowTraversal
+      - noTraversal
     properties:
       id:
         type: string
@@ -1133,7 +1133,7 @@ definitions:
         type: integer
         minimum: 0
         maximum: 65535
-      allowTraversal:
+      noTraversal:
         type: boolean
       tags:
         $ref: '#/definitions/tags'
@@ -1143,7 +1143,7 @@ definitions:
       - name
       - fingerprint
       - cost
-      - allowTraversal
+      - noTraversal
     properties:
       name:
         type: string
@@ -1153,7 +1153,7 @@ definitions:
         type: integer
         minimum: 0
         maximum: 65535
-      allowTraversal:
+      noTraversal:
         type: boolean
       tags:
         $ref: '#/definitions/tags'
@@ -1170,7 +1170,7 @@ definitions:
         minimum: 0
         maximum: 65535
         x-nullable: true
-      allowTraversal:
+      noTraversal:
         type: boolean
         x-nullable: true
       tags:

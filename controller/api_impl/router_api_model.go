@@ -55,10 +55,10 @@ func MapCreateRouterToModel(router *rest_model.RouterCreate) *network.Router {
 			Id:   stringz.OrEmpty(router.ID),
 			Tags: TagsOrDefault(router.Tags),
 		},
-		Name:           stringz.OrEmpty(router.Name),
-		Fingerprint:    router.Fingerprint,
-		Cost:           uint16(Int64OrDefault(router.Cost)),
-		AllowTraversal: BoolOrDefault(router.AllowTraversal),
+		Name:        stringz.OrEmpty(router.Name),
+		Fingerprint: router.Fingerprint,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
+		NoTraversal: BoolOrDefault(router.NoTraversal),
 	}
 
 	return ret
@@ -70,10 +70,10 @@ func MapUpdateRouterToModel(id string, router *rest_model.RouterUpdate) *network
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:           stringz.OrEmpty(router.Name),
-		Fingerprint:    router.Fingerprint,
-		Cost:           uint16(Int64OrDefault(router.Cost)),
-		AllowTraversal: BoolOrDefault(router.AllowTraversal),
+		Name:        stringz.OrEmpty(router.Name),
+		Fingerprint: router.Fingerprint,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
+		NoTraversal: BoolOrDefault(router.NoTraversal),
 	}
 
 	return ret
@@ -85,10 +85,10 @@ func MapPatchRouterToModel(id string, router *rest_model.RouterPatch) *network.R
 			Tags: TagsOrDefault(router.Tags),
 			Id:   id,
 		},
-		Name:           router.Name,
-		Fingerprint:    router.Fingerprint,
-		Cost:           uint16(Int64OrDefault(router.Cost)),
-		AllowTraversal: BoolOrDefault(router.AllowTraversal),
+		Name:        router.Name,
+		Fingerprint: router.Fingerprint,
+		Cost:        uint16(Int64OrDefault(router.Cost)),
+		NoTraversal: BoolOrDefault(router.NoTraversal),
 	}
 
 	return ret
@@ -132,13 +132,13 @@ func MapRouterToRestModel(n *network.Network, _ api.RequestContext, router *netw
 	isConnected := connected != nil
 	cost := int64(router.Cost)
 	ret := &rest_model.RouterDetail{
-		BaseEntity:     BaseEntityToRestModel(router, RouterLinkFactory),
-		Fingerprint:    router.Fingerprint,
-		Name:           &router.Name,
-		Connected:      &isConnected,
-		VersionInfo:    restVersionInfo,
-		Cost:           &cost,
-		AllowTraversal: &router.AllowTraversal,
+		BaseEntity:  BaseEntityToRestModel(router, RouterLinkFactory),
+		Fingerprint: router.Fingerprint,
+		Name:        &router.Name,
+		Connected:   &isConnected,
+		VersionInfo: restVersionInfo,
+		Cost:        &cost,
+		NoTraversal: &router.NoTraversal,
 	}
 
 	return ret, nil

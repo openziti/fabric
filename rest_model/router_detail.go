@@ -44,10 +44,6 @@ import (
 type RouterDetail struct {
 	BaseEntity
 
-	// allow traversal
-	// Required: true
-	AllowTraversal *bool `json:"allowTraversal"`
-
 	// connected
 	// Required: true
 	Connected *bool `json:"connected"`
@@ -69,6 +65,10 @@ type RouterDetail struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	// Required: true
+	NoTraversal *bool `json:"noTraversal"`
+
 	// version info
 	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 }
@@ -84,8 +84,6 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 	// AO1
 	var dataAO1 struct {
-		AllowTraversal *bool `json:"allowTraversal"`
-
 		Connected *bool `json:"connected"`
 
 		Cost *int64 `json:"cost"`
@@ -96,13 +94,13 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 	if err := swag.ReadJSON(raw, &dataAO1); err != nil {
 		return err
 	}
-
-	m.AllowTraversal = dataAO1.AllowTraversal
 
 	m.Connected = dataAO1.Connected
 
@@ -113,6 +111,8 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	m.ListenerAddress = dataAO1.ListenerAddress
 
 	m.Name = dataAO1.Name
+
+	m.NoTraversal = dataAO1.NoTraversal
 
 	m.VersionInfo = dataAO1.VersionInfo
 
@@ -129,8 +129,6 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	}
 	_parts = append(_parts, aO0)
 	var dataAO1 struct {
-		AllowTraversal *bool `json:"allowTraversal"`
-
 		Connected *bool `json:"connected"`
 
 		Cost *int64 `json:"cost"`
@@ -141,10 +139,10 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
-
-	dataAO1.AllowTraversal = m.AllowTraversal
 
 	dataAO1.Connected = m.Connected
 
@@ -155,6 +153,8 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	dataAO1.ListenerAddress = m.ListenerAddress
 
 	dataAO1.Name = m.Name
+
+	dataAO1.NoTraversal = m.NoTraversal
 
 	dataAO1.VersionInfo = m.VersionInfo
 
@@ -175,10 +175,6 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
-	if err := m.validateAllowTraversal(formats); err != nil {
-		res = append(res, err)
-	}
-
 	if err := m.validateConnected(formats); err != nil {
 		res = append(res, err)
 	}
@@ -195,6 +191,10 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateNoTraversal(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateVersionInfo(formats); err != nil {
 		res = append(res, err)
 	}
@@ -202,15 +202,6 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *RouterDetail) validateAllowTraversal(formats strfmt.Registry) error {
-
-	if err := validate.Required("allowTraversal", "body", m.AllowTraversal); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -252,6 +243,15 @@ func (m *RouterDetail) validateFingerprint(formats strfmt.Registry) error {
 func (m *RouterDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterDetail) validateNoTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("noTraversal", "body", m.NoTraversal); err != nil {
 		return err
 	}
 

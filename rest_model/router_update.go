@@ -43,10 +43,6 @@ import (
 // swagger:model routerUpdate
 type RouterUpdate struct {
 
-	// allow traversal
-	// Required: true
-	AllowTraversal *bool `json:"allowTraversal"`
-
 	// cost
 	// Required: true
 	// Maximum: 65535
@@ -61,6 +57,10 @@ type RouterUpdate struct {
 	// Required: true
 	Name *string `json:"name"`
 
+	// no traversal
+	// Required: true
+	NoTraversal *bool `json:"noTraversal"`
+
 	// tags
 	Tags *Tags `json:"tags,omitempty"`
 }
@@ -68,10 +68,6 @@ type RouterUpdate struct {
 // Validate validates this router update
 func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 	var res []error
-
-	if err := m.validateAllowTraversal(formats); err != nil {
-		res = append(res, err)
-	}
 
 	if err := m.validateCost(formats); err != nil {
 		res = append(res, err)
@@ -85,6 +81,10 @@ func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateNoTraversal(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateTags(formats); err != nil {
 		res = append(res, err)
 	}
@@ -92,15 +92,6 @@ func (m *RouterUpdate) Validate(formats strfmt.Registry) error {
 	if len(res) > 0 {
 		return errors.CompositeValidationError(res...)
 	}
-	return nil
-}
-
-func (m *RouterUpdate) validateAllowTraversal(formats strfmt.Registry) error {
-
-	if err := validate.Required("allowTraversal", "body", m.AllowTraversal); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -133,6 +124,15 @@ func (m *RouterUpdate) validateFingerprint(formats strfmt.Registry) error {
 func (m *RouterUpdate) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterUpdate) validateNoTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("noTraversal", "body", m.NoTraversal); err != nil {
 		return err
 	}
 

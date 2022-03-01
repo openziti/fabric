@@ -43,9 +43,6 @@ import (
 // swagger:model routerPatch
 type RouterPatch struct {
 
-	// allow traversal
-	AllowTraversal *bool `json:"allowTraversal,omitempty"`
-
 	// cost
 	// Maximum: 65535
 	// Minimum: 0
@@ -56,6 +53,9 @@ type RouterPatch struct {
 
 	// name
 	Name string `json:"name,omitempty"`
+
+	// no traversal
+	NoTraversal *bool `json:"noTraversal,omitempty"`
 
 	// tags
 	Tags *Tags `json:"tags,omitempty"`
