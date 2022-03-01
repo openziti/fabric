@@ -379,3 +379,42 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 		25 + 26 + 13 + 4 // link3 cost and src and dest latency plus dest router cost
 	req.Equal(int64(expected), cost)
 }
+
+func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
+	ctx := db.NewTestContext(t)
+	defer ctx.Cleanup()
+
+	req := assert.New(t)
+
+	closeNotify := make(chan struct{})
+	defer close(closeNotify)
+
+	network, err := NewNetwork("test", nil, ctx.GetDb(), nil, NewVersionProviderTest(), closeNotify)
+	req.NoError(err)
+
+	addr := "tcp:0.0.0.0:0"
+	transportAddr, err := tcp.AddressParser{}.Parse(addr)
+	req.NoError(err)
+
+	r0 := newRouterForTest("r0", "", transportAddr, nil, 1, true)
+	network.Routers.markConnected(r0)
+
+	r1 := newRouterForTest("r1", "", transportAddr, nil, 2, false)
+	network.Routers.markConnected(r1)
+
+	link := newLink("l0")
+	link.SetStaticCost(2)
+	link.SetDstLatency(10 * 1_000_000)
+	link.SetSrcLatency(11 * 1_000_000)
+	link.Src = r0
+	link.Dst = r1
+	link.addState(newLinkState(Connected))
+	network.linkController.add(link)
+
+	path, cost, err := network.shortestPath(r0, r1)
+	req.Error(err)
+	req.NotNil(t, path)
+	req.Len(path, 0)
+
+	req.Equal(int64(0), cost)
+}
