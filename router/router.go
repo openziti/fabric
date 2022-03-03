@@ -26,8 +26,10 @@ import (
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/health"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/handler_ctrl"
@@ -41,9 +43,7 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/router/xlink_transport"
 	"github.com/openziti/fabric/xweb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/event"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/profiler"
 	"github.com/openziti/foundation/util/concurrenz"
@@ -59,10 +59,7 @@ import (
 
 type Router struct {
 	config          *Config
-	ctrl            channel2.Channel
-	ctrlOptions     *channel2.Options
-	linkOptions     *channel2.Options
-	linkListener    channel2.UnderlayListener
+	ctrl            channel.Channel
 	faulter         *forwarder.Faulter
 	scanner         *forwarder.Scanner
 	forwarder       *forwarder.Forwarder
@@ -76,7 +73,6 @@ type Router struct {
 	shutdownC       chan struct{}
 	shutdownDoneC   chan struct{}
 	isShutdown      concurrenz.AtomicBoolean
-	eventDispatcher event.Dispatcher
 	metricsReporter metrics.Handler
 	versionProvider common.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
@@ -89,7 +85,7 @@ func (self *Router) MetricsRegistry() metrics.UsageRegistry {
 	return self.metricsRegistry
 }
 
-func (self *Router) Channel() channel2.Channel {
+func (self *Router) Channel() channel.Channel {
 	// if we're just starting up, we may be nil. wait till initialized
 	// The initial control channel connect has a timeout, so if that timeouts the process will exit
 	// Once connected the control channel will never get set back to nil. Reconnects happen under the hood
@@ -106,7 +102,6 @@ func (self *Router) DefaultRequestTimeout() time.Duration {
 func Create(config *Config, versionProvider common.VersionProvider) *Router {
 	closeNotify := make(chan struct{})
 
-	eventDispatcher := event.NewDispatcher(closeNotify)
 	metricsRegistry := metrics.NewUsageRegistry(config.Id.Token, map[string]string{}, closeNotify)
 	xgress.InitMetrics(metricsRegistry)
 
@@ -126,7 +121,6 @@ func Create(config *Config, versionProvider common.VersionProvider) *Router {
 		metricsRegistry:     metricsRegistry,
 		shutdownC:           closeNotify,
 		shutdownDoneC:       make(chan struct{}),
-		eventDispatcher:     eventDispatcher,
 		versionProvider:     versionProvider,
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
@@ -272,7 +266,7 @@ func (self *Router) startProfiling() {
 func (self *Router) registerComponents() error {
 	self.xlinkFactories = make(map[string]xlink.Factory)
 	xlinkAccepter := newXlinkAccepter(self.forwarder)
-	xlinkChAccepter := handler_link.NewChannelAccepter(self,
+	xlinkChAccepter := handler_link.NewBindHandlerFactory(self,
 		self.forwarder,
 		self.config.Forwarder,
 		self.metricsRegistry,
@@ -383,10 +377,10 @@ func (self *Router) startControlPlane() error {
 		return fmt.Errorf("error with version header information value: %v", err)
 	}
 
-	attributes[channel2.HelloVersionHeader] = version
+	attributes[channel.HelloVersionHeader] = version
 
 	if len(self.xlinkListeners) == 1 {
-		attributes[channel2.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
+		attributes[channel.HelloRouterAdvertisementsHeader] = []byte(self.xlinkListeners[0].GetAdvertisement())
 	}
 
 	reconnectHandler := func() {
@@ -395,7 +389,7 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	dialer := channel2.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
+	dialer := channel.NewReconnectingDialerWithHandler(self.config.Id, self.config.Ctrl.Endpoint, attributes, reconnectHandler)
 
 	bindHandler := handler_ctrl.NewBindHandler(
 		self.config.Id,
@@ -404,12 +398,12 @@ func (self *Router) startControlPlane() error {
 		self,
 		self.forwarder,
 		self.xctrls,
+		self.config,
+		self.config.Trace.Handler,
 		self.shutdownC,
 	)
 
-	self.config.Ctrl.Options.BindHandlers = append(self.config.Ctrl.Options.BindHandlers, bindHandler)
-
-	ch, err := channel2.NewChannel("ctrl", dialer, self.config.Ctrl.Options)
+	ch, err := channel.NewChannel("ctrl", dialer, bindHandler, self.config.Ctrl.Options)
 	if err != nil {
 		return fmt.Errorf("error connecting ctrl (%v)", err)
 	}
@@ -425,7 +419,7 @@ func (self *Router) startControlPlane() error {
 		}
 	}
 
-	self.metricsReporter = metrics.NewChannelReporter(self.ctrl)
+	self.metricsReporter = fabricMetrics.NewChannelReporter(self.ctrl)
 	self.metricsRegistry.StartReporting(self.metricsReporter, self.config.Metrics.ReportInterval, self.config.Metrics.MessageQueueSize)
 
 	return nil
@@ -590,12 +584,12 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 		return errors.Errorf("control channel not yet established")
 	}
 
-	msg := channel2.NewMessage(channel2.ContentTypePingType, nil)
+	msg := channel.NewMessage(channel.ContentTypePingType, nil)
 	deadline, ok := ctx.Deadline()
 	if !ok {
 		deadline = time.Now().Add(30 * time.Second)
 	}
 	timeout := deadline.Sub(time.Now())
-	_, err := self.router.ctrl.SendAndWaitWithTimeout(msg, timeout)
+	_, err := msg.WithTimeout(timeout).SendForReply(self.router.ctrl)
 	return err
 }

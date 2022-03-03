@@ -20,12 +20,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/handler_ctrl"
 	"github.com/openziti/fabric/controller/handler_mgmt"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xctrl"
-	"github.com/openziti/fabric/controller/xctrl_example"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_random"
@@ -33,8 +33,8 @@ import (
 	"github.com/openziti/fabric/controller/xt_weighted"
 	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/health"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/xweb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/profiler"
@@ -53,8 +53,8 @@ type Controller struct {
 	xwebs               []xweb.Xweb
 	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
 
-	ctrlListener channel2.UnderlayListener
-	mgmtListener channel2.UnderlayListener
+	ctrlListener channel.UnderlayListener
+	mgmtListener channel.UnderlayListener
 
 	shutdownC  chan struct{}
 	isShutdown concurrenz.AtomicBoolean
@@ -78,6 +78,15 @@ func NewController(cfg *Config, versionProvider common.VersionProvider) (*Contro
 
 	events.InitTerminatorEventRouter(c.network)
 	events.InitRouterEventRouter(c.network)
+
+	if cfg.Ctrl.Options.NewListener != nil {
+		c.network.AddRouterPresenceHandler(&OnConnectSettingsHandler{
+			config: cfg,
+			settings: map[int32][]byte{
+				int32(ctrl_pb.SettingTypes_NewCtrlAddress): []byte((*cfg.Ctrl.Options.NewListener).String()),
+			},
+		})
+	}
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
@@ -116,30 +125,31 @@ func (c *Controller) Run() error {
 		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
 	}
 	headers := map[int32][]byte{
-		channel2.HelloVersionHeader: versionHeader,
+		channel.HelloVersionHeader: versionHeader,
 	}
 
 	/**
 	 * ctrl listener/accepter.
 	 */
-	ctrlListener := channel2.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions, headers)
+	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, c.config.Ctrl.Options.ConnectOptions, headers)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
 		panic(err)
 	}
-	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options)
+
+	ctrlAccepter := handler_ctrl.NewCtrlAccepter(c.network, c.xctrls, c.ctrlListener, c.config.Ctrl.Options.Options, c.config.Trace.Handler)
 	go ctrlAccepter.Run()
 	/* */
 
 	/**
 	 * mgmt listener/accepter.
 	 */
-	mgmtListener := channel2.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions, headers)
+	mgmtListener := channel.NewClassicListener(c.config.Id, c.config.Mgmt.Listener, c.config.Mgmt.Options.ConnectOptions, headers)
 	c.mgmtListener = mgmtListener
 	if err := c.mgmtListener.Listen(c.mgmtConnectHandler); err != nil {
 		panic(err)
 	}
-	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.mgmtListener, c.config.Mgmt.Options)
+	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.network, c.xmgmts, c.mgmtListener, c.config.Mgmt.Options)
 	go mgmtAccepter.Run()
 
 	/*
@@ -242,12 +252,6 @@ func (c *Controller) registerXts() {
 func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network, c.xctrls)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
-
-	c.config.Mgmt.Options.BindHandlers = []channel2.BindHandler{handler_mgmt.NewBindHandler(c.network, c.xmgmts)}
-
-	if err := c.RegisterXctrl(xctrl_example.NewExample()); err != nil {
-		return err
-	}
 
 	//add default REST XWeb
 	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {

@@ -17,8 +17,8 @@
 package trace
 
 import (
-	"github.com/openziti/foundation/event"
-	"github.com/openziti/foundation/trace/pb"
+	"github.com/openziti/channel/trace/pb"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/util/cowslice"
 )
 

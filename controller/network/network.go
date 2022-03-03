@@ -19,18 +19,17 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/ctrl_msg"
+	"github.com/openziti/fabric/event"
 	"github.com/openziti/fabric/logcontext"
+	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/event"
-	"github.com/openziti/foundation/events"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
@@ -116,8 +115,8 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 
 	network.Controllers.Inspections.network = network
 
-	metrics.Init(metricsCfg)
-	events.AddMetricsEventHandler(network)
+	fabricMetrics.InitMetricHandlers(metricsCfg)
+	fabricMetrics.AddMetricsEventHandler(network)
 	network.AddCapability("ziti.fabric")
 	network.showOptions()
 	network.relayControllerMetrics(metricsCfg)
@@ -133,7 +132,7 @@ func (network *Network) relayControllerMetrics(cfg *metrics.Config) {
 		timer := time.NewTicker(reportInterval)
 		defer timer.Stop()
 
-		dispatcher := metrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
+		dispatcher := fabricMetrics.NewDispatchWrapper(network.eventDispatcher.Dispatch)
 		for {
 			select {
 			case <-timer.C:
@@ -254,8 +253,9 @@ func (network *Network) ConnectRouter(r *Router) {
 	network.routerChanged <- r
 
 	for _, h := range network.routerPresenceHandlers {
-		h.RouterConnected(r)
+		go h.RouterConnected(r)
 	}
+	go network.ValidateTerminators(r)
 }
 
 func (network *Network) ValidateTerminators(r *Router) {
@@ -284,15 +284,8 @@ func (network *Network) ValidateTerminators(r *Router) {
 		Terminators: terminators,
 	}
 
-	body, err := proto.Marshal(req)
-	if err != nil {
-		pfxlog.Logger().Errorf("unexpected error serializing ValidateTerminatorsRequest (%s)", err)
-		return
-	}
-
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_ValidateTerminatorsRequestType), body)
-	if err := r.Control.Send(msg); err != nil {
-		pfxlog.Logger().Errorf("unexpected error sending ValidateTerminatorsRequest (%s)", err)
+	if err = protobufs.MarshalTyped(req).Send(r.Control); err != nil {
+		pfxlog.Logger().WithError(err).Error("unexpected error sending ValidateTerminatorsRequest")
 	}
 }
 
@@ -312,19 +305,19 @@ func (network *Network) DisconnectRouter(r *Router) {
 }
 
 func (network *Network) LinkConnected(id string, connected bool) error {
-	log := pfxlog.Logger()
+	log := pfxlog.Logger().WithField("linkId", id)
 
 	if l, found := network.linkController.get(id); found {
 		if connected {
 			l.addState(newLinkState(Connected))
-			log.Infof("link [l/%s] connected", id)
+			log.Info("link connected")
 			return nil
 		}
 		l.addState(newLinkState(Failed))
-		log.Infof("link [l/%s] failed", id)
+		log.Info("link failed")
 		return nil
 	}
-	return fmt.Errorf("no such link [l/%s]", id)
+	return errors.Errorf("no such link [l/%s]", id)
 }
 
 func (network *Network) VerifyLinkSource(targetRouter *Router, linkId string, fingerprints []string) error {
@@ -365,8 +358,8 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		return nil, err
 	}
 	ctx.WithField("circuitId", circuitId)
-	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx)
-
+	ctx.WithField("attemptNumber", 1)
+	logger := pfxlog.ChannelLogger(logcontext.SelectPath).Wire(ctx).Entry
 	targetIdentity, serviceId := parseIdentityAndService(service)
 
 	attempt := uint32(0)
@@ -407,33 +400,34 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 5: Routing
-		logger.Debugf("route attempt [#%d] for [s/%s]", attempt+1, circuitId)
+		logger.Debug("route attempt for circuit")
 		peerData, cleanups, err := rs.route(attempt, path, rms, strategy, terminator, ctx)
 		for k, v := range cleanups {
 			allCleanups[k] = v
 		}
 		if err != nil {
-			logger.Warnf("route attempt [#%d] for [s/%s] failed (%v)", attempt+1, circuitId, err)
+			logger.WithError(err).Warn("route attempt for circuit failed")
 			attempt++
+			ctx.WithField("attemptNumber", attempt+1)
+			logger = logger.WithField("attemptNumber", attempt+1)
 			if attempt < network.options.CreateCircuitRetries {
 				continue
-
 			} else {
 				// revert successful routes
-				logger.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes for [s/%s]", network.options.CreateCircuitRetries, circuitId)
+				logger.Warnf("circuit creation failed after [%d] attempts, sending cleanup unroutes", network.options.CreateCircuitRetries)
 				for cleanupRId := range allCleanups {
 					if r, err := network.GetRouter(cleanupRId); err == nil {
 						if err := sendUnroute(r, circuitId, true); err == nil {
-							logger.Debugf("sent cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+							logger.WithField("routerId", cleanupRId).Debug("sent cleanup unroute for circuit")
 						} else {
-							logger.Errorf("error sending cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+							logger.WithField("routerId", cleanupRId).Error("error sending cleanup unroute for circuit")
 						}
 					} else {
-						logger.Errorf("missing [r/%s] for [s/%s] cleanup", r.Id, circuitId)
+						logger.WithField("routerId", cleanupRId).Error("missing router for circuit cleanup")
 					}
 				}
 
-				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating circuit [s/%s]", network.options.CreateCircuitRetries, circuitId)
+				return nil, errors.Wrapf(err, "exceeded maximum [%d] retries creating circuit [c/%s]", network.options.CreateCircuitRetries, circuitId)
 			}
 		}
 
@@ -448,16 +442,16 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 				cleanupCount++
 				if r, err := network.GetRouter(cleanupRId); err == nil {
 					if err := sendUnroute(r, circuitId, true); err == nil {
-						logger.Debugf("sent abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+						logger.WithField("routerId", cleanupRId).Debug("sent abandoned cleanup unroute for circuit to router")
 					} else {
-						logger.Errorf("error sending abandoned cleanup unroute for [s/%s] to [r/%s]", circuitId, r.Id)
+						logger.WithField("routerId", cleanupRId).WithError(err).Error("error sending abandoned cleanup unroute for circuit to router")
 					}
 				} else {
-					logger.Errorf("missing [r/%s] for [s/%s] abandoned cleanup", r.Id, circuitId)
+					logger.WithField("routerId", cleanupRId).Error("missing router for circuit, abandoned cleanup")
 				}
 			}
 		}
-		logger.Debugf("cleaned up [%d] abandoned routers for [s/%s]", cleanupCount, circuitId)
+		logger.Debugf("cleaned up [%d] abandoned routers for circuit", cleanupCount)
 
 		// 6: Create Circuit Object
 		circuit := &Circuit{
@@ -469,9 +463,9 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			PeerData:   peerData,
 		}
 		network.circuitController.add(circuit)
-		network.CircuitCreated(circuit.Id, circuit.ClientId, circuit.Service.Id, circuit.Path)
+		network.CircuitEvent(CircuitCreated, circuit)
 
-		logger.Debugf("created circuit [s/%s] ==> %s", circuitId, circuit.Path)
+		logger.WithField("path", circuit.Path).Debug("created circuit")
 		return circuit, nil
 	}
 }
@@ -600,7 +594,7 @@ func (network *Network) RemoveCircuit(circuitId string, now bool) error {
 			}
 		}
 		network.circuitController.remove(ss)
-		network.CircuitDeleted(ss.Id, ss.ClientId)
+		network.CircuitEvent(CircuitDeleted, ss)
 
 		if strategy, err := network.strategyRegistry.GetStrategy(ss.Service.TerminatorStrategy); strategy != nil {
 			strategy.NotifyEvent(xt.NewCircuitRemoved(ss.Terminator))
@@ -703,7 +697,7 @@ func (network *Network) Run() {
 	for {
 		select {
 		case r := <-network.routerChanged:
-			logrus.Infof("changed router [r/%s]", r.Id)
+			logrus.WithField("routerId", r.Id).Info("changed router")
 			network.assemble()
 			network.clean()
 
@@ -720,7 +714,7 @@ func (network *Network) Run() {
 			network.smart()
 
 		case <-network.closeNotify:
-			events.RemoveMetricsEventHandler(network)
+			fabricMetrics.RemoveMetricsEventHandler(network)
 			network.metricsRegistry.DisposeAll()
 			return
 		}
@@ -728,9 +722,10 @@ func (network *Network) Run() {
 }
 
 func (network *Network) handleLinkChanged(l *Link) {
-	logrus.Infof("changed link [l/%s]", l.Id)
+	log := logrus.WithField("linkId", l.Id)
+	log.Info("changed link")
 	if err := network.rerouteLink(l); err != nil {
-		logrus.Errorf("unexpected error rerouting link (%s)", err)
+		log.WithError(err).Error("unexpected error rerouting link")
 	}
 }
 
@@ -751,16 +746,16 @@ func (network *Network) GetCapabilities() []string {
 }
 
 func (network *Network) rerouteLink(l *Link) error {
-	logrus.Infof("link [l/%s] changed", l.Id)
-
 	circuits := network.circuitController.all()
-	for _, s := range circuits {
-		if s.Path.usesLink(l) {
-			logrus.Infof("circuit [s/%s] uses link [l/%s]", s.Id, l.Id)
-			if err := network.rerouteCircuit(s); err != nil {
-				logrus.Errorf("error rerouting circuit [s/%s], removing", s.Id)
-				if err := network.RemoveCircuit(s.Id, true); err != nil {
-					logrus.Errorf("error removing circuit [s/%s] (%s)", s.Id, err)
+	for _, circuit := range circuits {
+		if circuit.Path.usesLink(l) {
+			log := logrus.WithField("linkId", l.Id).
+				WithField("circuitId", circuit.Id)
+			log.Info("circuit uses link")
+			if err := network.rerouteCircuit(circuit); err != nil {
+				log.WithError(err).Error("error rerouting circuit, removing")
+				if err := network.RemoveCircuit(circuit.Id, true); err != nil {
+					log.WithError(err).Error("error removing circuit after reroute failure")
 				}
 			}
 		}
@@ -788,8 +783,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 
 			logrus.Infof("rerouted circuit [s/%s]", circuit.Id)
 
-			network.PathUpdated(circuit.Id, circuit.Path)
-
+			network.CircuitEvent(CircuitUpdated, circuit)
 			return nil
 		} else {
 			return err
@@ -815,9 +809,7 @@ func (network *Network) smartReroute(s *Circuit, cq *Path) error {
 		}
 
 		logrus.Debugf("rerouted circuit [s/%s]", s.Id)
-
-		network.PathUpdated(s.Id, s.Path)
-
+		network.CircuitEvent(CircuitUpdated, s)
 		return nil
 
 	} else {
@@ -854,45 +846,37 @@ func (network *Network) AcceptMetrics(metrics *metrics_pb.MetricsMessage) {
 }
 
 func sendRoute(r *Router, createMsg *ctrl_pb.Route, timeout time.Duration) (xt.PeerData, error) {
-	pfxlog.Logger().Debugf("sending Create route message to [r/%s] for [s/%s]", r.Id, createMsg.CircuitId)
+	log := pfxlog.Logger().WithField("routerId", r.Id).
+		WithField("circuitId", createMsg.CircuitId)
 
-	body, err := proto.Marshal(createMsg)
+	log.Debug("sending create route message")
+
+	msg, err := protobufs.MarshalTyped(createMsg).WithTimeout(timeout).SendForReply(r.Control)
 	if err != nil {
+		log.WithError(err).WithField("timeout", timeout).Error("error sending route message")
 		return nil, err
 	}
 
-	msg := channel2.NewMessage(int32(ctrl_pb.ContentType_RouteType), body)
-	waitCh, err := r.Control.SendAndWait(msg)
-	if err != nil {
-		return nil, err
-	}
-	select {
-	case msg := <-waitCh:
-		if msg.ContentType == ctrl_msg.RouteResultType {
-			_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
-			if !success {
-				message := ""
-				if errMsg, found := msg.Headers[ctrl_msg.RouteResultErrorHeader]; found {
-					message = string(errMsg)
-				}
-				return nil, errors.New(message)
+	if msg.ContentType == ctrl_msg.RouteResultType {
+		_, success := msg.Headers[ctrl_msg.RouteResultSuccessHeader]
+		if !success {
+			message := "route error, but no error message from router"
+			if errMsg, found := msg.Headers[ctrl_msg.RouteResultErrorHeader]; found {
+				message = string(errMsg)
 			}
-
-			peerData := xt.PeerData{}
-			for k, v := range msg.Headers {
-				if k > 0 {
-					peerData[uint32(k)] = v
-				}
-			}
-
-			return peerData, nil
+			return nil, errors.New(message)
 		}
-		return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 
-	case <-time.After(timeout):
-		pfxlog.Logger().Errorf("timed out after %s waiting for response to route message from [r/%s] for [s/%s]", timeout, r.Id, createMsg.CircuitId)
-		return nil, errors.New("timeout")
+		peerData := xt.PeerData{}
+		for k, v := range msg.Headers {
+			if k > 0 {
+				peerData[uint32(k)] = v
+			}
+		}
+
+		return peerData, nil
 	}
+	return nil, fmt.Errorf("unexpected response type %v received in reply to route request", msg.ContentType)
 }
 
 func sendUnroute(r *Router, circuitId string, now bool) error {
@@ -900,15 +884,7 @@ func sendUnroute(r *Router, circuitId string, now bool) error {
 		CircuitId: circuitId,
 		Now:       now,
 	}
-	body, err := proto.Marshal(unroute)
-	if err != nil {
-		return err
-	}
-	unrouteMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
-	if err := r.Control.Send(unrouteMsg); err != nil {
-		return err
-	}
-	return nil
+	return protobufs.MarshalTyped(unroute).Send(r.Control)
 }
 
 func (network *Network) showOptions() {
@@ -916,24 +892,6 @@ func (network *Network) showOptions() {
 		pfxlog.Logger().Infof("network = %s", string(jsonOptions))
 	} else {
 		panic(err)
-	}
-}
-
-func (network *Network) GetServiceCache() Cache {
-	return network.Services
-}
-
-func (network *Network) NotifyRouterRenamed(id, name string) {
-	if cached, _ := network.Routers.cache.Get(id); cached != nil {
-		if cachedRouter, ok := cached.(*Router); ok {
-			cachedRouter.Name = name
-		}
-	}
-
-	if cached, _ := network.Routers.connected.Get(id); cached != nil {
-		if cachedRouter, ok := cached.(*Router); ok {
-			cachedRouter.Name = name
-		}
 	}
 }
 

@@ -48,6 +48,12 @@ type RouterDetail struct {
 	// Required: true
 	Connected *bool `json:"connected"`
 
+	// cost
+	// Required: true
+	// Maximum: 65535
+	// Minimum: 0
+	Cost *int64 `json:"cost"`
+
 	// fingerprint
 	// Required: true
 	Fingerprint *string `json:"fingerprint"`
@@ -58,6 +64,10 @@ type RouterDetail struct {
 	// name
 	// Required: true
 	Name *string `json:"name"`
+
+	// no traversal
+	// Required: true
+	NoTraversal *bool `json:"noTraversal"`
 
 	// version info
 	VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
@@ -76,11 +86,15 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 	var dataAO1 struct {
 		Connected *bool `json:"connected"`
 
+		Cost *int64 `json:"cost"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		ListenerAddress string `json:"listenerAddress,omitempty"`
 
 		Name *string `json:"name"`
+
+		NoTraversal *bool `json:"noTraversal"`
 
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
@@ -90,11 +104,15 @@ func (m *RouterDetail) UnmarshalJSON(raw []byte) error {
 
 	m.Connected = dataAO1.Connected
 
+	m.Cost = dataAO1.Cost
+
 	m.Fingerprint = dataAO1.Fingerprint
 
 	m.ListenerAddress = dataAO1.ListenerAddress
 
 	m.Name = dataAO1.Name
+
+	m.NoTraversal = dataAO1.NoTraversal
 
 	m.VersionInfo = dataAO1.VersionInfo
 
@@ -113,22 +131,30 @@ func (m RouterDetail) MarshalJSON() ([]byte, error) {
 	var dataAO1 struct {
 		Connected *bool `json:"connected"`
 
+		Cost *int64 `json:"cost"`
+
 		Fingerprint *string `json:"fingerprint"`
 
 		ListenerAddress string `json:"listenerAddress,omitempty"`
 
 		Name *string `json:"name"`
 
+		NoTraversal *bool `json:"noTraversal"`
+
 		VersionInfo *VersionInfo `json:"versionInfo,omitempty"`
 	}
 
 	dataAO1.Connected = m.Connected
+
+	dataAO1.Cost = m.Cost
 
 	dataAO1.Fingerprint = m.Fingerprint
 
 	dataAO1.ListenerAddress = m.ListenerAddress
 
 	dataAO1.Name = m.Name
+
+	dataAO1.NoTraversal = m.NoTraversal
 
 	dataAO1.VersionInfo = m.VersionInfo
 
@@ -153,11 +179,19 @@ func (m *RouterDetail) Validate(formats strfmt.Registry) error {
 		res = append(res, err)
 	}
 
+	if err := m.validateCost(formats); err != nil {
+		res = append(res, err)
+	}
+
 	if err := m.validateFingerprint(formats); err != nil {
 		res = append(res, err)
 	}
 
 	if err := m.validateName(formats); err != nil {
+		res = append(res, err)
+	}
+
+	if err := m.validateNoTraversal(formats); err != nil {
 		res = append(res, err)
 	}
 
@@ -180,6 +214,23 @@ func (m *RouterDetail) validateConnected(formats strfmt.Registry) error {
 	return nil
 }
 
+func (m *RouterDetail) validateCost(formats strfmt.Registry) error {
+
+	if err := validate.Required("cost", "body", m.Cost); err != nil {
+		return err
+	}
+
+	if err := validate.MinimumInt("cost", "body", *m.Cost, 0, false); err != nil {
+		return err
+	}
+
+	if err := validate.MaximumInt("cost", "body", *m.Cost, 65535, false); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *RouterDetail) validateFingerprint(formats strfmt.Registry) error {
 
 	if err := validate.Required("fingerprint", "body", m.Fingerprint); err != nil {
@@ -192,6 +243,15 @@ func (m *RouterDetail) validateFingerprint(formats strfmt.Registry) error {
 func (m *RouterDetail) validateName(formats strfmt.Registry) error {
 
 	if err := validate.Required("name", "body", m.Name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (m *RouterDetail) validateNoTraversal(formats strfmt.Registry) error {
+
+	if err := validate.Required("noTraversal", "body", m.NoTraversal); err != nil {
 		return err
 	}
 

@@ -20,12 +20,12 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
@@ -33,6 +33,7 @@ import (
 	"github.com/pkg/errors"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
+	"strings"
 	"time"
 )
 
@@ -41,7 +42,7 @@ type Config struct {
 	Network *network.Options
 	Db      *db.Db
 	Trace   struct {
-		Handler *channel2.TraceHandler
+		Handler *channel.TraceHandler
 	}
 	Profile struct {
 		Memory struct {
@@ -54,11 +55,11 @@ type Config struct {
 	}
 	Ctrl struct {
 		Listener transport.Address
-		Options  *channel2.Options
+		Options  *CtrlOptions
 	}
 	Mgmt struct {
 		Listener transport.Address
-		Options  *channel2.Options
+		Options  *channel.Options
 	}
 	Metrics      *metrics.Config
 	HealthChecks struct {
@@ -69,6 +70,13 @@ type Config struct {
 		}
 	}
 	src map[interface{}]interface{}
+}
+
+// CtrlOptions extends channel.Options to include support for additional, non-channel specific options
+// (e.g. NewListener)
+type CtrlOptions struct {
+	*channel.Options
+	NewListener *transport.Address
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -143,11 +151,11 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["trace"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
 			if value, found := submap["path"]; found {
-				handler, err := channel2.NewTraceHandler(value.(string), controllerConfig.Id.Token)
+				handler, err := channel.NewTraceHandler(value.(string), controllerConfig.Id.Token)
 				if err != nil {
 					return nil, err
 				}
-				handler.AddDecoder(&channel2.Decoder{})
+				handler.AddDecoder(&channel.Decoder{})
 				handler.AddDecoder(&ctrl_pb.Decoder{})
 				handler.AddDecoder(&xgress.Decoder{})
 				handler.AddDecoder(&mgmt_pb.Decoder{})
@@ -192,18 +200,42 @@ func LoadConfig(path string) (*Config, error) {
 				panic("controllerConfig must provide [ctrl/listener]")
 			}
 
-			controllerConfig.Ctrl.Options = channel2.DefaultOptions()
+			controllerConfig.Ctrl.Options = &CtrlOptions{
+				Options: channel.DefaultOptions(),
+			}
+
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					controllerConfig.Ctrl.Options = channel2.LoadOptions(submap)
+					options, err := channel.LoadOptions(submap)
+					if err != nil {
+						return nil, err
+					}
+
+					controllerConfig.Ctrl.Options.Options = options
+
+					if val, found := submap["newListener"]; found {
+						if newListener, ok := val.(string); ok {
+							if newListener != "" {
+								if addr, err := transport.ParseAddress(newListener); err == nil {
+									controllerConfig.Ctrl.Options.NewListener = &addr
+
+									if err := verifyNewListenerInServerCert(controllerConfig, addr); err != nil {
+										return nil, err
+									}
+
+								} else {
+									return nil, fmt.Errorf("error loading newListener for [ctrl/options] (%v)", err)
+								}
+							}
+						} else {
+							return nil, errors.New("error loading newAddress for [ctrl/options] (must be a string)")
+						}
+					}
+
 					if err := controllerConfig.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
 				}
-			}
-
-			if controllerConfig.Trace.Handler != nil {
-				controllerConfig.Ctrl.Options.PeekHandlers = append(controllerConfig.Ctrl.Options.PeekHandlers, controllerConfig.Trace.Handler)
 			}
 		} else {
 			panic("controllerConfig [ctrl] section in unexpected format")
@@ -224,10 +256,14 @@ func LoadConfig(path string) (*Config, error) {
 				panic("controllerConfig must provide [mgmt/listener]")
 			}
 
-			controllerConfig.Mgmt.Options = channel2.DefaultOptions()
+			controllerConfig.Mgmt.Options = channel.DefaultOptions()
 			if value, found := submap["options"]; found {
 				if submap, ok := value.(map[interface{}]interface{}); ok {
-					controllerConfig.Mgmt.Options = channel2.LoadOptions(submap)
+					options, err := channel.LoadOptions(submap)
+					if err != nil {
+						return nil, err
+					}
+					controllerConfig.Mgmt.Options = options
 					if err := controllerConfig.Mgmt.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [mgmt/options] (%v)", err)
 					}
@@ -293,4 +329,43 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	return controllerConfig, nil
+}
+
+// verifyNewListenerInServerCert verifies that the hostname (ip/dns) for addr is present as an IP/DNS SAN in the first
+// certificate provided in the controller's identity server certificate field. This is to avoid scenarios where
+// newListener propagated to routers who will never be able to verify the controller's certificates due to SAN issues.
+func verifyNewListenerInServerCert(controllerConfig *Config, addr transport.Address) error {
+	addrSplits := strings.Split(addr.String(), ":")
+	if len(addrSplits) < 3 {
+		return errors.New("could not determine newListener's host value, expected at least three segments")
+	}
+
+	host := addrSplits[1]
+	serverCert := controllerConfig.Id.Identity.ServerCert().Leaf
+	if serverCert == nil {
+		return errors.New("could not verify newListener value, server certificate for identity contains no certificates")
+	}
+
+	hostFound := false
+	for _, dnsName := range serverCert.DNSNames {
+		if dnsName == host {
+			hostFound = true
+			break
+		}
+	}
+
+	if !hostFound {
+		for _, ipAddresses := range serverCert.IPAddresses {
+			if host == ipAddresses.String() {
+				hostFound = true
+				break
+			}
+		}
+	}
+
+	if !hostFound {
+		return fmt.Errorf("could not find newListener [%s] host value [%s] in first certificate for controller identity", addr.String(), host)
+	}
+
+	return nil
 }

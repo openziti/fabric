@@ -1401,9 +1401,15 @@ func init() {
       "type": "object",
       "required": [
         "id",
-        "name"
+        "name",
+        "cost",
+        "noTraversal"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -1413,6 +1419,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -1430,11 +1439,17 @@ func init() {
           "required": [
             "name",
             "fingerprint",
-            "connected"
+            "connected",
+            "cost",
+            "noTraversal"
           ],
           "properties": {
             "connected": {
               "type": "boolean"
+            },
+            "cost": {
+              "type": "integer",
+              "maximum": 65535
             },
             "fingerprint": {
               "type": "string"
@@ -1444,6 +1459,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -1461,12 +1479,21 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -1476,15 +1503,24 @@ func init() {
     "routerUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "fingerprint",
+        "cost",
+        "noTraversal"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535
+        },
         "fingerprint": {
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5094,9 +5130,16 @@ func init() {
       "type": "object",
       "required": [
         "id",
-        "name"
+        "name",
+        "cost",
+        "noTraversal"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
@@ -5106,6 +5149,9 @@ func init() {
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5123,11 +5169,18 @@ func init() {
           "required": [
             "name",
             "fingerprint",
-            "connected"
+            "connected",
+            "cost",
+            "noTraversal"
           ],
           "properties": {
             "connected": {
               "type": "boolean"
+            },
+            "cost": {
+              "type": "integer",
+              "maximum": 65535,
+              "minimum": 0
             },
             "fingerprint": {
               "type": "string"
@@ -5137,6 +5190,9 @@ func init() {
             },
             "name": {
               "type": "string"
+            },
+            "noTraversal": {
+              "type": "boolean"
             },
             "versionInfo": {
               "$ref": "#/definitions/versionInfo"
@@ -5154,12 +5210,22 @@ func init() {
     "routerPatch": {
       "type": "object",
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0,
+          "x-nullable": true
+        },
         "fingerprint": {
           "type": "string",
           "x-nullable": true
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean",
+          "x-nullable": true
         },
         "tags": {
           "$ref": "#/definitions/tags"
@@ -5169,15 +5235,25 @@ func init() {
     "routerUpdate": {
       "type": "object",
       "required": [
-        "name"
+        "name",
+        "fingerprint",
+        "cost",
+        "noTraversal"
       ],
       "properties": {
+        "cost": {
+          "type": "integer",
+          "maximum": 65535,
+          "minimum": 0
+        },
         "fingerprint": {
-          "type": "string",
-          "x-nullable": true
+          "type": "string"
         },
         "name": {
           "type": "string"
+        },
+        "noTraversal": {
+          "type": "boolean"
         },
         "tags": {
           "$ref": "#/definitions/tags"

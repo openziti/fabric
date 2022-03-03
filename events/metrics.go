@@ -4,7 +4,7 @@ import (
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/foundation/events"
+	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
 	"github.com/pkg/errors"
 	"reflect"
@@ -19,15 +19,9 @@ func init() {
 
 func mapCtrlIds(_ *metrics_pb.MetricsMessage, event *MetricsEvent) {
 	if strings.HasPrefix(event.Metric, "ctrl.") {
-		if strings.HasSuffix(event.Metric, "latency") {
-			name, routerId := ExtractId(event.Metric, "ctrl.", 1)
-			event.Metric = name
-			event.SourceEntityId = routerId
-		} else {
-			name, routerId := ExtractId(event.Metric, "ctrl.", 2)
-			event.Metric = name
-			event.SourceEntityId = routerId
-		}
+		parts := strings.Split(event.Metric, ":")
+		event.Metric = parts[0]
+		event.SourceEntityId = parts[1]
 	}
 }
 
@@ -114,8 +108,21 @@ func registerMetricsEventHandler(val interface{}, config map[interface{}]interfa
 		handler:      handler,
 	}
 
-	events.AddMetricsEventHandler(adapter)
+	metrics.AddMetricsEventHandler(adapter)
 	return nil
+}
+
+func AddFilteredMetricsEventHandler(sourceFilter *regexp.Regexp, metricFilter *regexp.Regexp, handler MetricsEventHandler) func() {
+	adapter := &metricsAdapter{
+		sourceFilter: sourceFilter,
+		metricFilter: metricFilter,
+		handler:      handler,
+	}
+
+	metrics.AddMetricsEventHandler(adapter)
+	return func() {
+		metrics.RemoveMetricsEventHandler(adapter)
+	}
 }
 
 type metricsAdapter struct {
@@ -132,6 +139,7 @@ func (adapter *metricsAdapter) newMetricEvent(msg *metrics_pb.MetricsMessage, na
 		Metric:        name,
 		Tags:          msg.Tags,
 		SourceEventId: id,
+		Version:       2,
 	}
 
 	for _, mapper := range metricsMappers {
@@ -168,62 +176,66 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 
 	for name, value := range msg.Meters {
 		event := adapter.newMetricEvent(msg, name, parentEventId)
-		adapter.filterMetric(".count", value.Count, event)
-		adapter.filterMetric(".mean_rate", value.MeanRate, event)
-		adapter.filterMetric(".m1_rate", value.M1Rate, event)
-		adapter.filterMetric(".m5_rate", value.M5Rate, event)
-		adapter.filterMetric(".m15_rate", value.M15Rate, event)
+		adapter.filterMetric("count", value.Count, event)
+		adapter.filterMetric("mean_rate", value.MeanRate, event)
+		adapter.filterMetric("m1_rate", value.M1Rate, event)
+		adapter.filterMetric("m5_rate", value.M5Rate, event)
+		adapter.filterMetric("m15_rate", value.M15Rate, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.Histograms {
 		event := adapter.newMetricEvent(msg, name, parentEventId)
-		adapter.filterMetric(".count", value.Count, event)
-		adapter.filterMetric(".min", value.Min, event)
-		adapter.filterMetric(".max", value.Max, event)
-		adapter.filterMetric(".mean", value.Mean, event)
-		adapter.filterMetric(".std_dev", value.StdDev, event)
-		adapter.filterMetric(".variance", value.Variance, event)
-		adapter.filterMetric(".p50", value.P50, event)
-		adapter.filterMetric(".p75", value.P75, event)
-		adapter.filterMetric(".p95", value.P95, event)
-		adapter.filterMetric(".p99", value.P99, event)
-		adapter.filterMetric(".p999", value.P999, event)
-		adapter.filterMetric(".p9999", value.P9999, event)
+		adapter.filterMetric("count", value.Count, event)
+		adapter.filterMetric("min", value.Min, event)
+		adapter.filterMetric("max", value.Max, event)
+		adapter.filterMetric("mean", value.Mean, event)
+		adapter.filterMetric("std_dev", value.StdDev, event)
+		adapter.filterMetric("variance", value.Variance, event)
+		adapter.filterMetric("p50", value.P50, event)
+		adapter.filterMetric("p75", value.P75, event)
+		adapter.filterMetric("p95", value.P95, event)
+		adapter.filterMetric("p99", value.P99, event)
+		adapter.filterMetric("p999", value.P999, event)
+		adapter.filterMetric("p9999", value.P9999, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.Timers {
 		event := adapter.newMetricEvent(msg, name, parentEventId)
-		adapter.filterMetric(".count", value.Count, event)
+		adapter.filterMetric("count", value.Count, event)
 
-		adapter.filterMetric(".mean_rate", value.MeanRate, event)
-		adapter.filterMetric(".m1_rate", value.M1Rate, event)
-		adapter.filterMetric(".m5_rate", value.M5Rate, event)
-		adapter.filterMetric(".m15_rate", value.M15Rate, event)
+		adapter.filterMetric("mean_rate", value.MeanRate, event)
+		adapter.filterMetric("m1_rate", value.M1Rate, event)
+		adapter.filterMetric("m5_rate", value.M5Rate, event)
+		adapter.filterMetric("m15_rate", value.M15Rate, event)
 
-		adapter.filterMetric(".min", value.Min, event)
-		adapter.filterMetric(".max", value.Max, event)
-		adapter.filterMetric(".mean", value.Mean, event)
-		adapter.filterMetric(".std_dev", value.StdDev, event)
-		adapter.filterMetric(".variance", value.Variance, event)
-		adapter.filterMetric(".p50", value.P50, event)
-		adapter.filterMetric(".p75", value.P75, event)
-		adapter.filterMetric(".p95", value.P95, event)
-		adapter.filterMetric(".p99", value.P99, event)
-		adapter.filterMetric(".p999", value.P999, event)
-		adapter.filterMetric(".p9999", value.P9999, event)
+		adapter.filterMetric("min", value.Min, event)
+		adapter.filterMetric("max", value.Max, event)
+		adapter.filterMetric("mean", value.Mean, event)
+		adapter.filterMetric("std_dev", value.StdDev, event)
+		adapter.filterMetric("variance", value.Variance, event)
+		adapter.filterMetric("p50", value.P50, event)
+		adapter.filterMetric("p75", value.P75, event)
+		adapter.filterMetric("p95", value.P95, event)
+		adapter.filterMetric("p99", value.P99, event)
+		adapter.filterMetric("p999", value.P999, event)
+		adapter.filterMetric("p9999", value.P9999, event)
 		adapter.finishEvent(event)
 	}
 }
 
-func (adapter *metricsAdapter) filterMetric(suffix string, value interface{}, event *MetricsEvent) {
-	name := event.Metric + suffix
+func (adapter *metricsAdapter) filterMetric(key string, value interface{}, event *MetricsEvent) {
+	name := event.Metric + "." + key
 	if adapter.nameMatches(name) {
 		if event.Metrics == nil {
 			event.Metrics = make(map[string]interface{})
 		}
-		event.Metrics[name] = value
+		if key == "" {
+			event.Metrics["value"] = value
+		} else {
+			event.Metrics[key] = value
+		}
 	}
 }
 
@@ -235,6 +247,7 @@ type MetricsEvent struct {
 	Namespace      string
 	SourceAppId    string
 	SourceEntityId string
+	Version        uint32
 	Timestamp      *timestamp.Timestamp
 	Metric         string
 	Metrics        map[string]interface{}
@@ -244,6 +257,12 @@ type MetricsEvent struct {
 
 type MetricsEventHandler interface {
 	AcceptMetricsEvent(event *MetricsEvent)
+}
+
+type MetricsHandlerF func(event *MetricsEvent)
+
+func (self MetricsHandlerF) AcceptMetricsEvent(event *MetricsEvent) {
+	self(event)
 }
 
 func ExtractId(name string, prefix string, suffixLen int) (string, string) {

@@ -20,23 +20,23 @@ import (
 	"fmt"
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/trace/pb"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
-	trace_pb "github.com/openziti/foundation/trace/pb"
-	"sync/atomic"
+	"github.com/openziti/foundation/util/concurrenz"
 	"time"
 )
 
-var decoders = []channel2.TraceMessageDecoder{&channel2.Decoder{}, &ctrl_pb.Decoder{}, &xgress.Decoder{}, &mgmt_pb.Decoder{}}
+var decoders = []channel.TraceMessageDecoder{channel.Decoder{}, ctrl_pb.Decoder{}, xgress.Decoder{}, mgmt_pb.Decoder{}}
 
 type ChannelPeekHandler struct {
 	appId      string
-	ch         channel2.Channel
-	enabled    int32
+	ch         channel.Channel
+	enabled    concurrenz.AtomicBoolean
 	controller Controller
-	decoders   []channel2.TraceMessageDecoder
+	decoders   []channel.TraceMessageDecoder
 	eventSink  EventHandler
 }
 
@@ -62,11 +62,10 @@ func (handler *ChannelPeekHandler) ToggleTracing(sourceType SourceType, matcher 
 			handler.appId, name, matched, prevState, nextState)}
 }
 
-func NewChannelPeekHandler(appId string, ch channel2.Channel, controller Controller, eventSink EventHandler) *ChannelPeekHandler {
+func NewChannelPeekHandler(appId string, ch channel.Channel, controller Controller, eventSink EventHandler) *ChannelPeekHandler {
 	handler := &ChannelPeekHandler{
 		appId:      appId,
 		ch:         ch,
-		enabled:    0,
 		controller: controller,
 		decoders:   decoders,
 		eventSink:  eventSink,
@@ -76,36 +75,29 @@ func NewChannelPeekHandler(appId string, ch channel2.Channel, controller Control
 }
 
 func (handler *ChannelPeekHandler) enable(enabled bool) {
-	atomic.StoreInt32(&handler.enabled, btoi(enabled))
-}
-
-func btoi(val bool) int32 {
-	if val {
-		return 1
-	}
-	return 0
+	handler.enabled.Set(true)
 }
 
 func (handler *ChannelPeekHandler) IsEnabled() bool {
-	return atomic.LoadInt32(&handler.enabled) == 1
+	return handler.enabled.Get()
 }
 
-func (*ChannelPeekHandler) Connect(ch channel2.Channel, remoteAddress string) {
+func (*ChannelPeekHandler) Connect(ch channel.Channel, remoteAddress string) {
 }
 
-func (handler *ChannelPeekHandler) Rx(msg *channel2.Message, ch channel2.Channel) {
+func (handler *ChannelPeekHandler) Rx(msg *channel.Message, ch channel.Channel) {
 	handler.trace(msg, ch, false)
 }
 
-func (handler *ChannelPeekHandler) Tx(msg *channel2.Message, ch channel2.Channel) {
+func (handler *ChannelPeekHandler) Tx(msg *channel.Message, ch channel.Channel) {
 	handler.trace(msg, ch, true)
 }
 
-func (handler *ChannelPeekHandler) Close(ch channel2.Channel) {
+func (handler *ChannelPeekHandler) Close(ch channel.Channel) {
 	handler.controller.RemoveSource(handler)
 }
 
-func (handler *ChannelPeekHandler) trace(msg *channel2.Message, ch channel2.Channel, rx bool) {
+func (handler *ChannelPeekHandler) trace(msg *channel.Message, ch channel.Channel, rx bool) {
 	if !handler.IsEnabled() || msg.ContentType == int32(ctrl_pb.ContentType_TraceEventType) ||
 		msg.ContentType == int32(mgmt_pb.ContentType_StreamTracesEventType) {
 		return
@@ -135,12 +127,12 @@ func (handler *ChannelPeekHandler) trace(msg *channel2.Message, ch channel2.Chan
 	go handler.eventSink.Accept(traceMsg)
 }
 
-func NewChannelSink(ch channel2.Channel) EventHandler {
+func NewChannelSink(ch channel.Channel) EventHandler {
 	return &channelSink{ch}
 }
 
 type channelSink struct {
-	ch channel2.Channel
+	ch channel.Channel
 }
 
 func (sink *channelSink) Accept(event *trace_pb.ChannelMessage) {
@@ -152,7 +144,7 @@ func (sink *channelSink) Accept(event *trace_pb.ChannelMessage) {
 		return
 	}
 
-	chMsg := channel2.NewMessage(int32(ctrl_pb.ContentType_TraceEventType), bytes)
+	chMsg := channel.NewMessage(int32(ctrl_pb.ContentType_TraceEventType), bytes)
 
 	err = sink.ch.Send(chMsg)
 	if err != nil {

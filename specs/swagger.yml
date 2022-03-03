@@ -1095,12 +1095,20 @@ definitions:
           - name
           - fingerprint
           - connected
+          - cost
+          - noTraversal
         properties:
           name:
             type: string
           fingerprint:
             type: string
           connected:
+            type: boolean
+          cost:
+            type: integer
+            minimum: 0
+            maximum: 65535
+          noTraversal:
             type: boolean
           listenerAddress:
             type: string
@@ -1111,6 +1119,8 @@ definitions:
     required:
       - id
       - name
+      - cost
+      - noTraversal
     properties:
       id:
         type: string
@@ -1119,18 +1129,32 @@ definitions:
       fingerprint:
         type: string
         x-nullable: true
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
+      noTraversal:
+        type: boolean
       tags:
         $ref: '#/definitions/tags'
   routerUpdate:
     type: object
     required:
       - name
+      - fingerprint
+      - cost
+      - noTraversal
     properties:
       name:
         type: string
       fingerprint:
         type: string
-        x-nullable: true
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
+      noTraversal:
+        type: boolean
       tags:
         $ref: '#/definitions/tags'
   routerPatch:
@@ -1140,6 +1164,14 @@ definitions:
         type: string
       fingerprint:
         type: string
+        x-nullable: true
+      cost:
+        type: integer
+        minimum: 0
+        maximum: 65535
+        x-nullable: true
+      noTraversal:
+        type: boolean
         x-nullable: true
       tags:
         $ref: '#/definitions/tags'

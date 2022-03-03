@@ -19,10 +19,10 @@ package handler_mgmt
 import (
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/handler_common"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/pb/mgmt_pb"
-	"github.com/openziti/foundation/channel2"
 )
 
 type createRouterHandler struct {
@@ -37,12 +37,12 @@ func (h *createRouterHandler) ContentType() int32 {
 	return int32(mgmt_pb.ContentType_CreateRouterRequestType)
 }
 
-func (h *createRouterHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (h *createRouterHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label())
 
 	create := &mgmt_pb.CreateRouterRequest{}
 	if err := proto.Unmarshal(msg.Body, create); err == nil {
-		r := network.NewRouter(create.Router.Id, create.Router.Name, create.Router.Fingerprint)
+		r := network.NewRouter(create.Router.Id, create.Router.Name, create.Router.Fingerprint, uint16(create.Router.Cost), create.Router.NoTraversal)
 		if err := h.network.CreateRouter(r); err == nil {
 			log.Infof("created router [r/%s] with fingerprint [%s]", r.Id, create.Router.Fingerprint)
 			handler_common.SendSuccess(msg, ch, "")

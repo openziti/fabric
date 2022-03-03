@@ -18,10 +18,9 @@ package handler_ctrl
 
 import (
 	"github.com/golang/protobuf/proto"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/sirupsen/logrus"
 )
 
@@ -35,22 +34,23 @@ func newCircuitConfirmationHandler(n *network.Network, r *network.Router) *circu
 }
 
 func (self *circuitConfirmationHandler) ContentType() int32 {
-	return int32(ctrl_msg.CircuitConfirmationType)
+	return int32(ctrl_pb.ContentType_CircuitConfirmationType)
 }
 
-func (self *circuitConfirmationHandler) HandleReceive(msg *channel2.Message, _ channel2.Channel) {
-	logrus.Infof("received circuit confirmation request from [r/%s]", self.r.Id)
+func (self *circuitConfirmationHandler) HandleReceive(msg *channel.Message, _ channel.Channel) {
+	log := logrus.WithField("routerId", self.r.Id)
+	log.Info("received circuit confirmation request")
 	confirm := &ctrl_pb.CircuitConfirmation{}
 	if err := proto.Unmarshal(msg.Body, confirm); err == nil {
 		for _, circuitId := range confirm.CircuitIds {
-			if _, found := self.n.GetCircuit(circuitId); !found {
-				go self.sendUnroute(circuitId)
+			if circuit, found := self.n.GetCircuit(circuitId); found && circuit.HasRouter(self.r) {
+				log.WithField("circuitId", circuitId).Debug("circuit found, ignoring")
 			} else {
-				logrus.Debugf("[s/%s] found, ignoring", circuitId)
+				go self.sendUnroute(circuitId)
 			}
 		}
 	} else {
-		logrus.Errorf("error unmarshaling circuit confirmation from [r/%s] (%v)", self.r.Id, err)
+		log.WithError(err).Error("error unmarshalling circuit confirmation")
 	}
 }
 
@@ -59,7 +59,7 @@ func (self *circuitConfirmationHandler) sendUnroute(circuitId string) {
 	unroute.CircuitId = circuitId
 	unroute.Now = true
 	if body, err := proto.Marshal(unroute); err == nil {
-		msg := channel2.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
+		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UnrouteType), body)
 		if err := self.r.Control.Send(msg); err == nil {
 			logrus.Infof("sent unroute to [r/%s] for [s/%s]", self.r.Id, circuitId)
 		} else {

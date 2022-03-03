@@ -17,10 +17,9 @@
 package network
 
 import (
-	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/util/info"
 )
 
@@ -40,13 +39,9 @@ func (network *Network) assemble() {
 					Address:  missingLink.Dst.AdvertisedListener,
 					RouterId: missingLink.Dst.Id,
 				}
-				bytes, err := proto.Marshal(dial)
-				if err == nil {
-					msg := channel2.NewMessage(int32(ctrl_pb.ContentType_DialType), bytes)
-					missingLink.Src.Control.Send(msg)
 
-				} else {
-					log.Errorf("unexpected error (%s)", err)
+				if err := protobufs.MarshalTyped(dial).Send(missingLink.Src.Control); err != nil {
+					log.WithError(err).Error("unexpected error sending dial")
 				}
 			}
 
@@ -69,7 +64,7 @@ func (network *Network) clean() {
 		}
 	}
 	for _, lr := range lRemove {
-		log.Infof("removing [l/%s]", lr.Id)
+		log.WithField("linkId", lr.Id).Info("removing failed link", lr.Id)
 		network.linkController.remove(lr)
 	}
 }

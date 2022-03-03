@@ -18,9 +18,10 @@ package db
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/openziti/foundation/storage/boltz"
@@ -46,6 +47,7 @@ func (ctx *TestContext) testCreateInvalidRouters(t *testing.T) {
 	router := &Router{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
 		Name:          uuid.New().String(),
+		NoTraversal:   true,
 	}
 
 	ctx.RequireCreate(router)
@@ -64,6 +66,7 @@ func (ctx *TestContext) testCreateRouters(t *testing.T) {
 	router := &Router{
 		BaseExtEntity: boltz.BaseExtEntity{Id: uuid.New().String()},
 		Name:          uuid.New().String(),
+		Cost:          2,
 	}
 	ctx.RequireCreate(router)
 	ctx.ValidateBaseline(router)

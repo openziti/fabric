@@ -21,7 +21,7 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/info"
@@ -69,7 +69,7 @@ type BindHandler interface {
 }
 
 type ControlReceiver interface {
-	HandleControlReceive(controlType ControlType, headers channel2.Headers)
+	HandleControlReceive(controlType ControlType, headers channel.Headers)
 }
 
 // ReceiveHandler is invoked by an xgress whenever data is received from the connected peer. Generally a ReceiveHandler
@@ -109,7 +109,7 @@ type Connection interface {
 	LogContext() string
 	ReadPayload() ([]byte, map[uint8][]byte, error)
 	WritePayload([]byte, map[uint8][]byte) (int, error)
-	HandleControlMsg(controlType ControlType, headers channel2.Headers, responder ControlReceiver) error
+	HandleControlMsg(controlType ControlType, headers channel.Headers, responder ControlReceiver) error
 }
 
 type Xgress struct {
@@ -338,7 +338,7 @@ func (self *Xgress) SendControl(control *Control) error {
 	return self.peer.HandleControlMsg(control.Type, control.Headers, self)
 }
 
-func (self *Xgress) HandleControlReceive(controlType ControlType, headers channel2.Headers) {
+func (self *Xgress) HandleControlReceive(controlType ControlType, headers channel.Headers) {
 	control := &Control{
 		Type:      controlType,
 		CircuitId: self.circuitId,
@@ -523,7 +523,11 @@ func (self *Xgress) rx() {
 			remaining -= length
 			payloads++
 
-			self.forwardPayload(payload)
+			// if the payload buffer is closed, we can't forward any more data, so might as well exit the rx loop
+			// The txer will still have a chance to flush any already received data
+			if !self.forwardPayload(payload) {
+				return
+			}
 			payloadLogger := log.WithFields(payload.GetLoggerFields())
 			payloadLogger.Debugf("received [%s]", info.ByteCount(int64(n)))
 

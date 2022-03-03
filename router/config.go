@@ -20,23 +20,44 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/transport"
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
+	"io"
 	"io/ioutil"
+	"os"
+	"sync/atomic"
 	"time"
 )
 
 const (
+	// FlagsCfgMapKey is used as a key in the source configuration map to pass flags from
+	// higher levels (i.e. CLI arguments) down through the stack w/o colliding w/ file
+	// based configuration values
 	FlagsCfgMapKey = "@flags"
+
+	// PathMapKey is used to store a loaded configuration file's source path
+	PathMapKey = "@file"
+
+	// CtrlMapKey is the string key for the ctrl section
+	CtrlMapKey = "ctrl"
+
+	// CtrlEndpointMapKey is the string key for the ctrl.endpoint section
+	CtrlEndpointMapKey = "endpoint"
 )
+
+// internalConfigKeys is used to distinguish internally defined configuration vs file configuration
+var internalConfigKeys = []string{
+	PathMapKey,
+	FlagsCfgMapKey,
+}
 
 func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
 	yamlBytes, err := ioutil.ReadFile(path)
@@ -51,6 +72,8 @@ func LoadConfigMap(path string) (map[interface{}]interface{}, error) {
 
 	config.InjectEnv(cfgmap)
 
+	cfgmap[PathMapKey] = path
+
 	return cfgmap, nil
 }
 
@@ -62,7 +85,7 @@ type Config struct {
 	Id        *identity.TokenId
 	Forwarder *forwarder.Options
 	Trace     struct {
-		Handler *channel2.TraceHandler
+		Handler *channel.TraceHandler
 	}
 	Profile struct {
 		Memory struct {
@@ -74,9 +97,9 @@ type Config struct {
 		}
 	}
 	Ctrl struct {
-		Endpoint              transport.Address
+		Endpoint              *UpdatableAddress
 		DefaultRequestTimeout time.Duration
-		Options               *channel2.Options
+		Options               *channel.Options
 	}
 	Link struct {
 		Listeners []map[interface{}]interface{}
@@ -98,6 +121,11 @@ type Config struct {
 	}
 	Plugins []string
 	src     map[interface{}]interface{}
+	path    string
+}
+
+func (config *Config) CurrentCtrlAddress() string {
+	return config.Ctrl.Endpoint.String()
 }
 
 func (config *Config) Configure(sub config.Subconfig) error {
@@ -106,6 +134,174 @@ func (config *Config) Configure(sub config.Subconfig) error {
 
 func (config *Config) SetFlags(flags map[string]*pflag.Flag) {
 	SetConfigMapFlags(config.src, flags)
+}
+
+const (
+	TimeFormatYear    = "2006"
+	TimeFormatMonth   = "01"
+	TimeFormatDay     = "02"
+	TimeFormatHour    = "15"
+	TimeFormatMinute  = "04"
+	TimeFormatSeconds = "05"
+	TimestampFormat   = TimeFormatYear + TimeFormatMonth + TimeFormatDay + TimeFormatHour + TimeFormatMinute + TimeFormatSeconds
+)
+
+// CreateBackup will attempt to use the current path value to create a backup of
+// the file on disk. The resulting file path is returned.
+func (config *Config) CreateBackup() (string, error) {
+	source, err := os.Open(config.path)
+	if err != nil {
+		return "", fmt.Errorf("could not open path %s: %v", config.path, err)
+	}
+	defer func() { _ = source.Close() }()
+
+	destPath := config.path + ".backup." + time.Now().Format(TimestampFormat)
+	destination, err := os.Create(destPath)
+	if err != nil {
+		return "", fmt.Errorf("could not create backup file: %v", err)
+	}
+	defer func() { _ = destination.Close() }()
+
+	if _, err := io.Copy(destination, source); err != nil {
+		return "", fmt.Errorf("could not copy to backup file: %v", err)
+	}
+
+	return destPath, nil
+}
+
+func deepCopyMap(src map[interface{}]interface{}, dest map[interface{}]interface{}) {
+	for key, value := range src {
+		switch src[key].(type) {
+		case map[interface{}]interface{}:
+			dest[key] = map[interface{}]interface{}{}
+			deepCopyMap(src[key].(map[interface{}]interface{}), dest[key].(map[interface{}]interface{}))
+		default:
+			dest[key] = value
+		}
+	}
+}
+
+// cleanSrcCopy returns a copy of the current src map[interface{}]interface{} without internal
+// keys like @FlagsCfgMapKey and @PathMapKey.
+func (config *Config) cleanSrcCopy() map[interface{}]interface{} {
+	out := map[interface{}]interface{}{}
+	deepCopyMap(config.src, out)
+
+	for _, internalKey := range internalConfigKeys {
+		delete(out, internalKey)
+	}
+
+	return out
+}
+
+// Save attempts to take the current config's src attribute and Save it as
+// yaml to the path value.
+func (config *Config) Save() error {
+	if config.path == "" {
+		return errors.New("no path provided in configuration, cannot save")
+	}
+
+	if _, err := os.Stat(config.path); err != nil {
+		return fmt.Errorf("invalid path %s: %v", config.path, err)
+	}
+
+	outSrc := config.cleanSrcCopy()
+	out, err := yaml.Marshal(outSrc)
+
+	if err != nil {
+		return err
+	}
+
+	file, err := os.Create(config.path)
+
+	if err != nil {
+		return err
+	}
+
+	defer func() { _ = file.Close() }()
+
+	_, err = file.Write(out)
+
+	return err
+}
+
+// UpdateControllerEndpoint updates the runtime configuration address of the controller and the
+// internal map configuration.
+func (config *Config) UpdateControllerEndpoint(address string) error {
+	if parsedAddress, err := transport.ParseAddress(address); parsedAddress != nil && err == nil {
+		if config.Ctrl.Endpoint.String() != address {
+			//config file update
+			if ctrlVal, ok := config.src[CtrlMapKey]; ok {
+				if ctrlMap, ok := ctrlVal.(map[interface{}]interface{}); ok {
+					ctrlMap[CtrlEndpointMapKey] = address
+				} else {
+					return errors.New("source ctrl found but not map[interface{}]interface{}")
+				}
+			} else {
+				return errors.New("source ctrl key not found")
+			}
+
+			//runtime update
+			config.Ctrl.Endpoint.Store(parsedAddress)
+
+		}
+	} else {
+		return fmt.Errorf("could not parse address: %v", err)
+	}
+
+	return nil
+}
+
+// UpdatableAddress allows a single address to be passed to multiple channel implementations and be centrally updated
+// in a thread safe manner.
+type UpdatableAddress struct {
+	wrapped atomic.Value
+}
+
+// UpdatableAddress implements transport.Address
+var _ transport.Address = &UpdatableAddress{}
+
+// NewUpdatableAddress create a new *UpdatableAddress which implements transport.Address and allow
+// thread safe updating of the internal address
+func NewUpdatableAddress(address transport.Address) *UpdatableAddress {
+	ret := &UpdatableAddress{}
+	ret.wrapped.Store(address)
+	return ret
+}
+
+// Listen implements transport.Address.Listen
+func (c *UpdatableAddress) Listen(name string, i *identity.TokenId, incoming chan transport.Connection, tcfg transport.Configuration) (io.Closer, error) {
+	return c.getWrapped().Listen(name, i, incoming, tcfg)
+}
+
+// MustListen implements transport.Address.MustListen
+func (c *UpdatableAddress) MustListen(name string, i *identity.TokenId, incoming chan transport.Connection, tcfg transport.Configuration) io.Closer {
+	return c.getWrapped().MustListen(name, i, incoming, tcfg)
+}
+
+// String implements transport.Address.String
+func (c *UpdatableAddress) String() string {
+	return c.getWrapped().String()
+}
+
+// Type implements transport.Address.Type
+func (c *UpdatableAddress) Type() string {
+	return c.getWrapped().Type()
+}
+
+// Dial implements transport.Address.Dial
+func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+	return c.getWrapped().Dial(name, i, timeout, tcfg)
+}
+
+// getWrapped loads the current transport.Address
+func (c *UpdatableAddress) getWrapped() transport.Address {
+	return c.wrapped.Load().(transport.Address)
+}
+
+// Store updates the address currently used by this configuration instance
+func (c *UpdatableAddress) Store(address transport.Address) {
+	c.wrapped.Store(address)
 }
 
 func LoadConfig(path string) (*Config, error) {
@@ -137,6 +333,10 @@ func LoadConfig(path string) (*Config, error) {
 		cfg.Id = identity.NewIdentity(id)
 	}
 
+	if value, found := cfgmap[PathMapKey]; found {
+		cfg.path = value.(string)
+	}
+
 	cfg.Forwarder = forwarder.DefaultOptions()
 	if value, found := cfgmap["forwarder"]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
@@ -153,13 +353,13 @@ func LoadConfig(path string) (*Config, error) {
 	if value, found := cfgmap["trace"]; found {
 		submap := value.(map[interface{}]interface{})
 		if value, found := submap["path"]; found {
-			handler, err := channel2.NewTraceHandler(value.(string), cfg.Id.Token)
+			handler, err := channel.NewTraceHandler(value.(string), cfg.Id.Token)
 			if err != nil {
 				return nil, err
 			}
-			handler.AddDecoder(&channel2.Decoder{})
-			handler.AddDecoder(&xgress.Decoder{})
-			handler.AddDecoder(&ctrl_pb.Decoder{})
+			handler.AddDecoder(channel.Decoder{})
+			handler.AddDecoder(xgress.Decoder{})
+			handler.AddDecoder(ctrl_pb.Decoder{})
 			cfg.Trace.Handler = handler
 		}
 	}
@@ -189,19 +389,23 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	cfg.Ctrl.DefaultRequestTimeout = 5 * time.Second
-	cfg.Ctrl.Options = channel2.DefaultOptions()
-	if value, found := cfgmap["ctrl"]; found {
+	cfg.Ctrl.Options = channel.DefaultOptions()
+	if value, found := cfgmap[CtrlMapKey]; found {
 		if submap, ok := value.(map[interface{}]interface{}); ok {
-			if value, found := submap["endpoint"]; found {
+			if value, found := submap[CtrlEndpointMapKey]; found {
 				address, err := transport.ParseAddress(value.(string))
 				if err != nil {
 					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
 				}
-				cfg.Ctrl.Endpoint = address
+				cfg.Ctrl.Endpoint = NewUpdatableAddress(address)
 			}
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
-					cfg.Ctrl.Options = channel2.LoadOptions(optionsMap)
+					options, err := channel.LoadOptions(optionsMap)
+					if err != nil {
+						return nil, errors.Wrap(err, "unable to load control channel options")
+					}
+					cfg.Ctrl.Options = options
 					if err := cfg.Ctrl.Options.Validate(); err != nil {
 						return nil, fmt.Errorf("error loading channel options for [ctrl/options] (%v)", err)
 					}
@@ -212,9 +416,6 @@ func LoadConfig(path string) (*Config, error) {
 				if cfg.Ctrl.DefaultRequestTimeout, err = time.ParseDuration(value.(string)); err != nil {
 					return nil, errors.Wrap(err, "invalid value for ctrl.defaultRequestTimeout")
 				}
-			}
-			if cfg.Trace.Handler != nil {
-				cfg.Ctrl.Options.PeekHandlers = append(cfg.Ctrl.Options.PeekHandlers, cfg.Trace.Handler)
 			}
 		}
 	}

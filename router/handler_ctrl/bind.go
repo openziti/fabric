@@ -17,24 +17,26 @@
 package handler_ctrl
 
 import (
+	"github.com/openziti/channel"
+	"github.com/openziti/channel/latency"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
-	"github.com/openziti/foundation/channel2"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
 )
 
 type bindHandler struct {
-	id           *identity.TokenId
-	dialerCfg    map[string]xgress.OptionsData
-	xlinkDialers []xlink.Dialer
-	ctrl         xgress.CtrlChannel
-	forwarder    *forwarder.Forwarder
-	xctrls       []xctrl.Xctrl
-	closeNotify  chan struct{}
+	id                 *identity.TokenId
+	dialerCfg          map[string]xgress.OptionsData
+	xlinkDialers       []xlink.Dialer
+	ctrl               xgress.CtrlChannel
+	forwarder          *forwarder.Forwarder
+	xctrls             []xctrl.Xctrl
+	closeNotify        chan struct{}
+	ctrlAddressChanger CtrlAddressChanger
+	traceHandler       *channel.TraceHandler
 }
 
 func NewBindHandler(id *identity.TokenId,
@@ -43,30 +45,40 @@ func NewBindHandler(id *identity.TokenId,
 	ctrl xgress.CtrlChannel,
 	forwarder *forwarder.Forwarder,
 	xctrls []xctrl.Xctrl,
-	closeNotify chan struct{}) channel2.BindHandler {
+	ctrlAddressChanger CtrlAddressChanger,
+	traceHandler *channel.TraceHandler,
+	closeNotify chan struct{}) channel.BindHandler {
 	return &bindHandler{
-		id:           id,
-		dialerCfg:    dialerCfg,
-		xlinkDialers: xlinkDialers,
-		ctrl:         ctrl,
-		forwarder:    forwarder,
-		xctrls:       xctrls,
-		closeNotify:  closeNotify,
+		id:                 id,
+		dialerCfg:          dialerCfg,
+		xlinkDialers:       xlinkDialers,
+		ctrl:               ctrl,
+		forwarder:          forwarder,
+		xctrls:             xctrls,
+		closeNotify:        closeNotify,
+		ctrlAddressChanger: ctrlAddressChanger,
+		traceHandler:       traceHandler,
 	}
 }
 
-func (self *bindHandler) BindChannel(ch channel2.Channel) error {
-	ch.AddReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, self.forwarder, self.closeNotify))
-	ch.AddReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, self.closeNotify))
-	ch.AddReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
-	ch.AddReceiveHandler(newUnrouteHandler(self.forwarder))
-	ch.AddReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
-	ch.AddReceiveHandler(newInspectHandler(self.id))
-	ch.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, ch, self.forwarder.TraceController(), trace.NewChannelSink(ch)))
-	metrics.AddLatencyProbeResponder(ch)
+func (self *bindHandler) BindChannel(binding channel.Binding) error {
+	binding.AddTypedReceiveHandler(newDialHandler(self.id, self.ctrl, self.xlinkDialers, self.forwarder, self.closeNotify))
+	binding.AddTypedReceiveHandler(newRouteHandler(self.id, self.ctrl, self.dialerCfg, self.forwarder, self.closeNotify))
+	binding.AddTypedReceiveHandler(newValidateTerminatorsHandler(self.ctrl, self.dialerCfg))
+	binding.AddTypedReceiveHandler(newUnrouteHandler(self.forwarder))
+	binding.AddTypedReceiveHandler(newTraceHandler(self.id, self.forwarder.TraceController()))
+	binding.AddTypedReceiveHandler(newInspectHandler(self.id))
+	binding.AddTypedReceiveHandler(newSettingsHandler(self.ctrlAddressChanger))
+
+	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
+	latency.AddLatencyProbeResponder(binding)
+
+	if self.traceHandler != nil {
+		binding.AddPeekHandler(self.traceHandler)
+	}
 
 	for _, x := range self.xctrls {
-		if err := ch.Bind(x); err != nil {
+		if err := binding.Bind(x); err != nil {
 			return err
 		}
 	}

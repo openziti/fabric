@@ -17,20 +17,20 @@
 package network
 
 import (
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/fabric/controller/db"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/foundation/channel2"
-	"github.com/openziti/foundation/common"
-	"github.com/openziti/foundation/storage/boltz"
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/stringz"
-	"github.com/orcaman/concurrent-map"
-	"github.com/pkg/errors"
-	"go.etcd.io/bbolt"
 	"reflect"
 	"sync"
 	"sync/atomic"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/fabric/controller/db"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/foundation/common"
+	"github.com/openziti/foundation/storage/boltz"
+	"github.com/openziti/foundation/util/concurrenz"
+	cmap "github.com/orcaman/concurrent-map"
+	"github.com/pkg/errors"
+	"go.etcd.io/bbolt"
 )
 
 type Router struct {
@@ -38,10 +38,12 @@ type Router struct {
 	Name               string
 	Fingerprint        *string
 	AdvertisedListener string
-	Control            channel2.Channel
+	Control            channel.Channel
 	Connected          concurrenz.AtomicBoolean
 	VersionInfo        *common.VersionInfo
 	routerLinks        RouterLinks
+	Cost               uint16
+	NoTraversal        bool
 }
 
 func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entity) error {
@@ -51,6 +53,8 @@ func (entity *Router) fillFrom(_ Controller, _ *bbolt.Tx, boltEntity boltz.Entit
 	}
 	entity.Name = boltRouter.Name
 	entity.Fingerprint = boltRouter.Fingerprint
+	entity.Cost = boltRouter.Cost
+	entity.NoTraversal = boltRouter.NoTraversal
 	entity.FillCommon(boltRouter)
 	return nil
 }
@@ -60,10 +64,12 @@ func (entity *Router) toBolt() boltz.Entity {
 		BaseExtEntity: *boltz.NewExtEntity(entity.Id, entity.Tags),
 		Name:          entity.Name,
 		Fingerprint:   entity.Fingerprint,
+		Cost:          entity.Cost,
+		NoTraversal:   entity.NoTraversal,
 	}
 }
 
-func NewRouter(id, name, fingerprint string) *Router {
+func NewRouter(id, name, fingerprint string, cost uint16, noTraversal bool) *Router {
 	if name == "" {
 		name = id
 	}
@@ -71,6 +77,8 @@ func NewRouter(id, name, fingerprint string) *Router {
 		BaseEntity:  models.BaseEntity{Id: id},
 		Name:        name,
 		Fingerprint: &fingerprint,
+		Cost:        cost,
+		NoTraversal: noTraversal,
 	}
 	result.routerLinks.allLinks.Store([]*Link{})
 	result.routerLinks.linkByRouter.Store(map[string][]*Link{})
@@ -150,6 +158,27 @@ func newRouterController(controllers *Controllers) *RouterController {
 		store:          controllers.stores.Router,
 	}
 	result.impl = result
+
+	controllers.stores.Router.AddListener(boltz.EventUpdate, func(i ...interface{}) {
+		for _, val := range i {
+			if router, ok := val.(*db.Router); ok {
+				result.UpdateCachedRouter(router.Id)
+			} else {
+				pfxlog.Logger().Errorf("error in router listener. expected *db.Router, got %T", val)
+			}
+		}
+	})
+
+	controllers.stores.Router.AddListener(boltz.EventDelete, func(i ...interface{}) {
+		for _, val := range i {
+			if router, ok := val.(*db.Router); ok {
+				result.HandleRouterDelete(router.Id)
+			} else {
+				pfxlog.Logger().Errorf("error in router listener. expected *db.Router, got %T", val)
+			}
+		}
+	})
+
 	return result
 }
 
@@ -218,6 +247,17 @@ func (ctrl *RouterController) Read(id string) (entity *Router, err error) {
 	return entity, err
 }
 
+func (ctrl *RouterController) readUncached(id string) (*Router, error) {
+	entity := &Router{}
+	err := ctrl.db.View(func(tx *bbolt.Tx) error {
+		return ctrl.readEntityInTx(tx, id, entity)
+	})
+	if err != nil {
+		return nil, err
+	}
+	return entity, nil
+}
+
 func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error) {
 	if t, found := ctrl.cache.Get(id); found {
 		return t.(*Router), nil
@@ -232,22 +272,10 @@ func (ctrl *RouterController) readInTx(tx *bbolt.Tx, id string) (*Router, error)
 	return entity, nil
 }
 
-func (ctrl *RouterController) UpdateCachedFingerprint(id, fingerprint string) {
-	if val, ok := ctrl.cache.Get(id); ok {
-		if router, ok := val.(*Router); ok {
-			router.Fingerprint = &fingerprint
-		} else {
-			pfxlog.Logger().Errorf("encountered %t in router cache, expected *Router", val)
-		}
-	}
-}
-
 func (ctrl *RouterController) Update(r *Router) error {
 	if err := ctrl.updateGeneral(r, nil); err != nil {
 		return err
 	}
-
-	ctrl.UpdateCachedFingerprint(r.Id, stringz.OrEmpty(r.Fingerprint))
 
 	return nil
 }
@@ -257,11 +285,57 @@ func (ctrl *RouterController) Patch(r *Router, checker boltz.FieldChecker) error
 		return err
 	}
 
-	if checker.IsUpdated("fingerprint") {
-		ctrl.UpdateCachedFingerprint(r.Id, stringz.OrEmpty(r.Fingerprint))
-	}
-
 	return nil
+}
+
+func (ctrl *RouterController) HandleRouterDelete(id string) {
+	log := pfxlog.Logger().WithField("routerId", id)
+	log.Debug("processing router delete")
+	ctrl.cache.Remove(id)
+
+	// if we close the control channel, the router will get removed from the connected cache. We don't do it
+	// here because it results in deadlock
+	if v, found := ctrl.connected.Get(id); found {
+		if router, ok := v.(*Router); ok {
+			if ctrl := router.Control; ctrl != nil {
+				_ = ctrl.Close()
+				log.Warn("connected router deleted, disconnecting router")
+			} else {
+				log.Warn("deleted router in connected cache doesn't have a connected control channel")
+			}
+		} else {
+			log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
+		}
+	} else {
+		log.Debug("deleted router not connected, no further action required")
+	}
+}
+
+func (ctrl *RouterController) UpdateCachedRouter(id string) {
+	log := pfxlog.Logger().WithField("routerId", id)
+	if router, err := ctrl.readUncached(id); err != nil {
+		log.WithError(err).Error("failed to read router for cache update")
+	} else {
+		updateCb := func(key string, v interface{}, exist bool) bool {
+			if !exist {
+				return false
+			}
+
+			if cached, ok := v.(*Router); ok {
+				cached.Name = router.Name
+				cached.Fingerprint = router.Fingerprint
+				cached.Cost = router.Cost
+				cached.NoTraversal = router.NoTraversal
+			} else {
+				log.Errorf("cached router of wrong type, expected %T, was %T", &Router{}, v)
+			}
+
+			return false
+		}
+
+		ctrl.cache.RemoveCb(id, updateCb)
+		ctrl.connected.RemoveCb(id, updateCb)
+	}
 }
 
 type RouterLinks struct {

@@ -18,29 +18,39 @@ package handler_mgmt
 
 import (
 	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/foundation/channel2"
+	"github.com/openziti/channel"
+	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/xmgmt"
 )
 
 type MgmtAccepter struct {
-	listener channel2.UnderlayListener
-	options  *channel2.Options
+	listener channel.UnderlayListener
+	options  *channel.Options
+	network  *network.Network
+	xmgmts   []xmgmt.Xmgmt
 }
 
-func NewMgmtAccepter(listener channel2.UnderlayListener,
-	options *channel2.Options) *MgmtAccepter {
+func NewMgmtAccepter(network *network.Network,
+	xmgmts []xmgmt.Xmgmt,
+	listener channel.UnderlayListener,
+	options *channel.Options) *MgmtAccepter {
 	return &MgmtAccepter{
+		network:  network,
+		xmgmts:   xmgmts,
 		listener: listener,
 		options:  options,
 	}
 }
 
-func (mgmtAccepter *MgmtAccepter) Run() {
+func (self *MgmtAccepter) Run() {
 	log := pfxlog.Logger()
 	log.Info("started")
 	defer log.Warn("exited")
 
+	bindHandler := NewBindHandler(self.network, self.xmgmts)
+
 	for {
-		ch, err := channel2.NewChannel("mgmt", mgmtAccepter.listener, mgmtAccepter.options)
+		ch, err := channel.NewChannel("mgmt", self.listener, bindHandler, self.options)
 		if err == nil {
 			log.Debugf("accepted mgmt connection [%s]", ch.Id().Token)
 

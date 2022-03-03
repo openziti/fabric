@@ -18,10 +18,10 @@ package handler_link
 
 import (
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/channel2"
 )
 
 type ackHandler struct {
@@ -40,7 +40,7 @@ func (self *ackHandler) ContentType() int32 {
 	return xgress.ContentTypeAcknowledgementType
 }
 
-func (self *ackHandler) HandleReceive(msg *channel2.Message, ch channel2.Channel) {
+func (self *ackHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
 	log := pfxlog.ContextLogger(ch.Label()).
 		WithField("linkId", self.link.Id().Token).
 		WithField("routerId", self.link.DestinationId())

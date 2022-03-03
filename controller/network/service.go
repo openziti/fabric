@@ -69,6 +69,19 @@ func newServiceController(controllers *Controllers) *ServiceController {
 	}
 	result.impl = result
 
+	cacheInvalidationF := func(i ...interface{}) {
+		for _, val := range i {
+			if service, ok := val.(*db.Service); ok {
+				result.RemoveFromCache(service.Id)
+			} else {
+				pfxlog.Logger().Errorf("error in service listener. expected *db.Service, got %T", val)
+			}
+		}
+	}
+
+	controllers.stores.Service.AddListener(boltz.EventUpdate, cacheInvalidationF)
+	controllers.stores.Service.AddListener(boltz.EventDelete, cacheInvalidationF)
+
 	return result
 }
 
@@ -154,6 +167,15 @@ func (ctrl *ServiceController) Read(id string) (entity *Service, err error) {
 		return nil, err
 	}
 	return entity, err
+}
+
+func (ctrl *ServiceController) GetIdForName(id string) (string, error) {
+	var result []byte
+	err := ctrl.db.View(func(tx *bbolt.Tx) error {
+		result = ctrl.store.GetNameIndex().Read(tx, []byte(id))
+		return nil
+	})
+	return string(result), err
 }
 
 func (ctrl *ServiceController) readInTx(tx *bbolt.Tx, id string) (*Service, error) {
