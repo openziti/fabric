@@ -50,7 +50,7 @@ func (linkController *linkController) has(link *Link) bool {
 
 func (linkController *linkController) routerReportedLink(linkId, linkType string, src, dst *Router) (*Link, bool) {
 	linkController.lock.Lock()
-	linkController.lock.Unlock()
+	defer linkController.lock.Unlock()
 
 	if link, found := linkController.get(linkId); found {
 		return link, false
