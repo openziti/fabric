@@ -26,10 +26,11 @@ import (
 )
 
 type Path struct {
-	Nodes     []*Router
-	Links     []*Link
-	IngressId string
-	EgressId  string
+	Nodes               []*Router
+	Links               []*Link
+	IngressId           string
+	EgressId            string
+	TerminatorLocalAddr string
 }
 
 func (self *Path) String() string {
@@ -44,6 +45,10 @@ func (self *Path) String() string {
 		out += fmt.Sprintf("->[l/%s]", self.Links[i].Id)
 		out += fmt.Sprintf("->[r/%s]", self.Nodes[i+1].Id)
 	}
+	if self.TerminatorLocalAddr != "" {
+		out += fmt.Sprintf("->[r/%v]", self.TerminatorLocalAddr)
+	}
+
 	return out
 }
 

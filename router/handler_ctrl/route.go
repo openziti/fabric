@@ -17,6 +17,11 @@
 package handler_ctrl
 
 import (
+	"fmt"
+	"net"
+	"syscall"
+	"time"
+
 	"github.com/golang/protobuf/proto"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -30,7 +35,6 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type routeHandler struct {
@@ -108,6 +112,14 @@ func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_p
 		response.Headers[int32(k)] = v
 	}
 
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+	fmt.Println("Printing byte headder")
+	fmt.Println(msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader))
+
 	response.ReplyTo(msg)
 
 	log.Debug("sending sucess response")
@@ -153,9 +165,29 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 				}
 
+				fmt.Println()
+				fmt.Println()
+				fmt.Println()
+				fmt.Println()
+				fmt.Println()
+				fmt.Println("Trying to put connection refused")
+				msg.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, ctrl_msg.ErrorTypeConnectionRefused)
+				fmt.Println(msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader))
+
 				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
+					fmt.Println("In success")
 					rh.success(msg, attempt, route, peerData, log)
 				} else {
+					fmt.Println("Fail 1?")
+					if oerr, ok := err.(*net.OpError); ok {
+						switch oerr.Err {
+						case syscall.ECONNREFUSED:
+							msg.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, ctrl_msg.ErrorTypeConnectionRefused)
+						case syscall.ETIMEDOUT:
+							msg.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, ctrl_msg.ErrorTypeDialTimedOut)
+							//Need to figure out invalid terminator
+						}
+					}
 					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
 				}
 			} else {

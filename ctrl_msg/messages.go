@@ -62,8 +62,8 @@ func NewRouteResultFailedMessage(sessionId string, attempt int, rerr string) *ch
 	return msg
 }
 
-func NewRouteResultDialFailedMessage(sessionId string, attempt int, rerr string, errType byte) *channel2.Message {
-	msg := channel2.NewMessage(RouteResultType, []byte(sessionId))
+func NewRouteResultDialFailedMessage(sessionId string, attempt int, rerr string, errType byte) *channel.Message {
+	msg := channel.NewMessage(RouteResultType, []byte(sessionId))
 	msg.PutUint32Header(RouteResultAttemptHeader, uint32(attempt))
 	msg.PutStringHeader(RouteResultErrorHeader, rerr)
 	msg.PutByteHeader(RouteResultErrorCodeHeader, errType)

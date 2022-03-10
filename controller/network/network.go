@@ -75,6 +75,10 @@ type Network struct {
 	serviceDialFailCounter       metrics.IntervalCounter
 	serviceDialTimeoutCounter    metrics.IntervalCounter
 	serviceDialOtherErrorCounter metrics.IntervalCounter
+
+	serviceTerminatorTimeoutCounter           metrics.IntervalCounter
+	serviceTerminatorConnectionRefusedCounter metrics.IntervalCounter
+	serviceInvalidTerminatorcounter           metrics.IntervalCounter
 }
 
 func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
@@ -111,6 +115,10 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 		serviceDialFailCounter:       serviceEventMetrics.IntervalCounter("service.dial.fail", time.Minute),
 		serviceDialTimeoutCounter:    serviceEventMetrics.IntervalCounter("service.dial.timeout", time.Minute),
 		serviceDialOtherErrorCounter: serviceEventMetrics.IntervalCounter("service.dial.error_other", time.Minute),
+
+		serviceTerminatorTimeoutCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.timeout", time.Minute),
+		serviceTerminatorConnectionRefusedCounter: serviceEventMetrics.IntervalCounter("service.dial.terminator.connection_refused", time.Minute),
+		serviceInvalidTerminatorcounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.invalid", time.Minute),
 	}
 
 	network.Controllers.Inspections.network = network
@@ -462,6 +470,11 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 			}
 		}
 		logger.Debugf("cleaned up [%d] abandoned routers for circuit", cleanupCount)
+
+		terminatorLocalAddress := peerData[uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader)]
+		path.TerminatorLocalAddr = string(terminatorLocalAddress)
+
+		delete(peerData, uint32(ctrl_pb.ContentType_TerminatorLocalAddressHeader))
 
 		// 6: Create Circuit Object
 		circuit := &Circuit{
