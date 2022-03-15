@@ -78,7 +78,8 @@ type Network struct {
 
 	serviceTerminatorTimeoutCounter           metrics.IntervalCounter
 	serviceTerminatorConnectionRefusedCounter metrics.IntervalCounter
-	serviceInvalidTerminatorcounter           metrics.IntervalCounter
+	serviceInvalidTerminatorCounter           metrics.IntervalCounter
+	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
 }
 
 func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *metrics.Config, versionProvider common.VersionProvider, closeNotify <-chan struct{}) (*Network, error) {
@@ -118,7 +119,8 @@ func NewNetwork(nodeId string, options *Options, database boltz.Db, metricsCfg *
 
 		serviceTerminatorTimeoutCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.timeout", time.Minute),
 		serviceTerminatorConnectionRefusedCounter: serviceEventMetrics.IntervalCounter("service.dial.terminator.connection_refused", time.Minute),
-		serviceInvalidTerminatorcounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.invalid", time.Minute),
+		serviceInvalidTerminatorCounter:           serviceEventMetrics.IntervalCounter("service.dial.terminator.invalid", time.Minute),
+		serviceMisconfiguredTerminatorCounter:     serviceEventMetrics.IntervalCounter("service.dial.terminator.misconfigured", time.Minute),
 	}
 
 	network.Controllers.Inspections.network = network
@@ -219,6 +221,17 @@ func (network *Network) GetAllCircuits() []*Circuit {
 }
 
 func (network *Network) RouteResult(rs *RouteStatus) bool {
+	circuit, found := network.GetCircuit(rs.CircuitId)
+
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
+	fmt.Println(circuit, found)
+	fmt.Println()
+	fmt.Println()
+	fmt.Println()
+
 	return network.routeSenderController.forwardRouteResult(rs)
 }
 
@@ -526,6 +539,13 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 				err := errors.Errorf("router with id=%v on terminator with id=%v for service name=%v is not online",
 					terminator.GetRouterId(), terminator.GetId(), svc.Name)
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
+				network.ServiceInvalidTerminator(svc.GetId(), terminator.GetId())
+				if terminator.IsSystem {
+					if err := network.Controllers.Terminators.Delete(terminator.GetId()); err != nil {
+						log.Debugf("error while deleting misbehaving terminator: %v", err)
+					}
+				}
+
 				errList = append(errList, err)
 				continue
 			}

@@ -18,15 +18,17 @@ package network
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	cmap "github.com/orcaman/concurrent-map"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type routeSenderController struct {
@@ -95,6 +97,19 @@ attendance:
 	for {
 		select {
 		case status := <-self.in:
+			switch status.ErrorCode {
+			case ctrl_msg.ErrorTypeGeneric:
+				self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+			case ctrl_msg.ErrorTypeInvalidTerminator:
+				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+			case ctrl_msg.ErrorTypeDialTimedOut:
+				self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
+			case ctrl_msg.ErrorTypeConnectionRefused:
+				self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
+			default:
+				logger.WithError(fmt.Errorf("unhandled error code: %v", status.ErrorCode))
+			}
+
 			if status.Success {
 				if status.Attempt == attempt {
 					logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.Router.Id, status.Attempt, status.CircuitId)

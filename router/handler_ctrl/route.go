@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"fmt"
 	"net"
 	"syscall"
 	"time"
@@ -112,14 +111,6 @@ func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_p
 		response.Headers[int32(k)] = v
 	}
 
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("Printing byte headder")
-	fmt.Println(msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader))
-
 	response.ReplyTo(msg)
 
 	log.Debug("sending sucess response")
@@ -130,10 +121,13 @@ func (rh *routeHandler) success(msg *channel.Message, attempt int, route *ctrl_p
 	}
 }
 
-func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, log *logrus.Entry) {
+func (rh *routeHandler) fail(msg *channel.Message, attempt int, route *ctrl_pb.Route, err error, errorHeader *byte, log *logrus.Entry) {
 	log.WithError(err).Error("failed to connect egress")
 
 	response := ctrl_msg.NewRouteResultFailedMessage(route.CircuitId, attempt, err.Error())
+	if errorHeader != nil {
+		response.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, *errorHeader)
+	}
 	response.ReplyTo(msg)
 	if err := rh.ctrl.Channel().Send(response); err != nil {
 		log.WithError(err).Error("send failure response failed")
@@ -165,36 +159,28 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 					time.Sleep(rh.forwarder.Options.XgressDialDwellTime)
 				}
 
-				fmt.Println()
-				fmt.Println()
-				fmt.Println()
-				fmt.Println()
-				fmt.Println()
-				fmt.Println("Trying to put connection refused")
-				msg.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, ctrl_msg.ErrorTypeConnectionRefused)
-				fmt.Println(msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader))
-
 				if peerData, err := dialer.Dial(route.Egress.Destination, circuitId, xgress.Address(route.Egress.Address), bindHandler, ctx); err == nil {
-					fmt.Println("In success")
 					rh.success(msg, attempt, route, peerData, log)
 				} else {
-					fmt.Println("Fail 1?")
+					var headerError *byte
 					if oerr, ok := err.(*net.OpError); ok {
+						var errCode byte
 						switch oerr.Err {
 						case syscall.ECONNREFUSED:
-							msg.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, ctrl_msg.ErrorTypeConnectionRefused)
+							errCode = ctrl_msg.ErrorTypeConnectionRefused
 						case syscall.ETIMEDOUT:
-							msg.PutByteHeader(ctrl_msg.RouteResultErrorCodeHeader, ctrl_msg.ErrorTypeDialTimedOut)
+							errCode = ctrl_msg.ErrorTypeDialTimedOut
 							//Need to figure out invalid terminator
 						}
+						headerError = &errCode
 					}
-					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
+					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), headerError, log)
 				}
 			} else {
-				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), log)
+				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), nil, log)
 			}
 		} else {
-			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), log)
+			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), nil, log)
 		}
 	})
 }

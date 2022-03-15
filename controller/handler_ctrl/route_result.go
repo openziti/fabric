@@ -19,8 +19,6 @@ package handler_ctrl
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
-
 	"github.com/golang/protobuf/proto"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/network"
@@ -67,36 +65,6 @@ func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 				}
 			}
 			errCode, _ := msg.GetByteHeader(ctrl_msg.RouteResultErrorCodeHeader)
-
-			circuit, found := self.network.GetCircuit(circuitId)
-			fmt.Println()
-			fmt.Println()
-			fmt.Println()
-			fmt.Printf("-->%v<--\n", errCode)
-			if !found {
-				log.WithError(fmt.Errorf("unable to find corresponding circuit [%s]", circuitId))
-			} else {
-				switch errCode {
-				case ctrl_msg.ErrorTypeGeneric:
-					self.network.ServiceDialOtherError(circuit.Service.Id)
-				case ctrl_msg.ErrorTypeInvalidTerminator:
-					fmt.Println("Got Invalid Terminator Error Headder")
-					self.network.ServiceInvalidTerminator(circuit.Service.Id, circuit.Terminator.GetId())
-				case ctrl_msg.ErrorTypeDialTimedOut:
-					fmt.Println("Got Dial Timeout Error Headder")
-					self.network.ServiceTerminatorTimeout(circuit.Service.Id, circuit.Terminator.GetId())
-				case ctrl_msg.ErrorTypeConnectionRefused:
-					fmt.Println("Got Connection Refused Error Headder")
-					self.network.ServiceTerminatorConnectionRefused(circuit.Service.Id, circuit.Terminator.GetId())
-				default:
-					fmt.Println("Got Unhandled")
-					fmt.Println(errCode)
-					log.WithError(fmt.Errorf("unhandled error code: %v", errCode))
-				}
-			}
-			fmt.Println()
-			fmt.Println()
-			fmt.Println()
 
 			rs := &network.RouteStatus{
 				Router:    self.r,

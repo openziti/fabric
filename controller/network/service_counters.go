@@ -14,6 +14,7 @@ type ServiceCounters interface {
 	ServiceTerminatorTimeout(serviceId, terminatorId string)
 	ServiceTerminatorConnectionRefused(serviceId, terminatorId string)
 	ServiceInvalidTerminator(serviceId, terminatorId string)
+	ServiceMisconfiguredTerminator(serviceId, terminatorId string)
 }
 
 func (network *Network) ServiceDialSuccess(serviceId, terminatorId string) {
@@ -45,7 +46,12 @@ func (network *Network) ServiceTerminatorConnectionRefused(serviceId, terminator
 }
 func (network *Network) ServiceInvalidTerminator(serviceId, terminatorId string) {
 	combinedId := network.joinIds(serviceId, terminatorId)
-	network.serviceInvalidTerminatorcounter.Update(combinedId, time.Now(), 1)
+	network.serviceInvalidTerminatorCounter.Update(combinedId, time.Now(), 1)
+}
+
+func (network *Network) ServiceMisconfiguredTerminator(serviceId, terminatorId string) {
+	combinedId := network.joinIds(serviceId, terminatorId)
+	network.serviceMisconfiguredTerminatorCounter.Update(combinedId, time.Now(), 1)
 }
 
 func (network *Network) joinIds(serviceId, terminatorId string) string {
