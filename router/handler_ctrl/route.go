@@ -170,8 +170,10 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 							errCode = ctrl_msg.ErrorTypeConnectionRefused
 						case syscall.ETIMEDOUT:
 							errCode = ctrl_msg.ErrorTypeDialTimedOut
-							//Need to figure out invalid terminator
 						}
+						headerError = &errCode
+					} else if _, ok := err.(ctrl_pb.InvalidTerminatorError); ok {
+						var errCode byte = ctrl_msg.ErrorTypeInvalidTerminator
 						headerError = &errCode
 					}
 					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), headerError, log)

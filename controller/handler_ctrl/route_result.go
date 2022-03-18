@@ -73,7 +73,7 @@ func (self *routeResultHandler) handleRouteResult(msg *channel.Message) {
 				Success:   success,
 				Err:       rerr,
 				PeerData:  peerData,
-				ErrorCode: errCode,
+				ErrorCode: &errCode,
 			}
 			routing := self.network.RouteResult(rs)
 			if !routing && attempt != network.SmartRerouteAttempt {

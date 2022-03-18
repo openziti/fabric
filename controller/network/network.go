@@ -19,6 +19,11 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"sort"
+	"strings"
+	"sync"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/protobufs"
 	"github.com/openziti/fabric/controller/db"
@@ -40,10 +45,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
-	"sort"
-	"strings"
-	"sync"
-	"time"
 )
 
 const SmartRerouteAttempt = 99969996
@@ -221,22 +222,11 @@ func (network *Network) GetAllCircuits() []*Circuit {
 }
 
 func (network *Network) RouteResult(rs *RouteStatus) bool {
-	circuit, found := network.GetCircuit(rs.CircuitId)
-
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
-	fmt.Println(circuit, found)
-	fmt.Println()
-	fmt.Println()
-	fmt.Println()
-
 	return network.routeSenderController.forwardRouteResult(rs)
 }
 
 func (network *Network) newRouteSender(circuitId string) *routeSender {
-	rs := newRouteSender(circuitId, network.options.RouteTimeout, network)
+	rs := newRouteSender(circuitId, network.options.RouteTimeout, network, network.Terminators)
 	network.routeSenderController.addRouteSender(rs)
 	return rs
 }
@@ -539,12 +529,6 @@ func (network *Network) selectPath(srcR *Router, svc *Service, identity string, 
 				err := errors.Errorf("router with id=%v on terminator with id=%v for service name=%v is not online",
 					terminator.GetRouterId(), terminator.GetId(), svc.Name)
 				log.Debugf("error while calculating path for service %v: %v", svc.Id, err)
-				network.ServiceInvalidTerminator(svc.GetId(), terminator.GetId())
-				if terminator.IsSystem {
-					if err := network.Controllers.Terminators.Delete(terminator.GetId()); err != nil {
-						log.Debugf("error while deleting misbehaving terminator: %v", err)
-					}
-				}
 
 				errList = append(errList, err)
 				continue

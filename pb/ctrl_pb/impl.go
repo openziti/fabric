@@ -18,6 +18,14 @@ package ctrl_pb
 
 import "github.com/openziti/fabric/controller/xt"
 
+type InvalidTerminatorError struct {
+	InnerError error
+}
+
+func (e InvalidTerminatorError) Error() string {
+	return e.InnerError.Error()
+}
+
 func (request *CircuitConfirmation) GetContentType() int32 {
 	return int32(ContentType_CircuitConfirmationType)
 }

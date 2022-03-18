@@ -66,15 +66,17 @@ type routeSender struct {
 	in              chan *RouteStatus
 	attendance      map[string]bool
 	serviceCounters ServiceCounters
+	terminators     *TerminatorController
 }
 
-func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters) *routeSender {
+func newRouteSender(circuitId string, timeout time.Duration, serviceCounters ServiceCounters, terminators *TerminatorController) *routeSender {
 	return &routeSender{
 		circuitId:       circuitId,
 		timeout:         timeout,
 		in:              make(chan *RouteStatus, 16),
 		attendance:      make(map[string]bool),
 		serviceCounters: serviceCounters,
+		terminators:     terminators,
 	}
 }
 
@@ -82,7 +84,6 @@ func (self *routeSender) route(attempt uint32, path *Path, routeMsgs []*ctrl_pb.
 	logger := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx)
 
 	// send route messages
-	tr := path.Nodes[len(path.Nodes)-1]
 	for i := 0; i < len(path.Nodes); i++ {
 		r := path.Nodes[i]
 		msg := routeMsgs[i]
@@ -97,48 +98,7 @@ attendance:
 	for {
 		select {
 		case status := <-self.in:
-			switch status.ErrorCode {
-			case ctrl_msg.ErrorTypeGeneric:
-				self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
-			case ctrl_msg.ErrorTypeInvalidTerminator:
-				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
-			case ctrl_msg.ErrorTypeDialTimedOut:
-				self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
-			case ctrl_msg.ErrorTypeConnectionRefused:
-				self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
-			default:
-				logger.WithError(fmt.Errorf("unhandled error code: %v", status.ErrorCode))
-			}
-
-			if status.Success {
-				if status.Attempt == attempt {
-					logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.Router.Id, status.Attempt, status.CircuitId)
-
-					self.attendance[status.Router.Id] = true
-					if status.Router == tr {
-						peerData = status.PeerData
-						strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
-						self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
-					}
-				} else {
-					logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
-				}
-
-			} else {
-				if status.Attempt == attempt {
-					logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
-
-					if status.Router == tr {
-						strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
-						self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
-					}
-					cleanups = self.cleanups(path)
-
-					return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.Router.Id, status.Err)
-				} else {
-					logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
-				}
-			}
+			peerData, cleanups, err = self.handleRouteSend(attempt, path, strategy, status, terminator, logger)
 
 		case <-time.After(timeout):
 			cleanups = self.cleanups(path)
@@ -160,6 +120,61 @@ attendance:
 		timeout = time.Until(deadline)
 	}
 
+	return peerData, nil, nil
+}
+
+func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+	if status.ErrorCode != nil {
+		switch *status.ErrorCode {
+		case ctrl_msg.ErrorTypeGeneric:
+			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
+		case ctrl_msg.ErrorTypeInvalidTerminator:
+			self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
+			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
+				if err := self.terminators.Delete(terminator.GetId()); err != nil {
+					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
+				}
+			} else {
+				self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
+			}
+		case ctrl_msg.ErrorTypeDialTimedOut:
+			self.serviceCounters.ServiceTerminatorTimeout(terminator.GetServiceId(), terminator.GetId())
+		case ctrl_msg.ErrorTypeConnectionRefused:
+			self.serviceCounters.ServiceTerminatorConnectionRefused(terminator.GetServiceId(), terminator.GetId())
+		default:
+			logger.WithError(fmt.Errorf("unhandled error code: %v", status.ErrorCode))
+		}
+	}
+	tr := path.Nodes[len(path.Nodes)-1]
+	if status.Success {
+		if status.Attempt == attempt {
+			logger.Debugf("received successful route status from [r/%s] for attempt [#%d] of [s/%s]", status.Router.Id, status.Attempt, status.CircuitId)
+
+			self.attendance[status.Router.Id] = true
+			if status.Router == tr {
+				peerData = status.PeerData
+				strategy.NotifyEvent(xt.NewDialSucceeded(terminator))
+				self.serviceCounters.ServiceDialSuccess(terminator.GetServiceId(), terminator.GetId())
+			}
+		} else {
+			logger.Warnf("received successful route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
+		}
+
+	} else {
+		if status.Attempt == attempt {
+			logger.Warnf("received failed route status from [r/%s] for attempt [#%d] of [s/%s] (%v)", status.Router.Id, status.Attempt, status.CircuitId, status.Err)
+
+			if status.Router == tr {
+				strategy.NotifyEvent(xt.NewDialFailedEvent(terminator))
+				self.serviceCounters.ServiceDialFail(terminator.GetServiceId(), terminator.GetId())
+			}
+			cleanups = self.cleanups(path)
+
+			return nil, cleanups, errors.Errorf("error creating route for [s/%s] on [r/%s] (%v)", self.circuitId, status.Router.Id, status.Err)
+		} else {
+			logger.Warnf("received failed route status from [r/%s] for alien attempt [#%d (not #%d)] of [s/%s]", status.Router.Id, status.Attempt, attempt, status.CircuitId)
+		}
+	}
 	return peerData, nil, nil
 }
 
@@ -192,7 +207,7 @@ type RouteStatus struct {
 	Success   bool
 	Err       string
 	PeerData  xt.PeerData
-	ErrorCode byte
+	ErrorCode *byte
 }
 
 type routeTimeoutError struct {

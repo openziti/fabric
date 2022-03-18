@@ -18,6 +18,8 @@ package network
 
 import (
 	"fmt"
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"os"
 	"sort"
 
@@ -41,14 +43,50 @@ type testEntityHelper struct {
 	network       *Network
 	routerIdx     int
 	linkIdx       int
+	serviceIdx    int
+	terminatorIdx int
 	transportAddr transport.Address
 }
 
 func (self *testEntityHelper) addTestRouter() *Router {
 	router := newRouterForTest(fmt.Sprintf("router-%03d", self.routerIdx), "", self.transportAddr, nil, 0, false)
 	self.network.Routers.markConnected(router)
+	self.network.Routers.Create(router)
 	self.routerIdx++
 	return router
+}
+
+func (self *testEntityHelper) addTestTerminator(serviceName string, routerName string, identity string, isSystem bool) *Terminator {
+	id := fmt.Sprintf("terminator-#%d", self.terminatorIdx)
+	term := &Terminator{
+		BaseEntity: models.BaseEntity{
+			Id:       id,
+			IsSystem: isSystem,
+		},
+		Service:  serviceName,
+		Router:   routerName,
+		Identity: identity,
+		Address:  "ToDo",
+	}
+	if _, err := self.network.Terminators.Create(term); err != nil {
+		fmt.Println(err)
+	}
+	self.terminatorIdx++
+	return term
+}
+
+func (self *testEntityHelper) addTestService(serviceName string) *Service {
+	id := fmt.Sprintf("service-#%d", self.serviceIdx)
+	svc := &Service{
+		BaseEntity:         models.BaseEntity{Id: id},
+		Name:               serviceName,
+		TerminatorStrategy: xt_smartrouting.Name,
+	}
+	self.serviceIdx++
+	if err := self.network.Services.Create(svc); err != nil {
+		fmt.Println(err)
+	}
+	return svc
 }
 
 func (self *testEntityHelper) discardControllerEvents() {
