@@ -163,17 +163,17 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 					rh.success(msg, attempt, route, peerData, log)
 				} else {
 					var headerError *byte
-					if oerr, ok := err.(*net.OpError); ok {
-						var errCode byte
-						switch oerr.Err {
-						case syscall.ECONNREFUSED:
-							errCode = ctrl_msg.ErrorTypeConnectionRefused
-						case syscall.ETIMEDOUT:
-							errCode = ctrl_msg.ErrorTypeDialTimedOut
-						}
-						headerError = &errCode
-					} else if _, ok := err.(ctrl_pb.InvalidTerminatorError); ok {
+					if terr, ok := err.(ctrl_pb.InvalidTerminatorError); ok {
 						var errCode byte = ctrl_msg.ErrorTypeInvalidTerminator
+						headerError = &errCode
+						if oerr, ok := terr.InnerError.(*net.OpError); ok {
+							switch oerr.Err {
+							case syscall.ECONNREFUSED:
+								errCode = ctrl_msg.ErrorTypeConnectionRefused
+							case syscall.ETIMEDOUT:
+								errCode = ctrl_msg.ErrorTypeDialTimedOut
+							}
+						}
 						headerError = &errCode
 					}
 					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), headerError, log)
