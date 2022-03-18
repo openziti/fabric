@@ -99,6 +99,9 @@ attendance:
 		select {
 		case status := <-self.in:
 			peerData, cleanups, err = self.handleRouteSend(attempt, path, strategy, status, terminator, logger)
+			if err != nil {
+				return nil, cleanups, err
+			}
 
 		case <-time.After(timeout):
 			cleanups = self.cleanups(path)

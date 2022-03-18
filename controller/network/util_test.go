@@ -18,10 +18,11 @@ package network
 
 import (
 	"fmt"
-	"github.com/openziti/fabric/controller/models"
-	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"os"
 	"sort"
+
+	"github.com/openziti/fabric/controller/models"
+	"github.com/openziti/fabric/controller/xt_smartrouting"
 
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/foundation/transport"
@@ -68,9 +69,7 @@ func (self *testEntityHelper) addTestTerminator(serviceName string, routerName s
 		Identity: identity,
 		Address:  "ToDo",
 	}
-	if _, err := self.network.Terminators.Create(term); err != nil {
-		fmt.Println(err)
-	}
+	self.network.Terminators.Create(term)
 	self.terminatorIdx++
 	return term
 }
@@ -83,9 +82,7 @@ func (self *testEntityHelper) addTestService(serviceName string) *Service {
 		TerminatorStrategy: xt_smartrouting.Name,
 	}
 	self.serviceIdx++
-	if err := self.network.Services.Create(svc); err != nil {
-		fmt.Println(err)
-	}
+	self.network.Services.Create(svc)
 	return svc
 }
 
