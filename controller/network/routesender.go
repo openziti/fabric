@@ -127,6 +127,9 @@ attendance:
 }
 
 func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
+	if status.Success == (status.ErrorCode != nil) {
+		logger.WithError(fmt.Errorf("route status success and error code differ. Success: %t\tErrorCode: %v", status.Success, status.ErrorCode))
+	}
 	if !status.Success && status.ErrorCode != nil {
 		switch *status.ErrorCode {
 		case ctrl_msg.ErrorTypeGeneric:
