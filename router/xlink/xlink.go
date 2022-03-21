@@ -57,7 +57,7 @@ type Listener interface {
 	Listen() error
 	GetAdvertisement() string
 	GetLinkProtocol() string
-	GetLinkCostTags() string
+	GetLinkCostTags() []string
 	Close() error
 }
 

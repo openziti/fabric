@@ -74,7 +74,7 @@ func (entity *Router) toBolt() boltz.Entity {
 	}
 }
 
-func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags string) {
+func (entity *Router) AddLinkListener(addr, linkProtocol string, linkCostTags []string) {
 	entity.Listeners = append(entity.Listeners, linkListener{
 		addr:         addr,
 		linkProtocol: linkProtocol,
@@ -383,7 +383,7 @@ func (self *RouterLinks) Clear() {
 type linkListener struct {
 	addr         string
 	linkProtocol string
-	linkCostTags string
+	linkCostTags []string
 }
 
 func (self linkListener) AdvertiseAddress() string {

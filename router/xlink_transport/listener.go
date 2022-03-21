@@ -62,7 +62,7 @@ func (self *listener) GetLinkProtocol() string {
 	return self.config.linkProtocol
 }
 
-func (self *listener) GetLinkCostTags() string {
+func (self *listener) GetLinkCostTags() []string {
 	return self.config.linkCostTags
 }
 

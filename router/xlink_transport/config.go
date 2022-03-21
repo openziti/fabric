@@ -56,8 +56,12 @@ func loadListenerConfig(data map[interface{}]interface{}) (*listenerConfig, erro
 	}
 
 	if value, found := data["costTags"]; found {
-		if costTagsString, ok := value.(string); ok {
-			config.linkCostTags = costTagsString
+		if costTags, ok := value.([]interface{}); ok {
+			stringTags := make([]string, len(costTags))
+			for i, tag := range costTags {
+				stringTags[i] = fmt.Sprint(tag)
+			}
+			config.linkCostTags = stringTags
 		} else {
 			return nil, fmt.Errorf("invalid 'costTags' address in listener config (%s)", reflect.TypeOf(value))
 		}
@@ -84,7 +88,7 @@ type listenerConfig struct {
 	bind         transport.Address
 	advertise    transport.Address
 	linkProtocol string
-	linkCostTags string
+	linkCostTags []string
 	options      *channel.Options
 }
 

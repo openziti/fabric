@@ -105,7 +105,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 				if addr, _ := transport.ParseAddress(addr); addr != nil {
 					linkProtocol = addr.Type()
 				}
-				r.AddLinkListener(addr, linkProtocol, "")
+				r.AddLinkListener(addr, linkProtocol, nil)
 			} else {
 				log.Warn("no advertised listeners")
 			}
