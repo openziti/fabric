@@ -101,7 +101,7 @@ func (self *CtrlAccepter) Bind(binding channel.Binding) error {
 			} else if listenerValue, found := ch.Underlay().Headers()[channel.HelloRouterAdvertisementsHeader]; found {
 				log.Debug("router reported listener using advertisement header")
 				addr := string(listenerValue)
-				linkProtocol := "default"
+				linkProtocol := "tls"
 				if addr, _ := transport.ParseAddress(addr); addr != nil {
 					linkProtocol = addr.Type()
 				}
