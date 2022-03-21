@@ -17,7 +17,6 @@
 package handler_ctrl
 
 import (
-	"net"
 	"syscall"
 	"time"
 
@@ -163,23 +162,26 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 					rh.success(msg, attempt, route, peerData, log)
 				} else {
 					var headerError *byte
-					if terr, ok := err.(ctrl_pb.InvalidTerminatorError); ok {
+					if _, ok := err.(xgress.InvalidTerminatorError); ok {
 						var errCode byte = ctrl_msg.ErrorTypeInvalidTerminator
 						headerError = &errCode
-						if oerr, ok := terr.InnerError.(*net.OpError); ok {
-							switch oerr.Err {
-							case syscall.ECONNREFUSED:
-								errCode = ctrl_msg.ErrorTypeConnectionRefused
-							case syscall.ETIMEDOUT:
-								errCode = ctrl_msg.ErrorTypeDialTimedOut
-							}
+						switch {
+						case errors.Is(err, syscall.ECONNREFUSED):
+							errCode = ctrl_msg.ErrorTypeConnectionRefused
+						case errors.Is(err, syscall.ETIMEDOUT):
+							errCode = ctrl_msg.ErrorTypeDialTimedOut
+						case errors.As(err, &xgress.MisconfiguredTerminatorError{}):
+							errCode = ctrl_msg.ErrorTypeMisconfiguredTerminator
+						case errors.As(err, &xgress.InvalidTerminatorError{}):
+							errCode = ctrl_msg.ErrorTypeInvalidTerminator
 						}
 						headerError = &errCode
 					}
 					rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), headerError, log)
 				}
 			} else {
-				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), nil, log)
+				var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
+				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), &errCode, log)
 			}
 		} else {
 			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), nil, log)

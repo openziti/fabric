@@ -127,17 +127,18 @@ attendance:
 }
 
 func (self *routeSender) handleRouteSend(attempt uint32, path *Path, strategy xt.Strategy, status *RouteStatus, terminator xt.Terminator, logger *pfxlog.Builder) (peerData xt.PeerData, cleanups map[string]struct{}, err error) {
-	if status.ErrorCode != nil {
+	if !status.Success && status.ErrorCode != nil {
 		switch *status.ErrorCode {
 		case ctrl_msg.ErrorTypeGeneric:
 			self.serviceCounters.ServiceDialOtherError(terminator.GetServiceId())
 		case ctrl_msg.ErrorTypeInvalidTerminator:
-			self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
 			if terminator.GetBinding() == "edge" || terminator.GetBinding() == "tunnel" {
+				self.serviceCounters.ServiceInvalidTerminator(terminator.GetServiceId(), terminator.GetId())
 				if err := self.terminators.Delete(terminator.GetId()); err != nil {
 					logger.WithError(fmt.Errorf("unable to delete invalid terminator: %v", err))
 				}
 			} else {
+				self.serviceCounters.ServiceMisconfiguredTerminator(terminator.GetServiceId(), terminator.GetId())
 				self.terminators.handlePrecedenceChange(terminator.GetId(), xt.Precedences.Failed)
 			}
 		case ctrl_msg.ErrorTypeDialTimedOut:

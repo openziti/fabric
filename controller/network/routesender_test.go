@@ -48,14 +48,16 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 	status := &RouteStatus{
 		Router:    router1,
 		ErrorCode: &errCode,
-		Success:   true,
+		Success:   false,
 		Attempt:   1,
+		Err:       "THIS IS A TEST",
 	}
 
 	peerData, cleanup, err := rs.handleRouteSend(1, path, xt_smartrouting.NewFactory().NewStrategy(), status, term, logger)
-	ctx.NoError(err)
+	ctx.Error(err)
+	ctx.ErrorContains(err, status.Err)
 	ctx.Nil(peerData)
-	ctx.Nil(cleanup)
+	ctx.Empty(cleanup)
 
 	newTerm, err := network.Terminators.Read(term.Id)
 	ctx.Error(err)
@@ -101,14 +103,16 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 	status := &RouteStatus{
 		Router:    router1,
 		ErrorCode: &errCode,
-		Success:   true,
+		Success:   false,
 		Attempt:   1,
+		Err:       "THIS IS A TEST",
 	}
 
 	peerData, cleanup, err := rs.handleRouteSend(1, path, xt_smartrouting.NewFactory().NewStrategy(), status, term, logger)
-	ctx.NoError(err)
+	ctx.Error(err)
+	ctx.ErrorContains(err, status.Err)
 	ctx.Nil(peerData)
-	ctx.Nil(cleanup)
+	ctx.Empty(cleanup)
 
 	newTerm, err := network.Terminators.Read(term.Id)
 	ctx.NoError(err)

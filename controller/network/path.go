@@ -41,13 +41,17 @@ func (self *Path) String() string {
 		return "{malformed}"
 	}
 	out := fmt.Sprintf("[r/%s]", self.Nodes[0].Id)
-	for i := 0; i < len(self.Links); i++ {
+	for i := 0; i < len(self.Links)-1; i++ {
 		out += fmt.Sprintf("->[l/%s]", self.Links[i].Id)
 		out += fmt.Sprintf("->[r/%s]", self.Nodes[i+1].Id)
 	}
-	if self.TerminatorLocalAddr != "" {
-		out += fmt.Sprintf("->[r/%v]", self.TerminatorLocalAddr)
-	}
+	out += fmt.Sprintf("->[l/%s]", self.Links[len(self.Links)-1].Id)
+	out += fmt.Sprintf("->[r/%v%s]", self.Nodes[len(self.Nodes)-1].Id, func() string {
+		if self.TerminatorLocalAddr != "" {
+			return fmt.Sprintf(" (%v)", self.TerminatorLocalAddr)
+		}
+		return ""
+	}())
 
 	return out
 }
