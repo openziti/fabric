@@ -184,7 +184,8 @@ func (rh *routeHandler) connectEgress(msg *channel.Message, attempt int, ch chan
 				rh.fail(msg, attempt, route, errors.Wrapf(err, "unable to create dialer for [c/%s]", route.CircuitId), &errCode, log)
 			}
 		} else {
-			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), nil, log)
+			var errCode byte = ctrl_msg.ErrorTypeMisconfiguredTerminator
+			rh.fail(msg, attempt, route, errors.Wrapf(err, "error creating route for [c/%s]", route.CircuitId), &errCode, log)
 		}
 	})
 }
