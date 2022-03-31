@@ -141,8 +141,8 @@ func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 	now := time.Now()
-	self.lastResponse = now.UnixNano()
-	self.latencyMetric.Update(time.Now().UnixNano() - ts)
+	self.lastResponse = now.UnixMilli()
+	self.latencyMetric.Update(now.UnixNano() - ts)
 }
 
 func (self *heartbeatCallback) CheckHeartBeat() {
