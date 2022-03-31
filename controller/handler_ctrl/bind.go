@@ -64,7 +64,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.network.GetAppId(), binding.GetChannel(), self.network.GetTraceController(), traceDispatchWrapper))
 	binding.AddPeekHandler(metrics2.NewCtrlChannelPeekHandler(self.router.Id, self.network.GetMetricsRegistry()))
 
-	doHeartbeat := self.router.VersionInfo.HasMinimumVersion("0.25.0")
+	doHeartbeat := self.router.VersionInfo.HasMinimumVersion("0.25.5")
 
 	roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
 	queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
@@ -141,7 +141,7 @@ func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
 	now := time.Now()
-	self.lastResponse = now.UnixMilli()
+	self.lastResponse = now.UnixNano()
 	self.latencyMetric.Update(time.Now().UnixNano() - ts)
 }
 
