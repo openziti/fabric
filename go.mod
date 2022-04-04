@@ -34,7 +34,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.20
 	github.com/openziti/foundation v0.17.21
-	github.com/openziti/storage v0.1.2
+	github.com/openziti/storage v0.1.3
 	github.com/openziti/transport v0.1.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
