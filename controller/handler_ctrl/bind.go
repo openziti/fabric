@@ -68,6 +68,11 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 
 	roundTripHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.latency:" + self.router.Id)
 	queueTimeHistogram := self.network.GetMetricsRegistry().Histogram("ctrl.queue_time:" + self.router.Id)
+	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
+		roundTripHistogram.Dispose()
+		queueTimeHistogram.Dispose()
+	}))
+
 	if doHeartbeat {
 		log.Info("router supports heartbeats")
 		cb := &heartbeatCallback{
@@ -84,10 +89,6 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 			queueTimeHistogram: queueTimeHistogram,
 		}
 		latency.AddLatencyProbe(binding.GetChannel(), binding, self.network.GetOptions().CtrlChanLatencyInterval/time.Duration(10), 10, latencyHandler.HandleLatency)
-		binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
-			roundTripHistogram.Dispose()
-			queueTimeHistogram.Dispose()
-		}))
 	}
 
 	xctrlDone := make(chan struct{})
