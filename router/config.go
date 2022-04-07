@@ -21,10 +21,10 @@ import (
 	"fmt"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
+	"github.com/openziti/fabric/config"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/forwarder"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/config"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/transport"
 	"github.com/pkg/errors"
@@ -292,6 +292,10 @@ func (c *UpdatableAddress) Type() string {
 // Dial implements transport.Address.Dial
 func (c *UpdatableAddress) Dial(name string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
 	return c.getWrapped().Dial(name, i, timeout, tcfg)
+}
+
+func (c *UpdatableAddress) DialWithLocalBinding(name string, binding string, i *identity.TokenId, timeout time.Duration, tcfg transport.Configuration) (transport.Connection, error) {
+	return c.getWrapped().DialWithLocalBinding(name, binding, i, timeout, tcfg)
 }
 
 // getWrapped loads the current transport.Address
