@@ -38,10 +38,10 @@ import (
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/metrics/metrics_pb"
-	"github.com/openziti/storage/boltz"
 	"github.com/openziti/foundation/util/debugz"
 	"github.com/openziti/foundation/util/errorz"
 	"github.com/openziti/foundation/util/sequence"
+	"github.com/openziti/storage/boltz"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.etcd.io/bbolt"
@@ -316,12 +316,12 @@ func (network *Network) DisconnectRouter(r *Router) {
 	}
 }
 
-func (network *Network) NotifyExistingLink(id, linkType string, srcRouter *Router, dstRouterId string) (bool, error) {
+func (network *Network) NotifyExistingLink(id, linkProtocol string, srcRouter *Router, dstRouterId string) (bool, error) {
 	dst := network.Routers.getConnected(dstRouterId)
 	if dst == nil {
 		return false, errors.New("destination router not connected")
 	}
-	_, created := network.linkController.routerReportedLink(id, linkType, srcRouter, dst)
+	_, created := network.linkController.routerReportedLink(id, linkProtocol, srcRouter, dst)
 	return created, nil
 }
 
