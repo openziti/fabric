@@ -426,6 +426,7 @@ func (self *Router) startControlPlane() error {
 		self.config,
 		self.config.Trace.Handler,
 		self.xlinkRegistry,
+		self.metricsRegistry,
 		self.shutdownC,
 	)
 
