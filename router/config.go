@@ -51,6 +51,9 @@ const (
 
 	// CtrlEndpointMapKey is the string key for the ctrl.endpoint section
 	CtrlEndpointMapKey = "endpoint"
+
+	// CtrlEndpointBindMapKey is the string key for the ctrl.bind section
+	CtrlEndpointBindMapKey = "bind"
 )
 
 // internalConfigKeys is used to distinguish internally defined configuration vs file configuration
@@ -98,6 +101,7 @@ type Config struct {
 	}
 	Ctrl struct {
 		Endpoint              *UpdatableAddress
+		LocalBinding          string
 		DefaultRequestTimeout time.Duration
 		Options               *channel.Options
 	}
@@ -402,6 +406,13 @@ func LoadConfig(path string) (*Config, error) {
 					return nil, fmt.Errorf("cannot parse [ctrl/endpoint] (%s)", err)
 				}
 				cfg.Ctrl.Endpoint = NewUpdatableAddress(address)
+			}
+			if value, found := submap[CtrlEndpointBindMapKey]; found {
+				iface, err := transport.ResolveInterface(value.(string))
+				if err != nil {
+					return nil, fmt.Errorf("cannot parse [ctrl/bind] (%s)", err)
+				}
+				cfg.Ctrl.LocalBinding = iface.Name
 			}
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {
