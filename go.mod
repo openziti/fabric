@@ -32,7 +32,7 @@ require (
 	github.com/jessevdk/go-flags v1.4.0
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel v0.18.23
+	github.com/openziti/channel v0.18.24
 	github.com/openziti/foundation v0.17.22
 	github.com/openziti/storage v0.1.4
 	github.com/openziti/transport v0.1.3
