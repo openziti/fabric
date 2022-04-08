@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -44,7 +43,6 @@ type bindHandler struct {
 	ctrlAddressChanger CtrlAddressChanger
 	traceHandler       *channel.TraceHandler
 	linkRegistry       xlink.Registry
-	metricsRegistry    metrics.Registry
 }
 
 func NewBindHandler(id *identity.TokenId,
@@ -56,7 +54,6 @@ func NewBindHandler(id *identity.TokenId,
 	ctrlAddressChanger CtrlAddressChanger,
 	traceHandler *channel.TraceHandler,
 	linkRegistry xlink.Registry,
-	metricRegistry metrics.Registry,
 	closeNotify chan struct{}) channel.BindHandler {
 	return &bindHandler{
 		id:                 id,
@@ -69,7 +66,6 @@ func NewBindHandler(id *identity.TokenId,
 		ctrlAddressChanger: ctrlAddressChanger,
 		traceHandler:       traceHandler,
 		linkRegistry:       linkRegistry,
-		metricsRegistry:    metricRegistry,
 	}
 }
 
