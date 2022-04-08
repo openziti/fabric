@@ -26,8 +26,6 @@ import (
 	"github.com/openziti/fabric/router/xlink"
 	"github.com/openziti/fabric/trace"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/metrics"
-	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/goroutines"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -45,7 +43,6 @@ type bindHandler struct {
 	ctrlAddressChanger CtrlAddressChanger
 	traceHandler       *channel.TraceHandler
 	linkRegistry       xlink.Registry
-	metricsRegistry    metrics.Registry
 }
 
 func NewBindHandler(id *identity.TokenId,
@@ -57,7 +54,6 @@ func NewBindHandler(id *identity.TokenId,
 	ctrlAddressChanger CtrlAddressChanger,
 	traceHandler *channel.TraceHandler,
 	linkRegistry xlink.Registry,
-	metricRegistry metrics.Registry,
 	closeNotify chan struct{}) channel.BindHandler {
 	return &bindHandler{
 		id:                 id,
@@ -70,7 +66,6 @@ func NewBindHandler(id *identity.TokenId,
 		ctrlAddressChanger: ctrlAddressChanger,
 		traceHandler:       traceHandler,
 		linkRegistry:       linkRegistry,
-		metricsRegistry:    metricRegistry,
 	}
 }
 
@@ -119,16 +114,7 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.id.Token, binding.GetChannel(), self.forwarder.TraceController(), trace.NewChannelSink(binding.GetChannel())))
 	latency.AddLatencyProbeResponder(binding)
 
-	latencyMetric := self.metricsRegistry.Histogram("ctrl." + self.id.Token + ".latency")
-	binding.AddCloseHandler(channel.CloseHandlerF(func(ch channel.Channel) {
-		latencyMetric.Dispose()
-	}))
-
-	cb := &heartbeatCallback{
-		latencyMetric:    latencyMetric,
-		ch:               binding.GetChannel(),
-		latencySemaphore: concurrenz.NewSemaphore(2),
-	}
+	cb := &heartbeatCallback{}
 
 	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, cb)
 
@@ -145,28 +131,14 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	return nil
 }
 
-type heartbeatCallback struct {
-	latencyMetric    metrics.Histogram
-	firstSent        int64
-	lastResponse     int64
-	ch               channel.Channel
-	latencySemaphore concurrenz.Semaphore
-}
+type heartbeatCallback struct{}
 
-func (self *heartbeatCallback) HeartbeatTx(int64) {
-	if self.firstSent == 0 {
-		self.firstSent = time.Now().UnixMilli()
-	}
-}
+func (self *heartbeatCallback) HeartbeatTx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRx(int64) {}
 
 func (self *heartbeatCallback) HeartbeatRespTx(int64) {}
 
-func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {
-	now := time.Now()
-	self.lastResponse = now.UnixMilli()
-	self.latencyMetric.Update(now.UnixNano() - ts)
-}
+func (self *heartbeatCallback) HeartbeatRespRx(ts int64) {}
 
 func (self *heartbeatCallback) CheckHeartBeat() {}
