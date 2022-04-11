@@ -408,11 +408,11 @@ func LoadConfig(path string) (*Config, error) {
 				cfg.Ctrl.Endpoint = NewUpdatableAddress(address)
 			}
 			if value, found := submap[CtrlEndpointBindMapKey]; found {
-				iface, err := transport.ResolveInterface(value.(string))
+				_, err := transport.ResolveInterface(value.(string))
 				if err != nil {
 					return nil, fmt.Errorf("cannot parse [ctrl/bind] (%s)", err)
 				}
-				cfg.Ctrl.LocalBinding = iface.Name
+				cfg.Ctrl.LocalBinding = value.(string)
 			}
 			if value, found := submap["options"]; found {
 				if optionsMap, ok := value.(map[interface{}]interface{}); ok {

@@ -107,11 +107,11 @@ func loadDialerConfig(data map[interface{}]interface{}) (*dialerConfig, error) {
 	if value, found := data["bind"]; found {
 		logrus.Debugf("Parsing dialer bind config")
 		if addressString, ok := value.(string); ok {
-			iface, err := transport.ResolveInterface(addressString)
+			_, err := transport.ResolveInterface(addressString)
 			if err != nil {
 				return nil, errors.Errorf("invalid 'bind' address in dialer config (%s)", err)
 			}
-			config.localBinding = iface.Name
+			config.localBinding = addressString
 			logrus.Debugf("Using local bind address %s", config.localBinding)
 		} else {
 			return nil, fmt.Errorf("invalid 'bind' address in dialer config (%s)", reflect.TypeOf(value))
