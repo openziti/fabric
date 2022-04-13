@@ -34,6 +34,7 @@ import (
 	fabricMetrics "github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/trace"
+	"github.com/openziti/fabric/utils"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/metrics"
@@ -392,7 +393,7 @@ func (network *Network) LinkChanged(l *Link) {
 	}()
 }
 
-func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context) (*Circuit, error) {
+func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, service string, ctx logcontext.Context, timeout *utils.TimeoutWithStart) (*Circuit, error) {
 	startTime := time.Now()
 	// 1: Allocate Circuit Identifier
 	circuitId, err := network.circuitController.nextCircuitId()
@@ -431,7 +432,7 @@ func (network *Network) CreateCircuit(srcR *Router, clientId *identity.TokenId, 
 		}
 
 		// 4a: Create Route Messages
-		rms := path.CreateRouteMessages(attempt, circuitId, terminator)
+		rms := path.CreateRouteMessages(attempt, circuitId, terminator, timeout)
 		rms[len(rms)-1].Egress.PeerData = clientId.Data
 
 		for _, msg := range rms {
@@ -773,7 +774,7 @@ func (network *Network) Run() {
 func (network *Network) handleLinkChanged(l *Link) {
 	log := logrus.WithField("linkId", l.Id)
 	log.Info("changed link")
-	if err := network.rerouteLink(l); err != nil {
+	if err := network.rerouteLink(l, utils.NewTimeoutWithStart(DefaultTimeout)); err != nil {
 		log.WithError(err).Error("unexpected error rerouting link")
 	}
 }
@@ -828,14 +829,14 @@ func (network *Network) RemoveLink(linkId string) {
 	}
 }
 
-func (network *Network) rerouteLink(l *Link) error {
+func (network *Network) rerouteLink(l *Link, timeout *utils.TimeoutWithStart) error {
 	circuits := network.circuitController.all()
 	for _, circuit := range circuits {
 		if circuit.Path.usesLink(l) {
 			log := logrus.WithField("linkId", l.Id).
 				WithField("circuitId", circuit.Id)
 			log.Info("circuit uses link")
-			if err := network.rerouteCircuit(circuit); err != nil {
+			if err := network.rerouteCircuit(circuit, timeout); err != nil {
 				log.WithError(err).Error("error rerouting circuit, removing")
 				if err := network.RemoveCircuit(circuit.Id, true); err != nil {
 					log.WithError(err).Error("error removing circuit after reroute failure")
@@ -847,7 +848,7 @@ func (network *Network) rerouteLink(l *Link) error {
 	return nil
 }
 
-func (network *Network) rerouteCircuit(circuit *Circuit) error {
+func (network *Network) rerouteCircuit(circuit *Circuit, timeout *utils.TimeoutWithStart) error {
 	log := pfxlog.Logger().WithField("circuitId", circuit.Id)
 	if circuit.Rerouting.CompareAndSwap(false, true) {
 		defer circuit.Rerouting.Set(false)
@@ -857,7 +858,7 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 		if cq, err := network.UpdatePath(circuit.Path); err == nil {
 			circuit.Path = cq
 
-			rms := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator)
+			rms := cq.CreateRouteMessages(SmartRerouteAttempt, circuit.Id, circuit.Terminator, timeout)
 
 			for i := 0; i < len(cq.Nodes); i++ {
 				if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {
@@ -878,13 +879,13 @@ func (network *Network) rerouteCircuit(circuit *Circuit) error {
 	}
 }
 
-func (network *Network) smartReroute(s *Circuit, cq *Path) error {
+func (network *Network) smartReroute(s *Circuit, cq *Path, timeout *utils.TimeoutWithStart) error {
 	if s.Rerouting.CompareAndSwap(false, true) {
 		defer s.Rerouting.Set(false)
 
 		s.Path = cq
 
-		rms := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator)
+		rms := cq.CreateRouteMessages(SmartRerouteAttempt, s.Id, s.Terminator, timeout)
 
 		for i := 0; i < len(cq.Nodes); i++ {
 			if _, err := sendRoute(cq.Nodes[i], rms[i], network.options.RouteTimeout); err != nil {

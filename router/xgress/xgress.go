@@ -20,22 +20,24 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
-	"github.com/michaelquigley/pfxlog"
-	"github.com/openziti/channel"
-	"github.com/openziti/fabric/controller/xt"
-	"github.com/openziti/fabric/inspect"
-	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/foundation/util/debugz"
-	"github.com/openziti/foundation/util/info"
-	"github.com/sirupsen/logrus"
 	"io"
 	"math/rand"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/channel"
+	"github.com/openziti/fabric/controller/xt"
+	"github.com/openziti/fabric/inspect"
+	"github.com/openziti/fabric/logcontext"
+	"github.com/openziti/fabric/utils"
+	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/util/concurrenz"
+	"github.com/openziti/foundation/util/debugz"
+	"github.com/openziti/foundation/util/info"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -55,7 +57,7 @@ type Listener interface {
 }
 
 type Dialer interface {
-	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context) (xt.PeerData, error)
+	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context, timeout *utils.TimeoutWithStart) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
 }
 

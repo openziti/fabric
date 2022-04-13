@@ -18,16 +18,18 @@ package xgress_transport_udp
 
 import (
 	"fmt"
+	"net"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
 	"github.com/openziti/fabric/router/xgress_udp"
+	"github.com/openziti/fabric/utils"
 	"github.com/openziti/foundation/identity/identity"
-	"net"
 )
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, timeout *utils.TimeoutWithStart) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "transport_udp").
 		WithField("destination", destination)
@@ -39,7 +41,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	}
 
 	log.Debugf("dialing packet address [%v]", packetAddress)
-	conn, err := net.Dial(packetAddress.Network(), packetAddress.Address())
+	conn, err := net.DialTimeout(packetAddress.Network(), packetAddress.Address(), timeout.Remaining())
 	if err != nil {
 		return nil, err
 	}

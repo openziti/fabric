@@ -17,8 +17,10 @@
 package network
 
 import (
-	"github.com/michaelquigley/pfxlog"
 	"sort"
+
+	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/fabric/utils"
 )
 
 func (network *Network) smart() {
@@ -83,7 +85,7 @@ func (network *Network) smart() {
 	 * Reroute.
 	 */
 	for _, circuit := range candidates {
-		if err := network.smartReroute(circuit, newPaths[circuit]); err != nil {
+		if err := network.smartReroute(circuit, newPaths[circuit], utils.NewTimeoutWithStart(DefaultTimeout)); err != nil {
 			log.Errorf("error rerouting [s/%s] (%s)", circuit.Id, err)
 		}
 	}
