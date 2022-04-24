@@ -19,10 +19,10 @@ package network
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/fabric/utils"
 	"github.com/pkg/errors"
 )
 
@@ -87,11 +87,12 @@ func (self *Path) EgressRouter() *Router {
 	return nil
 }
 
-func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator, timeout *utils.TimeoutWithStart) []*ctrl_pb.Route {
+func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminator xt.Terminator, deadline time.Time) []*ctrl_pb.Route {
 	var routeMessages []*ctrl_pb.Route
+	remainingTime := deadline.Sub(time.Now().UTC())
 	if len(self.Links) == 0 {
 		// single router path
-		routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(timeout.Remaining())}
+		routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 		routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 			SrcAddress: self.IngressId,
 			DstAddress: self.EgressId,
@@ -113,7 +114,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 	for i, link := range self.Links {
 		if i == 0 {
 			// ingress
-			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(timeout.Remaining())}
+			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: self.IngressId,
 				DstAddress: link.Id,
@@ -129,7 +130,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 		if i >= 0 && i < len(self.Links)-1 {
 			// transit
 			nextLink := self.Links[i+1]
-			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(timeout.Remaining())}
+			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 			routeMessage.Forwards = append(routeMessage.Forwards, &ctrl_pb.Route_Forward{
 				SrcAddress: link.Id,
 				DstAddress: nextLink.Id,
@@ -144,7 +145,7 @@ func (self *Path) CreateRouteMessages(attempt uint32, circuitId string, terminat
 		}
 		if i == len(self.Links)-1 {
 			// egress
-			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(timeout.Remaining())}
+			routeMessage := &ctrl_pb.Route{CircuitId: circuitId, Attempt: attempt, Timeout: uint64(remainingTime)}
 			if attempt != SmartRerouteAttempt {
 				routeMessage.Egress = &ctrl_pb.Route_Egress{
 					Binding:     terminator.GetBinding(),

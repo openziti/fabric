@@ -26,7 +26,6 @@ import (
 	"github.com/openziti/fabric/ctrl_msg"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/pb/ctrl_pb"
-	"github.com/openziti/fabric/utils"
 	"github.com/openziti/foundation/identity/identity"
 )
 
@@ -61,7 +60,7 @@ func (h *circuitRequestHandler) HandleReceive(msg *channel.Message, ch channel.C
 				}
 			}
 			log = log.WithField("serviceId", service)
-			if circuit, err := h.network.CreateCircuit(h.r, id, service, logcontext.NewContext(), utils.NewTimeoutWithStart(network.DefaultTimeout)); err == nil {
+			if circuit, err := h.network.CreateCircuit(h.r, id, service, logcontext.NewContext(), time.Now().UTC().Add(network.DefaultTimeout)); err == nil {
 				responseMsg := ctrl_msg.NewCircuitSuccessMsg(circuit.Id, circuit.Path.IngressId)
 				responseMsg.ReplyTo(msg)
 

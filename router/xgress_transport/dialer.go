@@ -17,11 +17,12 @@
 package xgress_transport
 
 import (
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/fabric/router/xgress"
-	"github.com/openziti/fabric/utils"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
@@ -48,7 +49,7 @@ func newDialer(id *identity.TokenId, ctrl xgress.CtrlChannel, options *xgress.Op
 	return txd, nil
 }
 
-func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, timeout *utils.TimeoutWithStart) (xt.PeerData, error) {
+func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address xgress.Address, bindHandler xgress.BindHandler, ctx logcontext.Context, deadline time.Time) (xt.PeerData, error) {
 	log := pfxlog.ChannelLogger(logcontext.EstablishPath).Wire(ctx).
 		WithField("binding", "transport").
 		WithField("destination", destination)
@@ -61,8 +62,9 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	log.Debug("dialing")
 
 	to := txd.options.ConnectTimeout
-	if timeout.Remaining() < to {
-		to = timeout.Remaining()
+	timeToDeadline := time.Now().UTC().Sub(deadline)
+	if timeToDeadline < to {
+		to = timeToDeadline
 	}
 	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, to, txd.tcfg)
 	if err != nil {

@@ -32,7 +32,6 @@ import (
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/inspect"
 	"github.com/openziti/fabric/logcontext"
-	"github.com/openziti/fabric/utils"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/foundation/util/concurrenz"
 	"github.com/openziti/foundation/util/debugz"
@@ -57,7 +56,7 @@ type Listener interface {
 }
 
 type Dialer interface {
-	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context, timeout *utils.TimeoutWithStart) (xt.PeerData, error)
+	Dial(destination string, circuitId *identity.TokenId, address Address, bindHandler BindHandler, context logcontext.Context, deadline time.Time) (xt.PeerData, error)
 	IsTerminatorValid(id string, destination string) bool
 }
 
