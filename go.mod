@@ -18,7 +18,7 @@ require (
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.12.0
 	github.com/go-openapi/errors v0.20.1
-	github.com/go-openapi/loads v0.21.0
+	github.com/go-openapi/loads v0.21.1
 	github.com/go-openapi/runtime v0.21.0
 	github.com/go-openapi/spec v0.20.4
 	github.com/go-openapi/strfmt v0.21.0
@@ -59,7 +59,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/go-openapi/analysis v0.20.1 // indirect
+	github.com/go-openapi/analysis v0.21.2 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.19.6 // indirect
 	github.com/go-stack/stack v1.8.0 // indirect
