@@ -16,7 +16,7 @@ require (
 	github.com/Jeffail/gabs/v2 v2.6.1
 	github.com/andybalholm/brotli v1.0.4
 	github.com/ef-ds/deque v1.0.4
-	github.com/emirpasic/gods v1.12.0
+	github.com/emirpasic/gods v1.18.1
 	github.com/go-openapi/errors v0.20.2
 	github.com/go-openapi/loads v0.21.1
 	github.com/go-openapi/runtime v0.24.0
