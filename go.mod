@@ -11,7 +11,7 @@ go 1.17
 //replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
 
 require (
-	github.com/AppsFlyer/go-sundheit v0.4.0
+	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
 	github.com/Jeffail/gabs/v2 v2.6.1
 	github.com/andybalholm/brotli v1.0.4
