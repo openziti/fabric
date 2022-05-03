@@ -34,7 +34,6 @@ const (
 	DefaultNetworkOptionsRouterConnectChurnLimit = time.Minute
 	DefaultNetworkOptionsSmartRerouteFraction    = 0.02
 	DefaultNetworkOptionsSmartRerouteCap         = 4
-	DefaultTimeout                               = 5 * time.Second
 )
 
 type Options struct {

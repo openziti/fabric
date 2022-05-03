@@ -22,6 +22,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
@@ -70,7 +72,7 @@ func TestSimplePath2(t *testing.T) {
 	assert.Equal(t, r1, path.EgressRouter())
 
 	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().UTC().Add(DefaultTimeout))
+	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultNetworkOptionsRouteTimeout))
 	assert.NotNil(t, routeMessages)
 	assert.Equal(t, 2, len(routeMessages))
 
@@ -146,7 +148,7 @@ func TestTransitPath2(t *testing.T) {
 	assert.Equal(t, r2, path.EgressRouter())
 
 	terminator := &Terminator{Address: addr, Binding: "transport"}
-	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().UTC().Add(DefaultTimeout))
+	routeMessages := path.CreateRouteMessages(0, "s0", terminator, time.Now().Add(DefaultNetworkOptionsRouteTimeout))
 	assert.NotNil(t, routeMessages)
 	assert.Equal(t, 3, len(routeMessages))
 

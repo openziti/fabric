@@ -41,7 +41,7 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	}
 
 	log.Debugf("dialing packet address [%v]", packetAddress)
-	conn, err := net.DialTimeout(packetAddress.Network(), packetAddress.Address(), time.Now().UTC().Sub(deadline))
+	conn, err := net.DialTimeout(packetAddress.Network(), packetAddress.Address(), time.Now().Sub(deadline))
 	if err != nil {
 		return nil, err
 	}

@@ -773,7 +773,7 @@ func (network *Network) Run() {
 func (network *Network) handleLinkChanged(l *Link) {
 	log := logrus.WithField("linkId", l.Id)
 	log.Info("changed link")
-	if err := network.rerouteLink(l, time.Now().UTC().Add(DefaultTimeout)); err != nil {
+	if err := network.rerouteLink(l, time.Now().Add(DefaultNetworkOptionsRouteTimeout)); err != nil {
 		log.WithError(err).Error("unexpected error rerouting link")
 	}
 }

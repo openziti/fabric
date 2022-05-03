@@ -85,7 +85,7 @@ func (network *Network) smart() {
 	 * Reroute.
 	 */
 	for _, circuit := range candidates {
-		if err := network.smartReroute(circuit, newPaths[circuit], time.Now().UTC().Add(DefaultTimeout)); err != nil {
+		if err := network.smartReroute(circuit, newPaths[circuit], time.Now().Add(DefaultNetworkOptionsRouteTimeout)); err != nil {
 			log.Errorf("error rerouting [s/%s] (%s)", circuit.Id, err)
 		}
 	}
