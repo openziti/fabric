@@ -86,7 +86,7 @@ func (rh *routeHandler) HandleReceive(msg *channel.Message, ch channel.Channel) 
 				rh.completeRoute(msg, int(route.Attempt), route, nil, log)
 				return
 			} else {
-				rh.connectEgress(msg, int(route.Attempt), ch, route, ctx, time.Now().UTC().Add(time.Duration(route.Timeout)))
+				rh.connectEgress(msg, int(route.Attempt), ch, route, ctx, time.Now().Add(time.Duration(route.Timeout)))
 				return
 			}
 		} else {
