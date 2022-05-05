@@ -62,8 +62,8 @@ func (txd *dialer) Dial(destination string, circuitId *identity.TokenId, address
 	log.Debug("dialing")
 
 	to := txd.options.ConnectTimeout
-	timeToDeadline := deadline.Sub(time.Now())
-	if timeToDeadline < to {
+	timeToDeadline := time.Until(deadline)
+	if timeToDeadline > 0 && timeToDeadline < to {
 		to = timeToDeadline
 	}
 	peer, err := txDestination.Dial("x/"+circuitId.Token, circuitId, to, txd.tcfg)
