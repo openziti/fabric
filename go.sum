@@ -123,6 +123,7 @@ github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25Kn
 github.com/ef-ds/deque v1.0.4 h1:iFAZNmveMT9WERAkqLJ+oaABF9AcVQ5AjXem/hroniI=
 github.com/ef-ds/deque v1.0.4/go.mod h1:gXDnTC3yqvBcHbq2lcExjtAcVrOnJCbMcZXmuj8Z4tg=
 github.com/emirpasic/gods v1.12.0/go.mod h1:YfzfFFoVP/catgzJb4IKIqXjX78Ha8FMSDh3ymbK86o=
+github.com/emirpasic/gods v1.17.0/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/emirpasic/gods v1.18.1 h1:FXtiHYKDGKCW2KzwZKx0iC0PQmdlorYgdFG9jPXJ1Bc=
 github.com/emirpasic/gods v1.18.1/go.mod h1:8tpGGwCnJ5H4r6BWwaV6OrWmMoPhUl5jm/FMNAnJvWQ=
 github.com/envoyproxy/go-control-plane v0.9.0/go.mod h1:YTl/9mNaCwkRvm6d1a2C3ymFceY/DCBVvsKhRF0iEA4=
@@ -469,8 +470,9 @@ github.com/openzipkin/zipkin-go v0.1.1/go.mod h1:NtoC/o8u3JlF1lSlyPNswIbeQH9bJTm
 github.com/openziti/channel v0.18.32 h1:w03gT+JIXx8K8v1x/AMkgzd8d7N3D3qKDn8dD7eCkf0=
 github.com/openziti/channel v0.18.32/go.mod h1:XtZ8eNCfbcNBMpD64FPPe6Q9vkCc5AF2k1q/O8508yQ=
 github.com/openziti/dilithium v0.3.3/go.mod h1:vsCjI2AU/hon9e+dLhUFbCNGesJDj2ASgkySOcpmvjo=
-github.com/openziti/foundation v0.17.22 h1:zFfgNHdLocEcoBqtognpJnYsVQaTm28EwqMNjBw8avk=
 github.com/openziti/foundation v0.17.22/go.mod h1:Nnr0vsqovHJimkdBHf2s4ZJAgvNhg6UdVqP+s0nY3P4=
+github.com/openziti/foundation v0.17.23 h1:vmgxhCFYTkovrcV6ULODnYDIvw29OMbjjKwRTwcMNeo=
+github.com/openziti/foundation v0.17.23/go.mod h1:YMalQrbDP3S5ptEcob4v3F+pyCngabaG/hQVoT9Pcxo=
 github.com/openziti/storage v0.1.4 h1:horz3P0fABJH6R2Orvl2OLksmhXHpCaHP+0TCKfbGPM=
 github.com/openziti/storage v0.1.4/go.mod h1:aMf2fqWAyXjXH7N0CxfpeGMrlLIDCT7nRSR3cGrsEoI=
 github.com/openziti/transport v0.1.5 h1:+MgLyUDOsDdixm7GT9TgHd2pBIREf2AHsPa2D6mMNhY=
