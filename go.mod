@@ -2,14 +2,6 @@ module github.com/openziti/fabric
 
 go 1.17
 
-//replace github.com/openziti/dilithium => ../dilithium
-
-//replace github.com/openziti/foundation => ../foundation
-
-//replace github.com/openziti/channel => ../channel
-
-//replace go.etcd.io/bbolt => github.com/openziti/bbolt v1.3.6-0.20210317142109-547da822475e
-
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
