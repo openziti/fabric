@@ -26,7 +26,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.33
 	github.com/openziti/foundation v0.17.23
-	github.com/openziti/storage v0.1.4
+	github.com/openziti/storage v0.1.5
 	github.com/openziti/transport/v2 v2.0.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
 	github.com/pkg/errors v0.9.1
@@ -79,5 +79,6 @@ require (
 require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663
+	github.com/golang/protobuf v1.5.2
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
