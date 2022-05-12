@@ -1,6 +1,6 @@
 module github.com/openziti/fabric
 
-go 1.17
+go 1.18
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -25,7 +25,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.33
-	github.com/openziti/foundation v0.17.23
+	github.com/openziti/foundation v0.17.24
 	github.com/openziti/storage v0.1.5
 	github.com/openziti/transport/v2 v2.0.0
 	github.com/orcaman/concurrent-map v0.0.0-20210106121528-16402b402231
@@ -70,7 +70,7 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.mongodb.org/mongo-driver v1.8.3 // indirect
-	golang.org/x/crypto v0.0.0-20220507011949-2cf3adece122 // indirect
+	golang.org/x/crypto v0.0.0-20220511200225-c6db032c6c88 // indirect
 	golang.org/x/sys v0.0.0-20220503163025-988cb79eb6c6 // indirect
 	golang.org/x/term v0.0.0-20220411215600-e5f449aeb171 // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
