@@ -17,7 +17,6 @@
 package network
 
 import (
-	"github.com/stretchr/testify/require"
 	"runtime"
 	"testing"
 	"time"
