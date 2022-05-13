@@ -19,6 +19,7 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
 	"sort"
 	"strings"
 	"sync"
