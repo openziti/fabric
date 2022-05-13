@@ -19,6 +19,7 @@ package network
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/golang/protobuf/jsonpb"
 	"sort"
 	"strings"
 	"sync"
@@ -999,7 +1000,21 @@ func (network *Network) Inspect(name string) *string {
 	if strings.ToLower(name) == "stackdump" {
 		result := debugz.GenerateStack()
 		return &result
+	} else if strings.ToLower(name) == "metrics" {
+		msg := network.metricsRegistry.Poll()
+		m := jsonpb.Marshaler{EmitDefaults: true}
+		js, err := m.MarshalToString(msg)
+		var result string
+		if err != nil {
+			result = string(errors.Wrap(err, "failed to marshal metrics to json").Error())
+		} else {
+			result = string(js)
+			pfxlog.Logger().Infof("Returning controller metrics: %s", result)
+			return &result
+		}
+		return &result
 	}
+
 	return nil
 }
 
