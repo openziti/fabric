@@ -18,7 +18,6 @@ package handler_ctrl
 
 import (
 	"encoding/json"
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/inspect"
@@ -121,8 +120,8 @@ func (context *inspectRequestContext) processLocal() {
 			}
 		} else if strings.ToLower(lc) == "metrics" {
 			msg := context.handler.fwd.MetricsRegistry().GetRegistryImpl().Poll()
-			m := jsonpb.Marshaler{EmitDefaults: true}
-			js, err := m.MarshalToString(msg)
+
+			js, err := proto.Marshal(msg)
 			if err != nil {
 				context.appendError(errors.Wrap(err, "failed to marshal metrics to json").Error())
 			} else {
