@@ -25,6 +25,7 @@ import (
 
 const EntityNameInspect = "inspections"
 
+// Maps individual response from inspection into overall inspection result
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
 	resp := &rest_model.InspectResponse{
 		Errors:  inspectResult.Errors,
