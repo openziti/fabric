@@ -25,6 +25,7 @@ import (
 
 const EntityNameInspect = "inspections"
 
+// Maps individual response from inspection into overall inspection result
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
 	resp := &rest_model.InspectResponse{
 		Errors:  inspectResult.Errors,
@@ -32,6 +33,16 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 	}
 	for _, val := range inspectResult.Results {
 		var emitVal interface{}
+		// TODO:  Check for metrics.  If metrics,  then convert to metrics PB,  then use metrics adapter to marshal to stream of metrics events.   Marshal stream of metrics events into an array of metrics to be returned.
+		// Metrics Msg -> []metrics event -> Marshalled json array
+		//if val.Name == "metrics" {
+		//	msg := &metrics_pb.MetricsMessage{}
+		//	if err := json.Unmarshal([]byte(val.Value), msg); err == nil {
+		//
+		//		emitVal = mapVal
+		//	}
+		//	val.Value
+		//} else {
 		if strings.HasPrefix(val.Value, "{") {
 			mapVal := map[string]interface{}{}
 			if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
@@ -43,6 +54,7 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 				emitVal = arrayVal
 			}
 		}
+		//}
 
 		if emitVal == nil {
 			emitVal = val.Value
