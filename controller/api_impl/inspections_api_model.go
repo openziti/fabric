@@ -26,10 +26,6 @@ import (
 
 const EntityNameInspect = "inspections"
 
-type metricsHandler struct {
-	metrics.MessageHandler
-}
-
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
 	resp := &rest_model.InspectResponse{
 		Errors:  inspectResult.Errors,
