@@ -60,6 +60,7 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 				}
 			}
 		}
+		//}
 
 		if emitVal == nil {
 			emitVal = val.Value
