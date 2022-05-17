@@ -18,12 +18,21 @@ package api_impl
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/events"
+	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/foundation/metrics/metrics_pb"
 	"strings"
 )
 
 const EntityNameInspect = "inspections"
+
+type metricsHandler struct {
+	metrics.MessageHandler
+}
 
 // Maps individual response from inspection into overall inspection result
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
@@ -31,30 +40,39 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 		Errors:  inspectResult.Errors,
 		Success: &inspectResult.Success,
 	}
+
 	for _, val := range inspectResult.Results {
 		var emitVal interface{}
-		// TODO:  Check for metrics.  If metrics,  then convert to metrics PB,  then use metrics adapter to marshal to stream of metrics events.   Marshal stream of metrics events into an array of metrics to be returned.
-		// Metrics Msg -> []metrics event -> Marshalled json array
-		//if val.Name == "metrics" {
-		//	msg := &metrics_pb.MetricsMessage{}
-		//	if err := json.Unmarshal([]byte(val.Value), msg); err == nil {
-		//
-		//		emitVal = mapVal
-		//	}
-		//	val.Value
-		//} else {
-		if strings.HasPrefix(val.Value, "{") {
-			mapVal := map[string]interface{}{}
-			if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
-				emitVal = mapVal
+		if val.Name == "metrics" {
+			msg := &metrics_pb.MetricsMessage{}
+			if err := json.Unmarshal([]byte(val.Value), msg); err == nil {
+				var metricEvents []interface{}
+
+				adapter := events.NewFilteredMetricsAdapter(nil, nil, events.MetricsHandlerF(func(event *events.MetricsEvent) {
+					metricEvents = append(metricEvents, event)
+				}))
+
+				adapter.AcceptMetrics(msg)
+				emitVal = metricEvents
+
+			} else {
+				msg, _ := fmt.Printf("Failed to format as json: %v", err)
+				emitVal = msg
+				pfxlog.Logger().Warnf("Failed to convert metrics %v", err)
 			}
-		} else if strings.HasPrefix(val.Value, "[") {
-			var arrayVal []interface{}
-			if err := json.Unmarshal([]byte(val.Value), &arrayVal); err == nil {
-				emitVal = arrayVal
+		} else {
+			if strings.HasPrefix(val.Value, "{") {
+				mapVal := map[string]interface{}{}
+				if err := json.Unmarshal([]byte(val.Value), &mapVal); err == nil {
+					emitVal = mapVal
+				}
+			} else if strings.HasPrefix(val.Value, "[") {
+				var arrayVal []interface{}
+				if err := json.Unmarshal([]byte(val.Value), &arrayVal); err == nil {
+					emitVal = arrayVal
+				}
 			}
 		}
-		//}
 
 		if emitVal == nil {
 			emitVal = val.Value

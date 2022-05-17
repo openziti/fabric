@@ -19,7 +19,6 @@ package network
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/golang/protobuf/jsonpb"
 	"sort"
 	"strings"
 	"sync"
@@ -1002,8 +1001,7 @@ func (network *Network) Inspect(name string) *string {
 		return &result
 	} else if strings.ToLower(name) == "metrics" {
 		msg := network.metricsRegistry.Poll()
-		m := jsonpb.Marshaler{EmitDefaults: true}
-		js, err := m.MarshalToString(msg)
+		js, err := json.Marshal(msg)
 		var result string
 		if err != nil {
 			result = string(errors.Wrap(err, "failed to marshal metrics to json").Error())
