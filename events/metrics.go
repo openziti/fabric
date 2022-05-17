@@ -185,6 +185,25 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 		adapter.finishEvent(event)
 	}
 
+	for name, value := range msg.Counters {
+		event := adapter.newMetricEvent(msg, "counter", name, parentEventId)
+		adapter.filterMetric("", value, event)
+		adapter.finishEvent(event)
+	}
+
+	for name, value := range msg.IntGauges {
+		event := adapter.newMetricEvent(msg, "gauge", name, parentEventId)
+		adapter.filterMetric("", value, event)
+		adapter.finishEvent(event)
+	}
+
+	for name, value := range msg.FloatGauges {
+		event := adapter.newMetricEvent(msg, "gauge", name, parentEventId)
+>>>>>>> 5114be8 (Emitting individual metric events for metrics inspect request)
+		adapter.filterMetric("", value, event)
+		adapter.finishEvent(event)
+	}
+
 	for name, value := range msg.Meters {
 		event := adapter.newMetricEvent(msg, "meter", name, parentEventId)
 		adapter.filterMetric("count", value.Count, event)
