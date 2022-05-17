@@ -121,7 +121,7 @@ func (context *inspectRequestContext) processLocal() {
 		} else if strings.ToLower(lc) == "metrics" {
 			msg := context.handler.fwd.MetricsRegistry().GetRegistryImpl().Poll()
 
-			js, err := proto.Marshal(msg)
+			js, err := json.Marshal(msg)
 			if err != nil {
 				context.appendError(errors.Wrap(err, "failed to marshal metrics to json").Error())
 			} else {

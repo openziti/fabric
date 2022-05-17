@@ -125,14 +125,26 @@ func AddFilteredMetricsEventHandler(sourceFilter *regexp.Regexp, metricFilter *r
 	}
 }
 
+func NewFilteredMetricsAdapter(sourceFilter *regexp.Regexp, metricFilter *regexp.Regexp, handler MetricsEventHandler) metrics.MessageHandler {
+	adapter := &metricsAdapter{
+		sourceFilter: sourceFilter,
+		metricFilter: metricFilter,
+		handler:      handler,
+	}
+
+	return adapter
+}
+
+// Make this public - constructor or expose fields
 type metricsAdapter struct {
 	sourceFilter *regexp.Regexp
 	metricFilter *regexp.Regexp
 	handler      MetricsEventHandler
 }
 
-func (adapter *metricsAdapter) newMetricEvent(msg *metrics_pb.MetricsMessage, name string, id string) *MetricsEvent {
+func (adapter *metricsAdapter) newMetricEvent(msg *metrics_pb.MetricsMessage, metricType string, name string, id string) *MetricsEvent {
 	result := &MetricsEvent{
+		MetricType:    metricType,
 		Namespace:     "metrics",
 		SourceAppId:   msg.SourceId,
 		Timestamp:     msg.Timestamp,
@@ -163,19 +175,37 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 	parentEventId := uuid.NewString()
 
 	for name, value := range msg.IntValues {
-		event := adapter.newMetricEvent(msg, name, parentEventId)
+		event := adapter.newMetricEvent(msg, "intValue", name, parentEventId)
 		adapter.filterMetric("", value, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.FloatValues {
-		event := adapter.newMetricEvent(msg, name, parentEventId)
+		event := adapter.newMetricEvent(msg, "floatValue", name, parentEventId)
+		adapter.filterMetric("", value, event)
+		adapter.finishEvent(event)
+	}
+
+	for name, value := range msg.Counters {
+		event := adapter.newMetricEvent(msg, "counter", name, parentEventId)
+		adapter.filterMetric("", value, event)
+		adapter.finishEvent(event)
+	}
+
+	for name, value := range msg.IntGauges {
+		event := adapter.newMetricEvent(msg, "gauge", name, parentEventId)
+		adapter.filterMetric("", value, event)
+		adapter.finishEvent(event)
+	}
+
+	for name, value := range msg.FloatGauges {
+		event := adapter.newMetricEvent(msg, "gauge", name, parentEventId)
 		adapter.filterMetric("", value, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.Meters {
-		event := adapter.newMetricEvent(msg, name, parentEventId)
+		event := adapter.newMetricEvent(msg, "meter", name, parentEventId)
 		adapter.filterMetric("count", value.Count, event)
 		adapter.filterMetric("mean_rate", value.MeanRate, event)
 		adapter.filterMetric("m1_rate", value.M1Rate, event)
@@ -185,7 +215,7 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 	}
 
 	for name, value := range msg.Histograms {
-		event := adapter.newMetricEvent(msg, name, parentEventId)
+		event := adapter.newMetricEvent(msg, "histogram", name, parentEventId)
 		adapter.filterMetric("count", value.Count, event)
 		adapter.filterMetric("min", value.Min, event)
 		adapter.filterMetric("max", value.Max, event)
@@ -202,7 +232,7 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 	}
 
 	for name, value := range msg.Timers {
-		event := adapter.newMetricEvent(msg, name, parentEventId)
+		event := adapter.newMetricEvent(msg, "timer", name, parentEventId)
 		adapter.filterMetric("count", value.Count, event)
 
 		adapter.filterMetric("mean_rate", value.MeanRate, event)
@@ -244,15 +274,16 @@ func (adapter *metricsAdapter) nameMatches(name string) bool {
 }
 
 type MetricsEvent struct {
-	Namespace      string
-	SourceAppId    string
-	SourceEntityId string
-	Version        uint32
-	Timestamp      *timestamppb.Timestamp
-	Metric         string
-	Metrics        map[string]interface{}
-	Tags           map[string]string
-	SourceEventId  string
+	MetricType     string                 `json:"metricType"`
+	Namespace      string                 `json:"namespace"`
+	SourceAppId    string                 `json:"source_id"`
+	SourceEntityId string                 `json:"source_entity_id,omitempty"`
+	Version        uint32                 `json:"version"`
+	Timestamp      *timestamppb.Timestamp `json:"timestamp"`
+	Metric         string                 `json:"metric"`
+	Metrics        map[string]interface{} `json:"metrics"`
+	Tags           map[string]string      `json:"tags,omitempty"`
+	SourceEventId  string                 `json:"source_event_id"`
 }
 
 type MetricsEventHandler interface {
