@@ -29,6 +29,10 @@ import (
 
 const EntityNameInspect = "inspections"
 
+type metricsHandler struct {
+	metrics.MessageHandler
+}
+
 // Maps individual response from inspection into overall inspection result
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
 	resp := &rest_model.InspectResponse{
@@ -60,7 +64,6 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 				}
 			}
 		}
-		//}
 
 		if emitVal == nil {
 			emitVal = val.Value
