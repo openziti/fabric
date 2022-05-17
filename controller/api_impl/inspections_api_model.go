@@ -18,13 +18,20 @@ package api_impl
 
 import (
 	"encoding/json"
+	"fmt"
+	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/rest_model"
+	"github.com/openziti/foundation/metrics/metrics_pb"
 	"strings"
 )
 
 const EntityNameInspect = "inspections"
+
+type metricsHandler struct {
+	metrics.MessageHandler
+}
 
 // Maps individual response from inspection into overall inspection result
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {

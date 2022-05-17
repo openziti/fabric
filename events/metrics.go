@@ -174,14 +174,13 @@ func (adapter *metricsAdapter) AcceptMetrics(msg *metrics_pb.MetricsMessage) {
 	parentEventId := uuid.NewString()
 
 	for name, value := range msg.IntValues {
-		event := adapter.newMetricEvent(msg, "gauge", name, parentEventId)
+		event := adapter.newMetricEvent(msg, "intValue", name, parentEventId)
 		adapter.filterMetric("", value, event)
 		adapter.finishEvent(event)
 	}
 
 	for name, value := range msg.FloatValues {
-		event := adapter.newMetricEvent(msg, "gauge", name, parentEventId)
->>>>>>> 5114be8 (Emitting individual metric events for metrics inspect request)
+		event := adapter.newMetricEvent(msg, "floatValue", name, parentEventId)
 		adapter.filterMetric("", value, event)
 		adapter.finishEvent(event)
 	}
