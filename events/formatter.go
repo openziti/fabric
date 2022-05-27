@@ -300,9 +300,9 @@ func (event *PrometheusMetricsEvent) Marshal() ([]byte, error) {
 	var result string
 
 	switch event.MetricType {
-	case "counter":
-		result = event.toGauge("count")
-	case "gauge":
+	case "intValue":
+		result = event.toGauge("value")
+	case "floatValue":
 		result = event.toGauge("value")
 	case "meter":
 		result = event.toGauge("m1_rate")
