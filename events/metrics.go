@@ -135,7 +135,6 @@ func NewFilteredMetricsAdapter(sourceFilter *regexp.Regexp, metricFilter *regexp
 	return adapter
 }
 
-// Make this public - constructor or expose fields
 type metricsAdapter struct {
 	sourceFilter *regexp.Regexp
 	metricFilter *regexp.Regexp

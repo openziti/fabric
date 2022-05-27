@@ -94,7 +94,6 @@ func MapInspectResultToMetricsResult(inspectResult *network.InspectResult, forma
 		}
 		emit = string(s)
 	case "prometheus":
-		//emit = strings.Join([]string(r), "")
 		var prom string
 
 		for _, m := range r {
