@@ -1006,11 +1006,9 @@ func (network *Network) Inspect(name string) *string {
 		js, err := json.Marshal(msg)
 		var result string
 		if err != nil {
-			result = string(errors.Wrap(err, "failed to marshal metrics to json").Error())
+			result = errors.Wrap(err, "failed to marshal metrics to json").Error()
 		} else {
 			result = string(js)
-			pfxlog.Logger().Infof("Returning controller metrics: %s", result)
-			return &result
 		}
 		return &result
 	}
