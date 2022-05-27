@@ -42,7 +42,6 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 
 	for _, val := range inspectResult.Results {
 		var emitVal interface{}
-<<<<<<< HEAD
 		if strings.HasPrefix(val.Name, "metrics") {
 			cmd := strings.Split(val.Name, ":")
 			format := "json"
@@ -52,26 +51,6 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 			}
 
 			emitVal, _ = MapInspectResultValueToMetricsModel(val, format)
-
-=======
-		if val.Name == "metrics" {
-			msg := &metrics_pb.MetricsMessage{}
-			if err := json.Unmarshal([]byte(val.Value), msg); err == nil {
-				var metricEvents []interface{}
-
-				adapter := events.NewFilteredMetricsAdapter(nil, nil, events.MetricsHandlerF(func(event *events.MetricsEvent) {
-					metricEvents = append(metricEvents, event)
-				}))
-
-				adapter.AcceptMetrics(msg)
-				emitVal = metricEvents
-
-			} else {
-				msg, _ := fmt.Printf("Failed to format as json: %v", err)
-				emitVal = msg
-				pfxlog.Logger().Warnf("Failed to convert metrics %v", err)
-			}
->>>>>>> c8c2a2b (Emitting individual metric events for metrics inspect request)
 		} else {
 			if strings.HasPrefix(val.Value, "{") {
 				mapVal := map[string]interface{}{}
