@@ -118,9 +118,9 @@ func (context *inspectRequestContext) processLocal() {
 					context.appendValue(requested, string(js))
 				}
 			}
-		} else if strings.ToLower(lc) == "metrics" {
-			msg := context.handler.fwd.MetricsRegistry().GetRegistryImpl().Poll()
-			js, err := proto.Marshal(msg)
+		} else if strings.HasPrefix(lc, "metrics") {
+			msg := context.handler.fwd.MetricsRegistry().PollWithoutUsageMetrics()
+			js, err := json.Marshal(msg)
 			if err != nil {
 				context.appendError(errors.Wrap(err, "failed to marshal metrics to json").Error())
 			} else {

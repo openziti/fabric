@@ -18,13 +18,9 @@ package api_impl
 
 import (
 	"encoding/json"
-	"fmt"
-	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/network"
-	"github.com/openziti/fabric/events"
 	"github.com/openziti/fabric/metrics"
 	"github.com/openziti/fabric/rest_model"
-	"github.com/openziti/foundation/metrics/metrics_pb"
 	"strings"
 )
 
@@ -34,7 +30,6 @@ type metricsHandler struct {
 	metrics.MessageHandler
 }
 
-// Maps individual response from inspection into overall inspection result
 func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_model.InspectResponse {
 	resp := &rest_model.InspectResponse{
 		Errors:  inspectResult.Errors,
@@ -43,23 +38,16 @@ func MapInspectResultToRestModel(inspectResult *network.InspectResult) *rest_mod
 
 	for _, val := range inspectResult.Results {
 		var emitVal interface{}
-		if val.Name == "metrics" {
-			msg := &metrics_pb.MetricsMessage{}
-			if err := json.Unmarshal([]byte(val.Value), msg); err == nil {
-				var metricEvents []interface{}
+		if strings.HasPrefix(val.Name, "metrics") {
+			cmd := strings.Split(val.Name, ":")
+			format := "json"
 
-				adapter := events.NewFilteredMetricsAdapter(nil, nil, events.MetricsHandlerF(func(event *events.MetricsEvent) {
-					metricEvents = append(metricEvents, event)
-				}))
-
-				adapter.AcceptMetrics(msg)
-				emitVal = metricEvents
-
-			} else {
-				msg, _ := fmt.Printf("Failed to format as json: %v", err)
-				emitVal = msg
-				pfxlog.Logger().Warnf("Failed to convert metrics %v", err)
+			if len(cmd) > 1 {
+				format = cmd[1]
 			}
+
+			emitVal, _ = MapInspectResultValueToMetricsModel(val, format)
+
 		} else {
 			if strings.HasPrefix(val.Value, "{") {
 				mapVal := map[string]interface{}{}

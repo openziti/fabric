@@ -996,10 +996,12 @@ func (network *Network) showOptions() {
 }
 
 func (network *Network) Inspect(name string) *string {
-	if strings.ToLower(name) == "stackdump" {
+	lc := strings.ToLower(name)
+
+	if lc == "stackdump" {
 		result := debugz.GenerateStack()
 		return &result
-	} else if strings.ToLower(name) == "metrics" {
+	} else if strings.HasPrefix(lc, "metrics") {
 		msg := network.metricsRegistry.Poll()
 		js, err := json.Marshal(msg)
 		var result string
