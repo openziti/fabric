@@ -159,23 +159,24 @@ func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 			}
 		}
 
-		ctx, err := network.NewInspectionContext(metricsApi.network, ".*", []string{"metrics:prometheus"})
+		req, err := network.NewInspectionRequest(metricsApi.network, ".*", []string{"metrics:prometheus"})
 
 		if err != nil {
 			rw.Write([]byte(fmt.Sprintf("Failed to scrape metrics from %s:%s", metricsApi.network.GetAppId(), err.Error())))
 			rw.WriteHeader(http.StatusInternalServerError)
+			return
 		}
 
-		inspection := ctx.RunInspections()
+		inspection := req.RunInspections()
 
 		metricsResult, err := MapInspectResultToMetricsResult(inspection, "prometheus")
 
 		if err != nil {
-			rw.Write([]byte(fmt.Sprintf("Failed to scrape metrics from %s:%s", metricsApi.network.GetAppId(), err.Error())))
+			rw.Write([]byte(fmt.Sprintf("Failed to convert metrics to prometheus format %s:%s", metricsApi.network.GetAppId(), err.Error())))
 			rw.WriteHeader(http.StatusInternalServerError)
+		} else {
+			rw.Write([]byte(*metricsResult))
 		}
-
-		rw.Write([]byte(*metricsResult))
 	})
 
 	return handler
