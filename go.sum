@@ -352,10 +352,10 @@ github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
 github.com/openziti/channel v0.18.38 h1:iE5pbXoAFYfu/LpFR3CZDJ/yri3ZrwY61sGr11qFTa0=
 github.com/openziti/channel v0.18.38/go.mod h1:IoDeXk9O7MWTiCJ9on9xbCPhSQRbtb2YlI8d1IOiKhs=
-github.com/openziti/foundation v0.17.26 h1:UQwRcFDAipm2HvL++OqbHyTzcPoge0GofiNp7ZRwoFk=
-github.com/openziti/foundation v0.17.26/go.mod h1:obk269ZljgJzdziLAHcoAW+otWSqGYH57XupgkiIsj0=
-github.com/openziti/storage v0.1.6 h1:rImX8Mc9UiWUZN+TSz7URAvJxm3OlYgNAYqydAbUGrg=
-github.com/openziti/storage v0.1.6/go.mod h1:qka+VWUsNi9l2NFl68XW4ipOwm02J5Ks50WzjFfHTzc=
+github.com/openziti/foundation v0.17.27 h1:RKvHQHNIxfME0LnxB+LF14HS19V+wE3NvSse0G5fnAE=
+github.com/openziti/foundation v0.17.27/go.mod h1:obk269ZljgJzdziLAHcoAW+otWSqGYH57XupgkiIsj0=
+github.com/openziti/storage v0.1.7 h1:g8iBcscDF+EzgGYDm9MKNRKK3xuS1AWPe9dMLJHN32U=
+github.com/openziti/storage v0.1.7/go.mod h1:z34spDy/hYz62106XaSdGUTfyIgZdJjVKpGVJnH9UAU=
 github.com/openziti/transport/v2 v2.0.3 h1:uK/LqKM6iEaGsYa4K46xuBXdQQ/bEJrxS8Xl4VF0BKE=
 github.com/openziti/transport/v2 v2.0.3/go.mod h1:cpcnxiv5pSzGtLfQCxbZI62J7o6rREjTUYSdIcBENuo=
 github.com/openziti/xweb v1.0.0 h1:gShI3whG0+tmswrLXqQQ45JP5sMvpMfUughQsIh28uY=

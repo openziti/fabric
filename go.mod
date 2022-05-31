@@ -24,8 +24,8 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.38
-	github.com/openziti/foundation v0.17.26
-	github.com/openziti/storage v0.1.6
+	github.com/openziti/foundation v0.17.27
+	github.com/openziti/storage v0.1.7
 	github.com/openziti/transport/v2 v2.0.3
 	github.com/openziti/xweb v1.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.0
