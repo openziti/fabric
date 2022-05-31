@@ -39,24 +39,8 @@ type InspectResult struct {
 	Results []*InspectResultValue
 }
 
-type InspectionsController struct {
-	network *Network
-}
-
-func (self *InspectionsController) Inspect(appRegex string, values []string) *InspectResult {
-
-	ctx, err := NewInspectionContext(self.network, appRegex, values)
-
-	if err != nil {
-		ctx.appendError(self.network.GetAppId(), err.Error())
-		return &ctx.response
-	}
-
-	return ctx.RunInspections()
-}
-
-func NewInspectionContext(network *Network, appRegex string, values []string) (*inspectRequestContext, error) {
-	ctx := &inspectRequestContext{
+func NewInspectionRequest(network *Network, appRegex string, values []string) (*inspectRequest, error) {
+	ctx := &inspectRequest{
 		network:         network,
 		timeout:         time.Second * 10,
 		requestedValues: values,
@@ -73,7 +57,7 @@ func NewInspectionContext(network *Network, appRegex string, values []string) (*
 	return ctx, nil
 }
 
-type inspectRequestContext struct {
+type inspectRequest struct {
 	network         *Network
 	timeout         time.Duration
 	requestedValues []string
@@ -85,7 +69,7 @@ type inspectRequestContext struct {
 	complete        bool
 }
 
-func (ctx *inspectRequestContext) RunInspections() *InspectResult {
+func (ctx *inspectRequest) RunInspections() *InspectResult {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("values", ctx.requestedValues).
@@ -108,7 +92,7 @@ func (ctx *inspectRequestContext) RunInspections() *InspectResult {
 	return &ctx.response
 }
 
-func (ctx *inspectRequestContext) inspectLocal() {
+func (ctx *inspectRequest) inspectLocal() {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("appId", ctx.network.GetAppId()).
@@ -133,7 +117,7 @@ func (ctx *inspectRequestContext) inspectLocal() {
 	}
 }
 
-func (ctx *inspectRequestContext) inspectRouter(router *Router) {
+func (ctx *inspectRequest) inspectRouter(router *Router) {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("appId", router.Id).
@@ -151,7 +135,7 @@ func (ctx *inspectRequestContext) inspectRouter(router *Router) {
 	}
 }
 
-func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier chan struct{}) {
+func (ctx *inspectRequest) handleRouterMessaging(router *Router, notifier chan struct{}) {
 	defer close(notifier)
 
 	request := &ctrl_pb.InspectRequest{RequestedValues: ctx.requestedValues}
@@ -172,7 +156,7 @@ func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier
 	}
 }
 
-func (ctx *inspectRequestContext) appendValue(appId string, name string, value string) {
+func (ctx *inspectRequest) appendValue(appId string, name string, value string) {
 	ctx.lock.Lock()
 	defer ctx.lock.Unlock()
 	if !ctx.complete {
@@ -184,7 +168,7 @@ func (ctx *inspectRequestContext) appendValue(appId string, name string, value s
 	}
 }
 
-func (ctx *inspectRequestContext) appendError(appId string, err string) {
+func (ctx *inspectRequest) appendError(appId string, err string) {
 	ctx.lock.Lock()
 	defer ctx.lock.Unlock()
 	if !ctx.complete {
