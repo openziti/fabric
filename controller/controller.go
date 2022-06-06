@@ -23,9 +23,11 @@ import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
 	"github.com/openziti/fabric/controller/api_impl"
+	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"
 	"github.com/openziti/fabric/controller/handler_mgmt"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/controller/xctrl"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/fabric/controller/xt"
@@ -39,42 +41,97 @@ import (
 	"github.com/openziti/fabric/profiler"
 	"github.com/openziti/foundation/common"
 	"github.com/openziti/foundation/identity/identity"
+	"github.com/openziti/foundation/metrics"
 	"github.com/openziti/foundation/util/concurrenz"
-	"github.com/openziti/xweb"
+	"github.com/openziti/storage/boltz"
+	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
 )
 
 type Controller struct {
 	config             *Config
 	network            *network.Network
+	raftController     *raft.Controller
 	ctrlConnectHandler *handler_ctrl.ConnectHandler
 	mgmtConnectHandler *handler_mgmt.ConnectHandler
 	xctrls             []xctrl.Xctrl
 	xmgmts             []xmgmt.Xmgmt
 
-	xwebs               []xweb.Xweb
-	xwebFactoryRegistry xweb.WebHandlerFactoryRegistry
+	xwebFactoryRegistry xweb.Registry
+	xweb                xweb.Instance
 
 	ctrlListener channel.UnderlayListener
 	mgmtListener channel.UnderlayListener
 
-	shutdownC     chan struct{}
-	isShutdown    concurrenz.AtomicBoolean
-	agentHandlers map[byte]func(c *bufio.ReadWriter) error
+	shutdownC         chan struct{}
+	isShutdown        concurrenz.AtomicBoolean
+	agentHandlers     map[byte]func(conn *bufio.ReadWriter) error
+	agentBindHandlers []channel.BindHandler
+	metricsRegistry   metrics.Registry
+	versionProvider   common.VersionProvider
+}
+
+func (c *Controller) GetId() *identity.TokenId {
+	return c.config.Id
+}
+
+func (c *Controller) GetMetricsRegistry() metrics.Registry {
+	return c.metricsRegistry
+}
+
+func (c *Controller) GetOptions() *network.Options {
+	return c.config.Network
+}
+
+func (c *Controller) GetCommandDispatcher() command.Dispatcher {
+	if c.raftController == nil {
+		return nil
+	}
+	return c.raftController
+}
+
+func (c *Controller) GetDb() boltz.Db {
+	return c.config.Db
+}
+
+func (c *Controller) GetMetricsConfig() *metrics.Config {
+	return c.config.Metrics
+}
+
+func (c *Controller) GetVersionProvider() common.VersionProvider {
+	return c.versionProvider
+}
+
+func (c *Controller) GetCloseNotify() <-chan struct{} {
+	return c.shutdownC
 }
 
 func NewController(cfg *Config, versionProvider common.VersionProvider) (*Controller, error) {
+	metricRegistry := metrics.NewRegistry(cfg.Id.Token, nil)
+
 	c := &Controller{
 		config:              cfg,
 		shutdownC:           make(chan struct{}),
-		xwebFactoryRegistry: xweb.NewWebHandlerFactoryRegistryImpl(),
-		agentHandlers:       map[byte]func(c *bufio.ReadWriter) error{},
+		xwebFactoryRegistry: xweb.NewRegistryMap(),
+		metricsRegistry:     metricRegistry,
+		versionProvider:     versionProvider,
+	}
+
+	if cfg.Raft != nil {
+		raftController, err := raft.NewController(cfg.Id, cfg.Raft, metricRegistry)
+		if err != nil {
+			fmt.Printf("error starting raft %+v\n", err)
+			panic(err)
+		}
+
+		c.raftController = raftController
+		cfg.Db = raftController.GetDb()
 	}
 
 	c.registerXts()
 	c.loadEventHandlers()
 
-	if n, err := network.NewNetwork(cfg.Id.Token, cfg.Network, cfg.Db, cfg.Metrics, versionProvider, c.shutdownC); err == nil {
+	if n, err := network.NewNetwork(c); err == nil {
 		c.network = n
 	} else {
 		return nil, err
@@ -107,11 +164,13 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create health checker")
 	}
 
-	if err := c.RegisterXWebHandlerFactory(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
+	c.xweb = xweb.NewDefaultInstance(c.xwebFactoryRegistry, c.config.Id)
+
+	if err := c.xweb.GetRegistry().Add(health.NewHealthCheckApiFactory(healthChecker)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create health checks api factory")
 	}
 
-	if err := c.RegisterXWebHandlerFactory(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewManagementApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 
@@ -171,12 +230,11 @@ func (c *Controller) Run() error {
 	mgmtAccepter := handler_mgmt.NewMgmtAccepter(c.network, c.xmgmts, c.mgmtListener, c.config.Mgmt.Options)
 	go mgmtAccepter.Run()
 
-	/*
-	 * start xweb for http/web API listening
-	 */
-	for _, web := range c.xwebs {
-		go web.Run()
+	if err := c.config.Configure(c.xweb); err != nil {
+		panic(err)
 	}
+
+	go c.xweb.Run()
 
 	// event handlers
 	if err := events.WireEventHandlers(c.network.InitServiceCounterDispatch); err != nil {
@@ -216,9 +274,7 @@ func (c *Controller) Shutdown() {
 			}
 		}
 
-		for _, web := range c.xwebs {
-			go web.Shutdown()
-		}
+		go c.xweb.Shutdown()
 	}
 }
 
@@ -271,11 +327,6 @@ func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
 	c.mgmtConnectHandler = handler_mgmt.NewConnectHandler(c.config.Id, c.network)
 
-	//add default REST XWeb
-	if err := c.RegisterXweb(xweb.NewXwebImpl(c.xwebFactoryRegistry, c.config.Id)); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -304,18 +355,8 @@ func (c *Controller) RegisterXmgmt(x xmgmt.Xmgmt) error {
 	return nil
 }
 
-func (c *Controller) RegisterXweb(x xweb.Xweb) error {
-	if err := c.config.Configure(x); err != nil {
-		return err
-	}
-	if x.Enabled() {
-		c.xwebs = append(c.xwebs, x)
-	}
-	return nil
-}
-
-func (c *Controller) RegisterXWebHandlerFactory(x xweb.WebHandlerFactory) error {
-	return c.xwebFactoryRegistry.Add(x)
+func (c *Controller) GetXWebInstance() xweb.Instance {
+	return c.xweb
 }
 
 func (c *Controller) GetNetwork() *network.Network {

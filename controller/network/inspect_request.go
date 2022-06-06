@@ -39,9 +39,19 @@ type InspectResult struct {
 	Results []*InspectResultValue
 }
 
-func NewInspectionRequest(network *Network, appRegex string, values []string) (*inspectRequest, error) {
-	ctx := &inspectRequest{
-		network:         network,
+func NewInspectionsManager(network *Network) *InspectionsManager {
+	return &InspectionsManager{
+		network: network,
+	}
+}
+
+type InspectionsManager struct {
+	network *Network
+}
+
+func (self *InspectionsManager) Inspect(appRegex string, values []string) *InspectResult {
+	ctx := &inspectRequestContext{
+		network:         self.network,
 		timeout:         time.Second * 10,
 		requestedValues: values,
 		waitGroup:       concurrenz.NewWaitGroup(),
@@ -51,10 +61,13 @@ func NewInspectionRequest(network *Network, appRegex string, values []string) (*
 
 	var err error
 	ctx.regex, err = regexp.Compile(appRegex)
+
 	if err != nil {
-		return nil, err
+		ctx.appendError(self.network.GetAppId(), err.Error())
+		return &ctx.response
 	}
-	return ctx, nil
+
+	return ctx.RunInspections()
 }
 
 type inspectRequest struct {
