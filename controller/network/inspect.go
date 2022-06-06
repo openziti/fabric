@@ -70,7 +70,7 @@ func (self *InspectionsManager) Inspect(appRegex string, values []string) *Inspe
 	return ctx.RunInspections()
 }
 
-type inspectRequest struct {
+type inspectRequestContext struct {
 	network         *Network
 	timeout         time.Duration
 	requestedValues []string
@@ -82,7 +82,7 @@ type inspectRequest struct {
 	complete        bool
 }
 
-func (ctx *inspectRequest) RunInspections() *InspectResult {
+func (ctx *inspectRequestContext) RunInspections() *InspectResult {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("values", ctx.requestedValues).
@@ -105,7 +105,7 @@ func (ctx *inspectRequest) RunInspections() *InspectResult {
 	return &ctx.response
 }
 
-func (ctx *inspectRequest) inspectLocal() {
+func (ctx *inspectRequestContext) inspectLocal() {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("appId", ctx.network.GetAppId()).
@@ -130,7 +130,7 @@ func (ctx *inspectRequest) inspectLocal() {
 	}
 }
 
-func (ctx *inspectRequest) inspectRouter(router *Router) {
+func (ctx *inspectRequestContext) inspectRouter(router *Router) {
 	log := pfxlog.Logger().
 		WithField("appRegex", ctx.appRegex).
 		WithField("appId", router.Id).
@@ -148,7 +148,7 @@ func (ctx *inspectRequest) inspectRouter(router *Router) {
 	}
 }
 
-func (ctx *inspectRequest) handleRouterMessaging(router *Router, notifier chan struct{}) {
+func (ctx *inspectRequestContext) handleRouterMessaging(router *Router, notifier chan struct{}) {
 	defer close(notifier)
 
 	request := &ctrl_pb.InspectRequest{RequestedValues: ctx.requestedValues}
@@ -169,7 +169,7 @@ func (ctx *inspectRequest) handleRouterMessaging(router *Router, notifier chan s
 	}
 }
 
-func (ctx *inspectRequest) appendValue(appId string, name string, value string) {
+func (ctx *inspectRequestContext) appendValue(appId string, name string, value string) {
 	ctx.lock.Lock()
 	defer ctx.lock.Unlock()
 	if !ctx.complete {
@@ -181,7 +181,7 @@ func (ctx *inspectRequest) appendValue(appId string, name string, value string) 
 	}
 }
 
-func (ctx *inspectRequest) appendError(appId string, err string) {
+func (ctx *inspectRequestContext) appendError(appId string, err string) {
 	ctx.lock.Lock()
 	defer ctx.lock.Unlock()
 	if !ctx.complete {

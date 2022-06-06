@@ -174,7 +174,7 @@ func (c *Controller) initWeb() {
 		logrus.WithError(err).Fatalf("failed to create management api factory")
 	}
 
-	if err := c.RegisterXWebHandlerFactory(api_impl.NewMetricsApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
+	if err := c.xweb.GetRegistry().Add(api_impl.NewMetricsApiFactory(c.config.Id, c.network, c.xmgmts)); err != nil {
 		logrus.WithError(err).Fatalf("failed to create metrics api factory")
 	}
 

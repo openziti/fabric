@@ -27,13 +27,13 @@ import (
 	"github.com/openziti/fabric/controller/network"
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/foundation/identity/identity"
-	"github.com/openziti/xweb"
+	"github.com/openziti/xweb/v2"
 	"net/http"
 	"regexp"
 	"strings"
 )
 
-var _ xweb.WebHandlerFactory = &MetricsApiFactory{}
+var _ xweb.ApiHandlerFactory = &MetricsApiFactory{}
 
 type MetricsApiFactory struct {
 	network *network.Network
@@ -41,7 +41,7 @@ type MetricsApiFactory struct {
 	xmgmts  []xmgmt.Xmgmt
 }
 
-func (factory *MetricsApiFactory) Validate(_ *xweb.Config) error {
+func (factory *MetricsApiFactory) Validate(_ *xweb.InstanceConfig) error {
 	return nil
 }
 
@@ -57,7 +57,7 @@ func (factory *MetricsApiFactory) Binding() string {
 	return MetricApiBinding
 }
 
-func (factory *MetricsApiFactory) New(_ *xweb.WebListener, options map[interface{}]interface{}) (xweb.WebHandler, error) {
+func (factory *MetricsApiFactory) New(_ *xweb.ServerConfig, options map[interface{}]interface{}) (xweb.ApiHandler, error) {
 
 	metricsApiHandler, err := NewMetricsApiHandler(factory.network, options)
 
@@ -70,14 +70,15 @@ func (factory *MetricsApiFactory) New(_ *xweb.WebListener, options map[interface
 
 func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{}) (*MetricsApiHandler, error) {
 	metricsApi := &MetricsApiHandler{
-		options: options,
-		network: n,
+		options:    options,
+		network:    n,
+		inspectMgr: network.NewInspectionsManager(n),
 	}
 
 	if value, found := options["pem"]; found {
 		if p, ok := value.(string); ok {
-			// This looks a little strange.  The yaml library used here does not handle multi-line strings properly.
-			// To get things to parse correctly, the following must happen
+			// This looks a little strange.  The yaml library used by Ziti does not handle multi-line strings properly.
+			// The following must happen to get the cert to parse correctly
 			// 1: Remove BEING/END cert markers
 			// 2: Remove all whitespace
 			// 3: Restore the BEGIN/END cert markers
@@ -103,8 +104,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 			return nil, errors.New("invalid configuration found for metrics pem.  The PEM must be a string")
 		}
 	} else {
-		// TODO: Config location TBD
-		pfxlog.Logger().Info("Metrics are enabled, however no PEM is provided.  Metric scrape identity will not be validated.  See TBD for instructions to set this up")
+		pfxlog.Logger().Info("Metrics are enabled on /metrics, but no PEM is provided in the controller configuration. Metrics are exposed without any authorization.")
 	}
 
 	metricsApi.handler = metricsApi.newHandler()
@@ -113,6 +113,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 }
 
 type MetricsApiHandler struct {
+	inspectMgr  *network.InspectionsManager
 	handler     http.Handler
 	network     *network.Network
 	scrapeCert  *x509.Certificate
@@ -129,8 +130,7 @@ func (metricsApi *MetricsApiHandler) Options() map[interface{}]interface{} {
 }
 
 func (metricsApi *MetricsApiHandler) RootPath() string {
-	// TODO:  MERGE BLOCKER: Requires fix to xweb demuxer to have a legit default handler.  The edge handler grabs everything except a hard-coded starts-with '/fabric'.
-	return "/fabric-metrics"
+	return "/metrics"
 }
 
 func (metricsApi *MetricsApiHandler) IsHandler(r *http.Request) bool {
@@ -159,15 +159,7 @@ func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
 			}
 		}
 
-		req, err := network.NewInspectionRequest(metricsApi.network, ".*", []string{"metrics:prometheus"})
-
-		if err != nil {
-			rw.Write([]byte(fmt.Sprintf("Failed to scrape metrics from %s:%s", metricsApi.network.GetAppId(), err.Error())))
-			rw.WriteHeader(http.StatusInternalServerError)
-			return
-		}
-
-		inspection := req.RunInspections()
+		inspection := metricsApi.inspectMgr.Inspect(".*", []string{"metrics:prometheus"})
 
 		metricsResult, err := MapInspectResultToMetricsResult(inspection, "prometheus")
 
