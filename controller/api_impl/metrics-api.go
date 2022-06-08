@@ -84,7 +84,7 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 
 			block, _ := pem.Decode(p)
 			if block == nil {
-				err := errors.New("failed to parse metrics api PEM")
+				err := errors.New("failed to decode metrics api scrapeCert")
 				return nil, err
 			}
 			cert, err := x509.ParseCertificate(block.Bytes)
@@ -94,10 +94,10 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 			}
 			metricsApi.scrapeCert = cert
 		} else {
-			return nil, errors.New("invalid configuration found for metrics pem.  The PEM must be a string")
+			return nil, errors.New("invalid configuration found for metrics pem.  The scrapeCert must be a string")
 		}
 	} else {
-		pfxlog.Logger().Info("Metrics are enabled on /metrics, but no PEM is provided in the controller configuration. Metrics are exposed without any authorization.")
+		pfxlog.Logger().Info("Metrics are enabled on /metrics, but no scrapeCert is provided in the controller configuration. Metrics are exposed without any authorization.")
 	}
 
 	metricsApi.handler = metricsApi.newHandler()
