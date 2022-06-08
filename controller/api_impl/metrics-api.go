@@ -28,8 +28,8 @@ import (
 	"github.com/openziti/fabric/controller/xmgmt"
 	"github.com/openziti/foundation/identity/identity"
 	"github.com/openziti/xweb/v2"
+	"io/ioutil"
 	"net/http"
-	"regexp"
 	"strings"
 )
 
@@ -75,21 +75,14 @@ func NewMetricsApiHandler(n *network.Network, options map[interface{}]interface{
 		inspectMgr: network.NewInspectionsManager(n),
 	}
 
-	if value, found := options["pem"]; found {
-		if p, ok := value.(string); ok {
-			// This looks a little strange.  The yaml library used by Ziti does not handle multi-line strings properly.
-			// The following must happen to get the cert to parse correctly
-			// 1: Remove BEING/END cert markers
-			// 2: Remove all whitespace
-			// 3: Restore the BEGIN/END cert markers
-			//
-			// Skipping step 1 will corrupt the markers when whitespace is removed
-			regex := regexp.MustCompile(`-+\s*(BEGIN|END)\s+CERTIFICATE\s*-+`)
-			p = string(regex.ReplaceAll([]byte(strings.TrimSpace(p)), []byte("")))
+	if value, found := options["scrapeCert"]; found {
+		if f, ok := value.(string); ok {
+			p, err := ioutil.ReadFile(f)
+			if nil != err {
+				return nil, err
+			}
 
-			t := "-----BEGIN CERTIFICATE-----\n" + strings.ReplaceAll(p, " ", "") + "\n-----END CERTIFICATE-----"
-
-			block, _ := pem.Decode([]byte(t))
+			block, _ := pem.Decode(p)
 			if block == nil {
 				err := errors.New("failed to parse metrics api PEM")
 				return nil, err
@@ -142,7 +135,6 @@ func (metricsApi *MetricsApiHandler) ServeHTTP(writer http.ResponseWriter, reque
 }
 
 func (metricsApi *MetricsApiHandler) newHandler() http.Handler {
-
 	handler := http.HandlerFunc(func(rw http.ResponseWriter, r *http.Request) {
 
 		if nil != metricsApi.scrapeCert {
