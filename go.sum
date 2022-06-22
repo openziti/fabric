@@ -399,8 +399,8 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.13.0 h1:7lLHu94wT9Ij0o6EWWclhu0aOh32VxhkwEJvzuWPeak=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/openziti/channel v0.18.42 h1:80q2WE6XkedHSgJwmpxTUpfbHLbb6xfrAlBW3v9DKcU=
-github.com/openziti/channel v0.18.42/go.mod h1:dh6JSNiK7s1/14StJPY9q7V/ZXsKXacrJfF+qmwnJtA=
+github.com/openziti/channel v0.18.41 h1:14AsuA/63BRS/VGRik7lfu6brFruLks1dVCwc2SHZQU=
+github.com/openziti/channel v0.18.41/go.mod h1:9ZZKcC57bbb5Wdy76AD1XLoXHU4Uz05i8y6k3r8y13s=
 github.com/openziti/foundation v0.17.29 h1:vCd04b5FaZJ+4eFnEBjB1COfjuEHUaq0RZlPDKvkNOA=
 github.com/openziti/foundation v0.17.29/go.mod h1:qA+AJwjT8UsqljVrdfZtR+4jBNI/zd6nx7fn8w2tMLE=
 github.com/openziti/storage v0.1.10 h1:y41bxJ7ViHepMa3cW+vVaNCcCBoLA2IihvUh6kcXNHc=
