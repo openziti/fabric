@@ -406,8 +406,10 @@ github.com/openziti/channel v0.18.46 h1:MF8lkiPydMWFfFEiLYUZZt+8OcQRozE4NF+wjnhL
 github.com/openziti/channel v0.18.46/go.mod h1:ztchrsHW/Rhe0OHvqtEEHgk+P66RpOVS4SBNFi1Xir4=
 github.com/openziti/foundation v0.17.31 h1:rLuoBhH/YKy7HTKDTiBzEIXffZq7nr+waJvepdwBWNE=
 github.com/openziti/foundation v0.17.31/go.mod h1:yOn4gl8cAv5r98fd3pvQFj57hrG4V9R8r4AAgYes/Lw=
-github.com/openziti/storage v0.1.12 h1:dk/44chZ2EBwYTxWwPCGqPeeYyQ7fzSdibE+N9RVLno=
-github.com/openziti/storage v0.1.12/go.mod h1:iF7xAN0wO6gPfRpGzr8nxW0K6soKr7jmHiTrZ19GGcE=
+github.com/openziti/foundation/v2 v2.0.0 h1:sZfIndklVKsN0uTjxgnGoyIFe+3qQ5NTcgtGUYjTfYo=
+github.com/openziti/foundation/v2 v2.0.0/go.mod h1:Gem/cl6bvy47xUaO06xtPtN30IVf9WDtHQ5y/HIAvgY=
+github.com/openziti/storage v0.1.13 h1:Vrg4A08tveLJZhYhK5QANpsDr0/eZ81EHtMeBLVQ9Cc=
+github.com/openziti/storage v0.1.13/go.mod h1:h/OcZxsVIMqVskp9+QfLco/elIfwomSQ4df3uYNYHXQ=
 github.com/openziti/transport/v2 v2.0.10 h1:x9FmccmF+f1hhplBzbVH5IIOVznIiBzxUzvB5xNWMm4=
 github.com/openziti/transport/v2 v2.0.10/go.mod h1:5Y6lrnyhJGekQ3tWGNs1Sl8zMee8vL4UY2AEbaMjv54=
 github.com/openziti/xweb/v2 v2.0.0 h1:tXYkiP55f9wOdZ/kwe28AvZotcAQJEYPtZTaWfSnnX8=

@@ -29,7 +29,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v0.18.46
 	github.com/openziti/foundation v0.17.31
-	github.com/openziti/storage v0.1.12
+	github.com/openziti/storage v0.1.13
 	github.com/openziti/transport/v2 v2.0.10
 	github.com/openziti/xweb/v2 v2.0.0
 	github.com/orcaman/concurrent-map/v2 v2.0.0
@@ -75,6 +75,7 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
+	github.com/openziti/foundation/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
