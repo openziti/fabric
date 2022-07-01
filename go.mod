@@ -27,16 +27,18 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel v0.18.46
-	github.com/openziti/foundation v0.17.31
-	github.com/openziti/storage v0.1.13
-	github.com/openziti/transport/v2 v2.0.10
-	github.com/openziti/xweb/v2 v2.0.0
+	github.com/openziti/channel v0.18.48
+	github.com/openziti/foundation/v2 v2.0.1
+	github.com/openziti/identity v1.0.1
+	github.com/openziti/metrics v1.0.1
+	github.com/openziti/storage v0.1.14
+	github.com/openziti/transport/v2 v2.0.12
+	github.com/openziti/xweb/v2 v2.0.1
 	github.com/orcaman/concurrent-map/v2 v2.0.0
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.7.5
+	github.com/stretchr/testify v1.8.0
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
@@ -64,7 +66,6 @@ require (
 	github.com/hashicorp/go-immutable-radix v1.0.0 // indirect
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
-	github.com/influxdata/influxdb1-client v0.0.0-20191209144304-8bf82d3c094d // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
@@ -75,10 +76,9 @@ require (
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
-	github.com/openziti/foundation/v2 v2.0.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20220111122524-cb78842db373 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rcrowley/go-metrics v0.0.0-20200313005456-10cdbea86bc0 // indirect
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
