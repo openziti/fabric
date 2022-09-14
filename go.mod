@@ -92,6 +92,5 @@ require (
 require (
 	github.com/biogo/store v0.0.0-20200525035639-8c94ae1e7c9c // indirect
 	github.com/dineshappavoo/basex v0.0.0-20170425072625-481a6f6dc663
-	github.com/golang/protobuf v1.5.2
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0 // indirect
 )
