@@ -29,7 +29,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel v1.0.2
 	github.com/openziti/foundation/v2 v2.0.4
-	github.com/openziti/identity v1.0.11
+	github.com/openziti/identity v1.0.12
 	github.com/openziti/metrics v1.0.7
 	github.com/openziti/storage v0.1.21
 	github.com/openziti/transport/v2 v2.0.28
@@ -59,6 +59,7 @@ require (
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
+	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
 	github.com/go-openapi/jsonpointer v0.19.5 // indirect
 	github.com/go-openapi/jsonreference v0.20.0 // indirect
