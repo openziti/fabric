@@ -242,6 +242,13 @@ func (self *impl) AddPeer(peer *Peer) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.Peers[peer.Address] = peer
+	//check if new peer is a higher version
+	ro := self.readonly.Load().(bool)
+	if !ro {
+		if self.version != peer.Version {
+			self.readonly.Store(true)
+		}
+	}
 	logrus.Infof("added peer at %v", peer.Address)
 }
 
@@ -255,6 +262,8 @@ func (self *impl) RemovePeer(peer *Peer) {
 	self.lock.RLock()
 	defer self.lock.RUnlock()
 	delete(self.Peers, peer.Address)
+	//recheck if need to be readonly
+	self.checkState()
 }
 
 func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
@@ -305,10 +314,11 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 	return nil
 }
 
-func (self *impl) CheckState() {
+func (self *impl) checkState() {
 	for _, p := range self.Peers {
 		if p != nil && p.Version != self.version {
 			self.readonly.Store(true)
+			return
 		}
 	}
 	if self.IsReadOnly() {
