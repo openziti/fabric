@@ -17,6 +17,11 @@
 package mesh
 
 import (
+	"net"
+	"sync"
+	"sync/atomic"
+	"time"
+
 	"github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel"
@@ -25,14 +30,12 @@ import (
 	"github.com/openziti/transport/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"net"
-	"sync"
-	"time"
 )
 
 const (
-	PeerIdHeader   = 10
-	PeerAddrHeader = 11
+	PeerIdHeader      = 10
+	PeerAddrHeader    = 11
+	PeerVersionHeader = 12
 
 	RaftConnectType = 2048
 	RaftDataType    = 2049
@@ -46,6 +49,7 @@ type Peer struct {
 	Address  string
 	Channel  channel.Channel
 	RaftConn *raftPeerConn
+	Version  string
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
@@ -109,9 +113,12 @@ type Mesh interface {
 	// GetOrConnectPeer returns a peer for the given address. If a peer has already been established,
 	// it will be returned, otherwise a new connection will be established
 	GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error)
+	IsReadOnly() bool
 }
 
-func New(id *identity.TokenId, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
+func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
+	ro := &atomic.Value{}
+	ro.Store(false)
 	return &impl{
 		id:       id,
 		raftId:   raftId,
@@ -124,6 +131,8 @@ func New(id *identity.TokenId, raftId raft.ServerID, raftAddr raft.ServerAddress
 		closeNotify: make(chan struct{}),
 		raftAccepts: make(chan net.Conn),
 		bindHandler: bindHandler,
+		version:     version,
+		readonly:    ro,
 	}
 }
 
@@ -138,6 +147,8 @@ type impl struct {
 	closed      concurrenz.AtomicBoolean
 	raftAccepts chan net.Conn
 	bindHandler channel.BindHandler
+	version     string
+	readonly    *atomic.Value
 }
 
 func (self *impl) Close() error {
@@ -191,6 +202,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	headers := map[int32][]byte{
 		PeerIdHeader:       []byte(self.raftId),
 		PeerAddrHeader:     []byte(self.raftAddr),
+		PeerVersionHeader:  []byte(self.version),
 		channel.TypeHeader: []byte(ChannelTypeMesh),
 	}
 
@@ -258,6 +270,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		ch := binding.GetChannel()
 		id := string(ch.Underlay().Headers()[PeerIdHeader])
 		addr := string(ch.Underlay().Headers()[PeerAddrHeader])
+		version := string(ch.Underlay().Headers()[PeerVersionHeader])
 
 		if id == "" || addr == "" {
 			_ = ch.Close()
@@ -272,6 +285,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		peer.Id = raft.ServerID(id)
 		peer.Address = addr
 		peer.Channel = ch
+		peer.Version = version
 
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 		binding.AddTypedReceiveHandler(peer)
@@ -289,4 +303,19 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 	logrus.Infof("connected peer %v at %v", peer.Id, peer.Address)
 
 	return nil
+}
+
+func (self *impl) CheckState() {
+	for _, p := range self.Peers {
+		if p != nil && p.Version != self.version {
+			self.readonly.Store(true)
+		}
+	}
+	if self.IsReadOnly() {
+		self.readonly.Store(false)
+	}
+}
+
+func (self *impl) IsReadOnly() bool {
+	return self.readonly.Load().(bool)
 }
