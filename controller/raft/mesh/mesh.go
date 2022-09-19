@@ -64,6 +64,7 @@ func (self *Peer) HandleReceive(m *channel.Message, ch channel.Channel) {
 	go func() {
 		response := channel.NewMessage(channel.ContentTypeResultType, nil)
 		response.Headers[PeerIdHeader] = []byte(self.mesh.raftId)
+		response.Headers[PeerVersionHeader] = []byte(self.mesh.version)
 		response.ReplyTo(m)
 
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
@@ -84,7 +85,9 @@ func (self *Peer) Connect(timeout time.Duration) error {
 		return err
 	}
 	id, _ := response.GetStringHeader(PeerIdHeader)
+	version, _ := response.GetStringHeader(PeerVersionHeader)
 	self.Id = raft.ServerID(id)
+	self.Version = version
 
 	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
 
@@ -117,7 +120,7 @@ type Mesh interface {
 }
 
 func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
-	ro := &atomic.Value{}
+	ro := &atomic.Bool{}
 	ro.Store(false)
 	return &impl{
 		id:       id,
@@ -148,7 +151,7 @@ type impl struct {
 	raftAccepts chan net.Conn
 	bindHandler channel.BindHandler
 	version     string
-	readonly    *atomic.Value
+	readonly    *atomic.Bool
 }
 
 func (self *impl) Close() error {
@@ -189,6 +192,7 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 	if peer := self.GetPeer(raft.ServerAddress(address)); peer != nil {
 		logrus.Debugf("existing peer found for %v, returning", address)
+		self.checkState()
 		return peer, nil
 	}
 	logrus.Infof("creating new peer for %v, returning", address)
@@ -243,8 +247,7 @@ func (self *impl) AddPeer(peer *Peer) {
 	defer self.lock.Unlock()
 	self.Peers[peer.Address] = peer
 	//check if new peer is a higher version
-	ro := self.readonly.Load().(bool)
-	if !ro {
+	if !self.readonly.Load() {
 		if self.version != peer.Version {
 			self.readonly.Store(true)
 		}
@@ -317,6 +320,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 func (self *impl) checkState() {
 	for _, p := range self.Peers {
 		if p != nil && p.Version != self.version {
+			logrus.Infof("My version is %s, Peer(%s) is %s\n", self.version, p.Id, p.Version)
 			self.readonly.Store(true)
 			return
 		}
@@ -327,5 +331,5 @@ func (self *impl) checkState() {
 }
 
 func (self *impl) IsReadOnly() bool {
-	return self.readonly.Load().(bool)
+	return self.readonly.Load()
 }
