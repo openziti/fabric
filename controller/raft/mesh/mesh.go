@@ -120,8 +120,6 @@ type Mesh interface {
 }
 
 func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
-	ro := &atomic.Bool{}
-	ro.Store(false)
 	return &impl{
 		id:       id,
 		raftId:   raftId,
@@ -135,7 +133,7 @@ func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr ra
 		raftAccepts: make(chan net.Conn),
 		bindHandler: bindHandler,
 		version:     version,
-		readonly:    ro,
+		readonly:    atomic.Bool{},
 	}
 }
 
@@ -151,7 +149,7 @@ type impl struct {
 	raftAccepts chan net.Conn
 	bindHandler channel.BindHandler
 	version     string
-	readonly    *atomic.Bool
+	readonly    atomic.Bool
 }
 
 func (self *impl) Close() error {
@@ -246,7 +244,7 @@ func (self *impl) AddPeer(peer *Peer) {
 	self.lock.Lock()
 	defer self.lock.Unlock()
 	self.Peers[peer.Address] = peer
-	//check if new peer is a higher version
+	//check if new peer is a different version
 	if !self.readonly.Load() {
 		if self.version != peer.Version {
 			self.readonly.Store(true)

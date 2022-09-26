@@ -8,7 +8,7 @@ import (
 )
 
 func Test_checkState_ReadonlyFalseWhenAllVersionsMatch(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(false)
 	m := impl{
 		readonly: ro,
@@ -24,7 +24,7 @@ func Test_checkState_ReadonlyFalseWhenAllVersionsMatch(t *testing.T) {
 }
 
 func Test_checkState_ReadonlyTrueWhenAllVersionsDoNotMatch(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(false)
 	m := impl{
 		readonly: ro,
@@ -40,7 +40,7 @@ func Test_checkState_ReadonlyTrueWhenAllVersionsDoNotMatch(t *testing.T) {
 }
 
 func Test_checkState_ReadonlySetToFalseWhenPreviouslyTrueAndAllVersionsNowMatch(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(true)
 	m := impl{
 		readonly: ro,
@@ -56,7 +56,7 @@ func Test_checkState_ReadonlySetToFalseWhenPreviouslyTrueAndAllVersionsNowMatch(
 }
 
 func Test_AddPeer_PassesReadonlyWhenVersionsMatch(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(false)
 	m := impl{
 		readonly: ro,
@@ -71,7 +71,7 @@ func Test_AddPeer_PassesReadonlyWhenVersionsMatch(t *testing.T) {
 }
 
 func Test_AddPeer_TurnsReadonlyWhenVersionsDoNotMatch(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(false)
 	m := impl{
 		readonly: ro,
@@ -86,7 +86,7 @@ func Test_AddPeer_TurnsReadonlyWhenVersionsDoNotMatch(t *testing.T) {
 }
 
 func Test_RemovePeer_StaysReadonlyWhenDeletingPeerAndStillHasMismatchedVersions(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(true)
 	m := impl{
 		readonly: ro,
@@ -102,7 +102,7 @@ func Test_RemovePeer_StaysReadonlyWhenDeletingPeerAndStillHasMismatchedVersions(
 }
 
 func Test_RemovePeer_RemovesReadonlyWhenDeletingPeerWithNoOtherMismatches(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(true)
 	m := impl{
 		readonly: ro,
@@ -118,7 +118,7 @@ func Test_RemovePeer_RemovesReadonlyWhenDeletingPeerWithNoOtherMismatches(t *tes
 }
 
 func Test_RemovePeer_RemovesReadonlyWhenDeletingLastPeer(t *testing.T) {
-	ro := &atomic.Bool{}
+	ro := atomic.Bool{}
 	ro.Store(true)
 	m := impl{
 		readonly: ro,

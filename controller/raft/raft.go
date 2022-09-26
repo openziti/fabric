@@ -123,7 +123,7 @@ func (self *Controller) Dispatch(cmd command.Command) error {
 	}
 
 	if self.Mesh.IsReadOnly() {
-		return fmt.Errorf("Unable to execute command. In a readonly state.")
+		return errors.New("unable to execute command. In a readonly state: different versions detected in cluster")
 	}
 
 	if self.IsLeader() {
