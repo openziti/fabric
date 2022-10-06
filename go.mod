@@ -28,7 +28,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v2 v2.0.0
-	github.com/openziti/foundation/v2 v2.0.4
+	github.com/openziti/foundation/v2 v2.0.5
 	github.com/openziti/identity v1.0.12
 	github.com/openziti/metrics v1.1.0
 	github.com/openziti/storage v0.1.22
