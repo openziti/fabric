@@ -1,11 +1,10 @@
 module github.com/openziti/fabric
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
-	github.com/Jeffail/gabs/v2 v2.6.1
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.18.1
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
@@ -27,12 +26,12 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v2 v2.0.0
-	github.com/openziti/foundation/v2 v2.0.4
-	github.com/openziti/identity v1.0.12
-	github.com/openziti/metrics v1.1.0
-	github.com/openziti/storage v0.1.22
-	github.com/openziti/transport/v2 v2.0.29
+	github.com/openziti/channel/v2 v2.0.4
+	github.com/openziti/foundation/v2 v2.0.5
+	github.com/openziti/identity v1.0.16
+	github.com/openziti/metrics v1.1.2
+	github.com/openziti/storage v0.1.23
+	github.com/openziti/transport/v2 v2.0.33
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.0
 	github.com/pkg/errors v0.9.1
@@ -83,8 +82,8 @@ require (
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
-	golang.org/x/crypto v0.0.0-20220926161630-eccd6366d1be // indirect
-	golang.org/x/sys v0.0.0-20220926163933-8cfa568d3c25 // indirect
+	golang.org/x/crypto v0.0.0-20221010152910-d6f0a8c073c2 // indirect
+	golang.org/x/sys v0.0.0-20221010160319-abe0a0adba9c // indirect
 	golang.org/x/term v0.0.0-20220919170432-7a66f970e087 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
