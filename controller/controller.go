@@ -49,6 +49,7 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type Controller struct {
@@ -126,7 +127,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		raftController, err := raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry)
+		raftController, err := raft.NewController(cfg.Id, versionProvider.Version(), cfg.Ctrl.Listener.String(), cfg.Raft, metricRegistry, c.routerDispatchCallback)
 		if err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}
@@ -174,6 +175,13 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 			},
 		})
 	}
+
+	logrus.Info("Adding router presence handler to send out ctrl addresses")
+	c.network.AddRouterPresenceHandler(&OnConnectCtrlAddressesUpdateHandler{
+		callback: func() []string {
+			return c.raftController.Mesh.CtrlAddresses()
+		},
+	})
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
@@ -390,4 +398,26 @@ func (c *Controller) Identity() identity.Identity {
 
 func (c *Controller) GetEventDispatcher() event.Dispatcher {
 	return c.eventDispatcher
+}
+
+func (c *Controller) routerDispatchCallback() error {
+	pfxlog.Logger().Info("Trying to dispatch to routers!!!...")
+	data := c.raftController.Mesh.CtrlAddresses()
+	updMsg := &ctrl_pb.UpdateCtrlAddresses{
+		Addresses: data,
+	}
+	var body []byte
+	var err error
+	if body, err = proto.Marshal(updMsg); err != nil {
+		return err
+	}
+	msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateCtrlAddressesType), body)
+
+	for _, r := range c.network.AllConnectedRouters() {
+
+		if err := r.Control.Send(msg); err != nil {
+			return err
+		}
+	}
+	return nil
 }

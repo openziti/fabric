@@ -32,9 +32,10 @@ import (
 )
 
 const (
-	PeerIdHeader      = 10
-	PeerAddrHeader    = 11
-	PeerVersionHeader = 12
+	PeerIdHeader             = 10
+	PeerAddrHeader           = 11
+	PeerVersionHeader        = 12
+	PeerCtrlListenAddrHeader = 13
 
 	RaftConnectType = 2048
 	RaftDataType    = 2049
@@ -43,12 +44,13 @@ const (
 )
 
 type Peer struct {
-	mesh     *impl
-	Id       raft.ServerID
-	Address  string
-	Channel  channel.Channel
-	RaftConn *raftPeerConn
-	Version  string
+	mesh           *impl
+	Id             raft.ServerID
+	Address        string
+	Channel        channel.Channel
+	RaftConn       *raftPeerConn
+	Version        string
+	CtrlListenAddr string
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
@@ -64,6 +66,7 @@ func (self *Peer) HandleReceive(m *channel.Message, ch channel.Channel) {
 		response := channel.NewMessage(channel.ContentTypeResultType, nil)
 		response.Headers[PeerIdHeader] = []byte(self.mesh.raftId)
 		response.Headers[PeerVersionHeader] = []byte(self.mesh.version)
+		response.Headers[PeerCtrlListenAddrHeader] = []byte(self.mesh.ctrlListenAddr)
 		response.ReplyTo(m)
 
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
@@ -85,8 +88,10 @@ func (self *Peer) Connect(timeout time.Duration) error {
 	}
 	id, _ := response.GetStringHeader(PeerIdHeader)
 	version, _ := response.GetStringHeader(PeerVersionHeader)
+	ctrlListenAddr, _ := response.GetStringHeader(PeerCtrlListenAddrHeader)
 	self.Id = raft.ServerID(id)
 	self.Version = version
+	self.CtrlListenAddr = ctrlListenAddr
 
 	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
 
@@ -116,9 +121,10 @@ type Mesh interface {
 	// it will be returned, otherwise a new connection will be established
 	GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error)
 	IsReadOnly() bool
+	CtrlAddresses() []string
 }
 
-func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
+func New(id *identity.TokenId, version, ctrlListenAddr string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
 	return &impl{
 		id:       id,
 		raftId:   raftId,
@@ -127,28 +133,30 @@ func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr ra
 			network: "mesh",
 			addr:    string(raftAddr),
 		},
-		Peers:       map[string]*Peer{},
-		closeNotify: make(chan struct{}),
-		raftAccepts: make(chan net.Conn),
-		bindHandler: bindHandler,
-		version:     version,
-		readonly:    atomic.Bool{},
+		Peers:          map[string]*Peer{},
+		closeNotify:    make(chan struct{}),
+		raftAccepts:    make(chan net.Conn),
+		bindHandler:    bindHandler,
+		version:        version,
+		readonly:       atomic.Bool{},
+		ctrlListenAddr: ctrlListenAddr,
 	}
 }
 
 type impl struct {
-	id          *identity.TokenId
-	raftId      raft.ServerID
-	raftAddr    raft.ServerAddress
-	netAddr     net.Addr
-	Peers       map[string]*Peer
-	lock        sync.RWMutex
-	closeNotify chan struct{}
-	closed      atomic.Bool
-	raftAccepts chan net.Conn
-	bindHandler channel.BindHandler
-	version     string
-	readonly    atomic.Bool
+	id             *identity.TokenId
+	raftId         raft.ServerID
+	raftAddr       raft.ServerAddress
+	netAddr        net.Addr
+	Peers          map[string]*Peer
+	lock           sync.RWMutex
+	closeNotify    chan struct{}
+	closed         atomic.Bool
+	raftAccepts    chan net.Conn
+	bindHandler    channel.BindHandler
+	version        string
+	readonly       atomic.Bool
+	ctrlListenAddr string
 }
 
 func (self *impl) Close() error {
@@ -201,10 +209,11 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	headers := map[int32][]byte{
-		PeerIdHeader:       []byte(self.raftId),
-		PeerAddrHeader:     []byte(self.raftAddr),
-		PeerVersionHeader:  []byte(self.version),
-		channel.TypeHeader: []byte(ChannelTypeMesh),
+		PeerIdHeader:             []byte(self.raftId),
+		PeerAddrHeader:           []byte(self.raftAddr),
+		PeerVersionHeader:        []byte(self.version),
+		PeerCtrlListenAddrHeader: []byte(self.ctrlListenAddr),
+		channel.TypeHeader:       []byte(ChannelTypeMesh),
 	}
 
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
@@ -280,6 +289,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		id := string(ch.Underlay().Headers()[PeerIdHeader])
 		addr := string(ch.Underlay().Headers()[PeerAddrHeader])
 		version := string(ch.Underlay().Headers()[PeerVersionHeader])
+		ctrlListenAddr := string(ch.Underlay().Headers()[PeerCtrlListenAddrHeader])
 
 		if id == "" || addr == "" {
 			_ = ch.Close()
@@ -295,6 +305,7 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		peer.Address = addr
 		peer.Channel = ch
 		peer.Version = version
+		peer.CtrlListenAddr = ctrlListenAddr
 
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 		binding.AddTypedReceiveHandler(peer)
@@ -329,4 +340,15 @@ func (self *impl) checkState() {
 
 func (self *impl) IsReadOnly() bool {
 	return self.readonly.Load()
+}
+
+func (self *impl) CtrlAddresses() []string {
+	ret := make([]string, 0)
+	ret = append(ret, self.ctrlListenAddr)
+
+	for _, p := range self.Peers {
+		ret = append(ret, p.CtrlListenAddr)
+	}
+
+	return ret
 }

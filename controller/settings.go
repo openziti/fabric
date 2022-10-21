@@ -32,6 +32,7 @@ func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
 
 		if body, err := proto.Marshal(settingsMsg); err == nil {
 			msg := channel.NewMessage(int32(ctrl_pb.ContentType_SettingsType), body)
+			// Is this error case incorrect?
 			if err := r.Control.Send(msg); err == nil {
 				pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
 					"routerId": r.Id,
@@ -45,5 +46,37 @@ func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
 			"routerId": r.Id,
 			"channel":  r.Control.LogicalName(),
 		}).Info("no on connect settings to send")
+	}
+}
+
+type OnConnectCtrlAddressesUpdateHandler struct {
+	callback func() []string
+}
+
+func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *network.Router) {
+	//do nothing, satisfy interface
+}
+
+func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *network.Router) {
+	pfxlog.Logger().Info("Router connected... syncing crtl addresses")
+	data := o.callback()
+	pfxlog.Logger().Info(data)
+	updMsg := &ctrl_pb.UpdateCtrlAddresses{
+		Addresses: data,
+	}
+
+	if body, err := proto.Marshal(updMsg); err == nil {
+		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateCtrlAddressesType), body)
+		if err := r.Control.Send(msg); err != nil {
+			pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
+				"routerId": r.Id,
+				"channel":  r.Control.LogicalName(),
+			}).Error("error sending UpdateCtrlAddresses on router connect")
+		}
+	} else {
+		pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
+			"routerId": r.Id,
+			"channel":  r.Control.LogicalName(),
+		}).Error("unable to marshal UpdateCtrlAddresses message")
 	}
 }

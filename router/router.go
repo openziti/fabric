@@ -21,6 +21,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/fs"
+	"math/rand"
+	"os"
+	"path"
+	"plugin"
+	"strings"
+	"sync/atomic"
+	"time"
+
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
 	"github.com/michaelquigley/pfxlog"
@@ -47,14 +56,12 @@ import (
 	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/identity"
 	"github.com/openziti/metrics"
+	"github.com/openziti/transport/v2"
 	"github.com/openziti/xweb/v2"
+	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
-	"math/rand"
-	"plugin"
-	"sync/atomic"
-	"time"
 )
 
 type Router struct {
@@ -77,6 +84,8 @@ type Router struct {
 	metricsReporter metrics.Handler
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
+
+	ctrlEndpoints cmap.ConcurrentMap[*UpdatableAddress]
 
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -155,10 +164,11 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		xlinkRegistry:       NewLinkRegistry(ctrls),
+		ctrlEndpoints:       cmap.New[*UpdatableAddress](),
 	}
 
 	var err error
-	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, fwd, config)
+	router.ctrlBindhandler, err = handler_ctrl.NewBindHandler(router, fwd, config, router)
 	if err != nil {
 		panic(err)
 	}
@@ -186,6 +196,15 @@ func (self *Router) GetConfig() *Config {
 
 func (self *Router) Start() error {
 	rand.Seed(info.NowInMilliseconds())
+
+	if err := os.MkdirAll(self.config.Ctrl.DataDir, 0700); err != nil {
+		logrus.WithField("dir", self.config.Ctrl.DataDir).WithError(err).Error("failed to initialize data directory")
+		return err
+	}
+
+	if err := self.initializeCtrlEndpoints(); err != nil {
+		return err
+	}
 
 	self.showOptions()
 
@@ -409,7 +428,7 @@ func (self *Router) startXgressListeners() {
 }
 
 func (self *Router) startControlPlane() error {
-	for _, endpoint := range self.config.Ctrl.Endpoints {
+	for _, endpoint := range self.ctrlEndpoints.Items() {
 		if err := self.connectToController(endpoint, self.config.Ctrl.LocalBinding); err != nil {
 			return err
 		}
@@ -524,6 +543,87 @@ func (self *Router) RegisterXWebHandlerFactory(x xweb.ApiHandlerFactory) error {
 	return self.xwebFactoryRegistry.Add(x)
 }
 
+func (self *Router) initializeCtrlEndpoints() error {
+	if self.config.Ctrl.DataDir == "" {
+		return errors.New("ctrl DataDir not configured")
+	}
+	endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
+	_, err := os.Stat(endpointsFile)
+	if errors.Is(err, fs.ErrNotExist) {
+		data := ""
+		for i, ep := range self.config.Ctrl.InitialEndpoints {
+			self.ctrlEndpoints.Set(ep.String(), ep)
+			data = fmt.Sprintf("%s%s%s", data, ep.String(), func() string {
+				if i < len(self.config.Ctrl.InitialEndpoints)-1 {
+					return "\n"
+				}
+				return ""
+			}())
+		}
+		return os.WriteFile(endpointsFile, []byte(data), 0600)
+	}
+
+	b, err := os.ReadFile(endpointsFile)
+	if err != nil {
+		return nil
+	}
+	eps := strings.Split(string(b), "\n")
+	for _, ep := range eps {
+		if ep == "" {
+			continue
+		}
+		parsed, err := transport.ParseAddress(ep)
+		fmt.Println(ep)
+		if err != nil {
+			return err
+		}
+		self.ctrlEndpoints.Set(ep, NewUpdatableAddress(parsed))
+	}
+
+	//TODO: Handle mismatches
+	return nil
+}
+
+func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
+	pfxlog.Logger().Info("Recieved endpoints to update:")
+	pfxlog.Logger().Info(endpoints)
+	save := false
+	newEps := make(map[string]bool)
+	for _, ep := range endpoints {
+		newEps[ep] = true
+		if !self.ctrlEndpoints.Has(ep) {
+			pfxlog.Logger().Info("Adding new endpoint")
+			save = true
+			parsed, err := transport.ParseAddress(ep)
+			if err != nil {
+				return err
+			}
+			self.ctrlEndpoints.Set(ep, NewUpdatableAddress(parsed))
+		}
+	}
+
+	if len(self.ctrlEndpoints) != len(endpoints) {
+		for knownep, _ := range self.ctrlEndpoints.Items() {
+			if _, ok := newEps[knownep]; !ok {
+				pfxlog.Logger().Info("Removing old endpoint")
+				save = true
+				self.ctrlEndpoints.Remove(knownep)
+			}
+		}
+	}
+
+	if save {
+		pfxlog.Logger().Info("Attempting to save file")
+		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
+		data := ""
+		for _, ep := range self.ctrlEndpoints.Items() {
+			data = fmt.Sprintf("%s%s\n", data, ep.String())
+		}
+		return os.WriteFile(endpointsFile, []byte(data), 0600)
+	}
+	return nil
+}
+
 type connectionToggle interface {
 	Disconnect() error
 	Reconnect() error
@@ -552,4 +652,7 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 		return nil
 	}
 	return errors.New("control channels are slow")
+}
+
+type TestCommand struct {
 }

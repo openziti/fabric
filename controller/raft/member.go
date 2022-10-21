@@ -17,10 +17,11 @@
 package raft
 
 import (
+	"time"
+
 	"github.com/hashicorp/raft"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"time"
 )
 
 type Member struct {
@@ -101,6 +102,10 @@ func (self *Controller) HandleJoinAsLeader(req *JoinRequest) error {
 		return errors.Wrap(err, "join failed")
 	}
 
+	if err := self.routerDispatchCallback(); err != nil {
+		return errors.Wrap(err, "error calling router dispatch callback in join to inform routers of controller changes")
+	}
+
 	return nil
 }
 
@@ -117,6 +122,10 @@ func (self *Controller) HandleRemoveAsLeader(req *RemoveRequest) error {
 	future := r.RemoveServer(id, 0, 0)
 	if err := future.Error(); err != nil {
 		return errors.Wrapf(err, "error removing existing node %s", id)
+	}
+
+	if err := self.routerDispatchCallback(); err != nil {
+		return errors.Wrap(err, "error calling router dispatch callback in remove to inform routers of controller changes")
 	}
 	return nil
 }

@@ -55,13 +55,15 @@ type Config struct {
 	}
 }
 
-func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry) (*Controller, error) {
+func NewController(id *identity.TokenId, version, ctrlAddr string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback func() error) (*Controller, error) {
 	result := &Controller{
-		Id:              id,
-		Config:          config,
-		metricsRegistry: metricsRegistry,
-		indexTracker:    NewIndexTracker(),
-		version:         version,
+		Id:                     id,
+		Config:                 config,
+		metricsRegistry:        metricsRegistry,
+		indexTracker:           NewIndexTracker(),
+		version:                version,
+		ctrlListenAddr:         ctrlAddr,
+		routerDispatchCallback: routerDispatchCallback,
 	}
 	if err := result.Init(); err != nil {
 		return nil, err
@@ -71,19 +73,21 @@ func NewController(id *identity.TokenId, version string, config *Config, metrics
 
 // Controller manages RAFT related state and operations
 type Controller struct {
-	Id              *identity.TokenId
-	tempId          string
-	Config          *Config
-	Mesh            mesh.Mesh
-	Raft            *raft.Raft
-	Fsm             *BoltDbFsm
-	bootstrapped    atomic.Bool
-	clusterLock     sync.Mutex
-	servers         []raft.Server
-	metricsRegistry metrics.Registry
-	closeNotify     <-chan struct{}
-	indexTracker    IndexTracker
-	version         string
+	Id                     *identity.TokenId
+	tempId                 string
+	Config                 *Config
+	Mesh                   mesh.Mesh
+	Raft                   *raft.Raft
+	Fsm                    *BoltDbFsm
+	bootstrapped           atomic.Bool
+	clusterLock            sync.Mutex
+	servers                []raft.Server
+	metricsRegistry        metrics.Registry
+	closeNotify            <-chan struct{}
+	indexTracker           IndexTracker
+	version                string
+	ctrlListenAddr         string
+	routerDispatchCallback func() error
 }
 
 // GetRaft returns the managed raft instance
@@ -344,7 +348,7 @@ func (self *Controller) Init() error {
 		return nil
 	}
 
-	self.Mesh = mesh.New(self.Id, self.version, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
+	self.Mesh = mesh.New(self.Id, self.version, self.ctrlListenAddr, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
 
 	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
