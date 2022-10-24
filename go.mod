@@ -27,9 +27,9 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v2 v2.0.10
-	github.com/openziti/foundation/v2 v2.0.6
+	github.com/openziti/foundation/v2 v2.0.7
 	github.com/openziti/identity v1.0.19
-	github.com/openziti/metrics v1.1.4
+	github.com/openziti/metrics v1.1.5
 	github.com/openziti/storage v0.1.25
 	github.com/openziti/transport/v2 v2.0.37
 	github.com/openziti/xweb/v2 v2.0.2
@@ -37,7 +37,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.1
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
