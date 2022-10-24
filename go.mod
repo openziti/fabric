@@ -26,12 +26,12 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v2 v2.0.10
+	github.com/openziti/channel/v2 v2.0.11
 	github.com/openziti/foundation/v2 v2.0.7
-	github.com/openziti/identity v1.0.19
+	github.com/openziti/identity v1.0.20
 	github.com/openziti/metrics v1.1.5
 	github.com/openziti/storage v0.1.25
-	github.com/openziti/transport/v2 v2.0.37
+	github.com/openziti/transport/v2 v2.0.38
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.0
 	github.com/pkg/errors v0.9.1
