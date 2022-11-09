@@ -35,6 +35,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/pflag"
 	"gopkg.in/yaml.v2"
+	yaml3 "gopkg.in/yaml.v3"
 )
 
 const (
@@ -314,6 +315,29 @@ func (c *UpdatableAddress) getWrapped() transport.Address {
 // Store updates the address currently used by this configuration instance
 func (c *UpdatableAddress) Store(address transport.Address) {
 	c.wrapped.Store(address)
+}
+
+// MarshalYAML handles serialization for the YAML format
+func (c UpdatableAddress) MarshalYAML() (interface{}, error) {
+	return c.String(), nil
+}
+
+// UnmarshalYAML handled deserialization for the YAML format
+func (c *UpdatableAddress) UnmarshalYAML(value *yaml3.Node) error {
+	pfxlog.Logger().Info("I'm in updateableaddress UnmarshalYAML")
+	var yamlAddress string
+	err := value.Decode(&yamlAddress)
+	if err != nil {
+		return err
+	}
+
+	addr, err := transport.ParseAddress(yamlAddress)
+	if err != nil {
+		return err
+	}
+	c.Store(addr)
+
+	return nil
 }
 
 func LoadConfig(path string) (*Config, error) {

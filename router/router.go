@@ -26,7 +26,6 @@ import (
 	"os"
 	"path"
 	"plugin"
-	"strings"
 	"sync/atomic"
 	"time"
 
@@ -62,6 +61,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
+	"gopkg.in/yaml.v3"
 )
 
 type Router struct {
@@ -85,7 +85,7 @@ type Router struct {
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
 
-	ctrlEndpoints cmap.ConcurrentMap[*UpdatableAddress]
+	ctrlEndpoints ctrlEndpoints
 
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -164,7 +164,7 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		debugOperations:     map[byte]func(c *bufio.ReadWriter) error{},
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		xlinkRegistry:       NewLinkRegistry(ctrls),
-		ctrlEndpoints:       cmap.New[*UpdatableAddress](),
+		ctrlEndpoints:       newCtrlEndpoints(),
 	}
 
 	var err error
@@ -550,36 +550,24 @@ func (self *Router) initializeCtrlEndpoints() error {
 	endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
 	_, err := os.Stat(endpointsFile)
 	if errors.Is(err, fs.ErrNotExist) {
-		data := ""
-		for i, ep := range self.config.Ctrl.InitialEndpoints {
+		for _, ep := range self.config.Ctrl.InitialEndpoints {
 			self.ctrlEndpoints.Set(ep.String(), ep)
-			data = fmt.Sprintf("%s%s%s", data, ep.String(), func() string {
-				if i < len(self.config.Ctrl.InitialEndpoints)-1 {
-					return "\n"
-				}
-				return ""
-			}())
 		}
-		return os.WriteFile(endpointsFile, []byte(data), 0600)
+		data, err := self.ctrlEndpoints.MarshalYAML()
+		if err != nil {
+			return err
+		}
+		return os.WriteFile(endpointsFile, data.([]byte), 0600)
 	}
 
 	b, err := os.ReadFile(endpointsFile)
 	if err != nil {
 		return nil
 	}
-	eps := strings.Split(string(b), "\n")
-	for _, ep := range eps {
-		if ep == "" {
-			continue
-		}
-		parsed, err := transport.ParseAddress(ep)
-		fmt.Println(ep)
-		if err != nil {
-			return err
-		}
-		self.ctrlEndpoints.Set(ep, NewUpdatableAddress(parsed))
-	}
 
+	if err := yaml.Unmarshal(b, &self.ctrlEndpoints); err != nil {
+		return err
+	}
 	//TODO: Handle mismatches
 	return nil
 }
@@ -602,7 +590,7 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
 		}
 	}
 
-	if len(self.ctrlEndpoints) != len(endpoints) {
+	if len(self.ctrlEndpoints.ConcurrentMap) != len(endpoints) {
 		for knownep, _ := range self.ctrlEndpoints.Items() {
 			if _, ok := newEps[knownep]; !ok {
 				pfxlog.Logger().Info("Removing old endpoint")
@@ -615,11 +603,11 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
 	if save {
 		pfxlog.Logger().Info("Attempting to save file")
 		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
-		data := ""
-		for _, ep := range self.ctrlEndpoints.Items() {
-			data = fmt.Sprintf("%s%s\n", data, ep.String())
+		data, err := self.ctrlEndpoints.MarshalYAML()
+		if err != nil {
+			return err
 		}
-		return os.WriteFile(endpointsFile, []byte(data), 0600)
+		return os.WriteFile(endpointsFile, data.([]byte), 0600)
 	}
 	return nil
 }
@@ -655,4 +643,39 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 }
 
 type TestCommand struct {
+}
+
+type ctrlEndpoints struct {
+	cmap.ConcurrentMap[*UpdatableAddress] `yaml:"Endpoints"`
+}
+
+func newCtrlEndpoints() ctrlEndpoints {
+	return ctrlEndpoints{cmap.New[*UpdatableAddress]()}
+}
+
+// MarshalYAML handles serialization for the YAML format
+func (c ctrlEndpoints) MarshalYAML() (interface{}, error) {
+	data := make([]*UpdatableAddress, 0)
+	for _, ep := range c.Items() {
+		data = append(data, ep)
+	}
+	dat, err := yaml.Marshal(&struct {
+		Endpoints []*UpdatableAddress `yaml:"Endpoints,flow"`
+	}{
+		Endpoints: data,
+	})
+	return dat, err
+}
+
+func (c *ctrlEndpoints) UnmarshalYAML(value *yaml.Node) error {
+	var endpoints struct {
+		Endpoints []*UpdatableAddress `yaml:"Endpoints,flow"`
+	}
+	if err := value.Decode(&endpoints); err != nil {
+		return err
+	}
+	for _, ep := range endpoints.Endpoints {
+		c.ConcurrentMap.Set(ep.String(), ep)
+	}
+	return nil
 }
