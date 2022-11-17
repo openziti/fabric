@@ -3,15 +3,14 @@ package router
 import (
 	"os"
 	"path"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/transport/v2"
 	"github.com/openziti/transport/v2/tls"
-	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/stretchr/testify/assert"
+	"gopkg.in/yaml.v3"
 )
 
 func Test_initializeCtrlEndpoints_ErrorsWithoutDataDir(t *testing.T) {
@@ -52,8 +51,10 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 				InitialEndpoints: []*UpdatableAddress{NewUpdatableAddress(addr)},
 			},
 		},
-		ctrlEndpoints: cmap.New[*UpdatableAddress](),
+		ctrlEndpoints: newCtrlEndpoints(),
 	}
+	expected := newCtrlEndpoints()
+	expected.Set(addr.String(), NewUpdatableAddress(addr))
 
 	assert.NoError(t, r.initializeCtrlEndpoints())
 	assert.FileExists(t, path.Join(tmpDir, "endpoints"))
@@ -62,15 +63,20 @@ func Test_initializeCtrlEndpoints(t *testing.T) {
 	assert.NoError(t, err)
 	assert.NotEmpty(t, b)
 
-	found := []*UpdatableAddress{}
-	eps := strings.Split(string(b), "\n")
-	for _, ep := range eps {
-		parsed, err := transport.ParseAddress(ep)
-		assert.NoError(t, err)
-		found = append(found, NewUpdatableAddress(parsed))
+	//TODO: Figure out why we can't just unmarshal directly on struct
+	var holder = struct {
+		inner ctrlEndpoints
+	}{
+		inner: newCtrlEndpoints(),
 	}
 
-	assert.Equal(t, r.config.Ctrl.InitialEndpoints, found)
-}
+	out := newCtrlEndpoints()
+	err = yaml.Unmarshal(b, &holder.inner)
+	assert.NoError(t, err)
 
-func Test_UpdateCtrlEndpoints(t *testing.T) {}
+	for k, v := range out.Items() {
+		assert.True(t, expected.Has(k), "Expected to have addr %s", k)
+		expectedAddr, _ := expected.Get(k)
+		assert.Equal(t, expectedAddr, v)
+	}
+}

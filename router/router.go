@@ -642,9 +642,6 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 	return errors.New("control channels are slow")
 }
 
-type TestCommand struct {
-}
-
 type ctrlEndpoints struct {
 	cmap.ConcurrentMap[*UpdatableAddress] `yaml:"Endpoints"`
 }

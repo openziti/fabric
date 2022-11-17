@@ -57,7 +57,7 @@ type Peer struct {
 func (self *Peer) HandleClose(channel.Channel) {
 	self.mesh.RemovePeer(self)
 	if err := self.mesh.routerDispatchCallback(); err != nil {
-		logrus.Errorf("Unable to dispatch router callback: %w", err)
+		logrus.Errorf("Unable to dispatch router callback: %v", err)
 	}
 }
 
