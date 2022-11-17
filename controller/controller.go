@@ -179,7 +179,10 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	logrus.Info("Adding router presence handler to send out ctrl addresses")
 	c.network.AddRouterPresenceHandler(&OnConnectCtrlAddressesUpdateHandler{
 		callback: func() []string {
-			return c.raftController.Mesh.CtrlAddresses()
+			if c.raftController != nil {
+				return c.raftController.Mesh.CtrlAddresses()
+			}
+			return []string{c.config.Ctrl.Listener.String()}
 		},
 	})
 
