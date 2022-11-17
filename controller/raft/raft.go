@@ -72,7 +72,6 @@ func NewController(id *identity.TokenId, version, ctrlAddr string, config *Confi
 // Controller manages RAFT related state and operations
 type Controller struct {
 	Id                     *identity.TokenId
-	tempId                 string
 	Config                 *Config
 	Mesh                   mesh.Mesh
 	Raft                   *raft.Raft

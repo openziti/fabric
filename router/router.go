@@ -591,7 +591,7 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
 	}
 
 	if len(self.ctrlEndpoints.ConcurrentMap) != len(endpoints) {
-		for knownep, _ := range self.ctrlEndpoints.Items() {
+		for knownep := range self.ctrlEndpoints.Items() {
 			if _, ok := newEps[knownep]; !ok {
 				pfxlog.Logger().Info("Removing old endpoint")
 				save = true
