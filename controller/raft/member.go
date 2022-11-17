@@ -102,10 +102,7 @@ func (self *Controller) HandleJoinAsLeader(req *JoinRequest) error {
 		return errors.Wrap(err, "join failed")
 	}
 
-	if err := self.routerDispatchCallback(); err != nil {
-		return errors.Wrap(err, "error calling router dispatch callback in join to inform routers of controller changes")
-	}
-
+	logrus.Info(self.Mesh.CtrlAddresses())
 	return nil
 }
 
@@ -124,9 +121,6 @@ func (self *Controller) HandleRemoveAsLeader(req *RemoveRequest) error {
 		return errors.Wrapf(err, "error removing existing node %s", id)
 	}
 
-	if err := self.routerDispatchCallback(); err != nil {
-		return errors.Wrap(err, "error calling router dispatch callback in remove to inform routers of controller changes")
-	}
 	return nil
 }
 

@@ -402,21 +402,22 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 
 func (c *Controller) routerDispatchCallback() error {
 	pfxlog.Logger().Info("Trying to dispatch to routers!!!...")
-	data := c.raftController.Mesh.CtrlAddresses()
-	updMsg := &ctrl_pb.UpdateCtrlAddresses{
-		Addresses: data,
-	}
-	var body []byte
-	var err error
-	if body, err = proto.Marshal(updMsg); err != nil {
-		return err
-	}
-	msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateCtrlAddressesType), body)
-
-	for _, r := range c.network.AllConnectedRouters() {
-
-		if err := r.Control.Send(msg); err != nil {
+	if c.raftController != nil {
+		data := c.raftController.Mesh.CtrlAddresses()
+		updMsg := &ctrl_pb.UpdateCtrlAddresses{
+			Addresses: data,
+		}
+		var body []byte
+		var err error
+		if body, err = proto.Marshal(updMsg); err != nil {
 			return err
+		}
+		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateCtrlAddressesType), body)
+
+		for _, r := range c.network.AllConnectedRouters() {
+			if err := r.Control.Send(msg); err != nil {
+				return err
+			}
 		}
 	}
 	return nil

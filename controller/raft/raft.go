@@ -346,7 +346,7 @@ func (self *Controller) Init() error {
 		return nil
 	}
 
-	self.Mesh = mesh.New(self.Id, self.version, self.ctrlListenAddr, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
+	self.Mesh = mesh.New(self.Id, self.version, self.ctrlListenAddr, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler), self.routerDispatchCallback)
 
 	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
@@ -355,8 +355,6 @@ func (self *Controller) Init() error {
 	if err = self.Fsm.Init(); err != nil {
 		return errors.Wrap(err, "failed to init FSM")
 	}
-
-	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
 	if raftConfig.Recover {
 		err := raft.RecoverCluster(conf, self.Fsm, boltDbStore, boltDbStore, snapshotStore, transport, raft.Configuration{
