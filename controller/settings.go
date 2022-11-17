@@ -32,7 +32,6 @@ func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
 
 		if body, err := proto.Marshal(settingsMsg); err == nil {
 			msg := channel.NewMessage(int32(ctrl_pb.ContentType_SettingsType), body)
-			// Is this error case incorrect?
 			if err := r.Control.Send(msg); err == nil {
 				pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
 					"routerId": r.Id,

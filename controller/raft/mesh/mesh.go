@@ -36,7 +36,7 @@ const (
 	PeerIdHeader             = 10
 	PeerAddrHeader           = 11
 	PeerVersionHeader        = 12
-	PeerCtrlListenAddrHeader = 130
+	PeerCtrlListenAddrHeader = 13
 
 	RaftConnectType = 2048
 	RaftDataType    = 2049
