@@ -127,7 +127,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		raftController, err := raft.NewController(cfg.Id, versionProvider.Version(), cfg.Ctrl.Listener.String(), cfg.Raft, metricRegistry, c.routerDispatchCallback)
+		raftController, err := raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry, c.routerDispatchCallback)
 		if err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}
@@ -180,7 +180,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	c.network.AddRouterPresenceHandler(&OnConnectCtrlAddressesUpdateHandler{
 		callback: func() []string {
 			if c.raftController != nil {
-				return c.raftController.Mesh.CtrlAddresses()
+				return c.raftController.CtrlAddresses()
 			}
 			return []string{c.config.Ctrl.Listener.String()}
 		},
@@ -404,9 +404,8 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 }
 
 func (c *Controller) routerDispatchCallback() error {
-	pfxlog.Logger().Info("Trying to dispatch to routers!!!...")
 	if c.raftController != nil {
-		data := c.raftController.Mesh.CtrlAddresses()
+		data := c.raftController.CtrlAddresses()
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
 			Addresses: data,
 		}

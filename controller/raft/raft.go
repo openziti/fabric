@@ -53,14 +53,13 @@ type Config struct {
 	}
 }
 
-func NewController(id *identity.TokenId, version, ctrlAddr string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback func() error) (*Controller, error) {
+func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback func() error) (*Controller, error) {
 	result := &Controller{
 		Id:                     id,
 		Config:                 config,
 		metricsRegistry:        metricsRegistry,
 		indexTracker:           NewIndexTracker(),
 		version:                version,
-		ctrlListenAddr:         ctrlAddr,
 		routerDispatchCallback: routerDispatchCallback,
 	}
 	if err := result.Init(); err != nil {
@@ -83,7 +82,6 @@ type Controller struct {
 	closeNotify            <-chan struct{}
 	indexTracker           IndexTracker
 	version                string
-	ctrlListenAddr         string
 	routerDispatchCallback func() error
 }
 
@@ -345,11 +343,11 @@ func (self *Controller) Init() error {
 		return nil
 	}
 
-	self.Mesh = mesh.New(self.Id, self.version, self.ctrlListenAddr, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler), self.routerDispatchCallback)
+	self.Mesh = mesh.New(self.Id, self.version, conf.LocalID, localAddr, channel.BindHandlerF(bindHandler))
 
 	transport := raft.NewNetworkTransportWithLogger(self.Mesh, 3, 10*time.Second, hclLogger)
 
-	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker)
+	self.Fsm = NewFsm(raftConfig.DataDir, command.GetDefaultDecoders(), self.indexTracker, self.routerDispatchCallback)
 
 	if err = self.Fsm.Init(); err != nil {
 		return errors.Wrap(err, "failed to init FSM")
@@ -446,4 +444,12 @@ func (self *Controller) RemoveServer(id string) error {
 	}
 
 	return self.HandleRemove(req)
+}
+
+func (self *Controller) CtrlAddresses() []string {
+	ret := make([]string, 0)
+	for _, srvr := range self.Fsm.currentState.Servers {
+		ret = append(ret, string(srvr.Address))
+	}
+	return ret
 }

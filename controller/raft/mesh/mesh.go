@@ -33,10 +33,9 @@ import (
 )
 
 const (
-	PeerIdHeader             = 10
-	PeerAddrHeader           = 11
-	PeerVersionHeader        = 12
-	PeerCtrlListenAddrHeader = 13
+	PeerIdHeader      = 10
+	PeerAddrHeader    = 11
+	PeerVersionHeader = 12
 
 	RaftConnectType = 2048
 	RaftDataType    = 2049
@@ -45,20 +44,16 @@ const (
 )
 
 type Peer struct {
-	mesh           *impl
-	Id             raft.ServerID
-	Address        string
-	Channel        channel.Channel
-	RaftConn       *raftPeerConn
-	Version        string
-	CtrlListenAddr string
+	mesh     *impl
+	Id       raft.ServerID
+	Address  string
+	Channel  channel.Channel
+	RaftConn *raftPeerConn
+	Version  string
 }
 
 func (self *Peer) HandleClose(channel.Channel) {
 	self.mesh.RemovePeer(self)
-	if err := self.mesh.routerDispatchCallback(); err != nil {
-		logrus.Errorf("Unable to dispatch router callback: %v", err)
-	}
 }
 
 func (self *Peer) ContentType() int32 {
@@ -70,7 +65,6 @@ func (self *Peer) HandleReceive(m *channel.Message, _ channel.Channel) {
 		response := channel.NewMessage(channel.ContentTypeResultType, nil)
 		response.Headers[PeerIdHeader] = []byte(self.mesh.raftId)
 		response.Headers[PeerVersionHeader] = []byte(self.mesh.version)
-		response.Headers[PeerCtrlListenAddrHeader] = []byte(self.mesh.ctrlListenAddr)
 		response.ReplyTo(m)
 
 		if err := response.WithTimeout(5 * time.Second).Send(self.Channel); err != nil {
@@ -92,10 +86,8 @@ func (self *Peer) Connect(timeout time.Duration) error {
 	}
 	id, _ := response.GetStringHeader(PeerIdHeader)
 	version, _ := response.GetStringHeader(PeerVersionHeader)
-	ctrlListenAddr, _ := response.GetStringHeader(PeerCtrlListenAddrHeader)
 	self.Id = raft.ServerID(id)
 	self.Version = version
-	self.CtrlListenAddr = ctrlListenAddr
 
 	logrus.Infof("connected peer %v at %v", self.Id, self.Address)
 
@@ -125,12 +117,11 @@ type Mesh interface {
 	// it will be returned, otherwise a new connection will be established
 	GetOrConnectPeer(address string, timeout time.Duration) (*Peer, error)
 	IsReadOnly() bool
-	CtrlAddresses() []string
 
 	GetPeerId(address string, timeout time.Duration) (string, error)
 }
 
-func New(id *identity.TokenId, version, ctrlListenAddr string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler, routerDispatchCallback func() error) Mesh {
+func New(id *identity.TokenId, version string, raftId raft.ServerID, raftAddr raft.ServerAddress, bindHandler channel.BindHandler) Mesh {
 	return &impl{
 		id:       id,
 		raftId:   raftId,
@@ -139,14 +130,12 @@ func New(id *identity.TokenId, version, ctrlListenAddr string, raftId raft.Serve
 			network: "mesh",
 			addr:    string(raftAddr),
 		},
-		Peers:                  map[string]*Peer{},
-		closeNotify:            make(chan struct{}),
-		raftAccepts:            make(chan net.Conn),
-		bindHandler:            bindHandler,
-		version:                version,
-		readonly:               atomic.Bool{},
-		ctrlListenAddr:         ctrlListenAddr,
-		routerDispatchCallback: routerDispatchCallback,
+		Peers:       map[string]*Peer{},
+		closeNotify: make(chan struct{}),
+		raftAccepts: make(chan net.Conn),
+		bindHandler: bindHandler,
+		version:     version,
+		readonly:    atomic.Bool{},
 	}
 }
 
@@ -163,10 +152,6 @@ type impl struct {
 	bindHandler channel.BindHandler
 	version     string
 	readonly    atomic.Bool
-
-	ctrlListenAddr         string
-	routerDispatchCallback func() error
-	ctrlAddrDirty          bool
 }
 
 func (self *impl) Close() error {
@@ -198,12 +183,6 @@ func (self *impl) Dial(address raft.ServerAddress, timeout time.Duration) (net.C
 	if err := peer.Connect(timeout); err != nil {
 		return nil, err
 	}
-	if self.ctrlAddrDirty {
-		if err := self.routerDispatchCallback(); err != nil {
-			return nil, errors.Wrap(err, "Unable to dispatch router callback")
-		}
-		self.ctrlAddrDirty = false
-	}
 	return peer.RaftConn, nil
 }
 
@@ -225,11 +204,10 @@ func (self *impl) GetOrConnectPeer(address string, timeout time.Duration) (*Peer
 	}
 
 	headers := map[int32][]byte{
-		PeerIdHeader:             []byte(self.raftId),
-		PeerAddrHeader:           []byte(self.raftAddr),
-		PeerVersionHeader:        []byte(self.version),
-		PeerCtrlListenAddrHeader: []byte(self.ctrlListenAddr),
-		channel.TypeHeader:       []byte(ChannelTypeMesh),
+		PeerIdHeader:       []byte(self.raftId),
+		PeerAddrHeader:     []byte(self.raftAddr),
+		PeerVersionHeader:  []byte(self.version),
+		channel.TypeHeader: []byte(ChannelTypeMesh),
 	}
 
 	dialer := channel.NewClassicDialer(self.id, addr, headers)
@@ -310,7 +288,6 @@ func (self *impl) AddPeer(peer *Peer) {
 			self.readonly.Store(true)
 		}
 	}
-	self.ctrlAddrDirty = true
 
 	logrus.Infof("added peer at %v", peer.Address)
 }
@@ -343,7 +320,6 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		id := string(ch.Underlay().Headers()[PeerIdHeader])
 		addr := string(ch.Underlay().Headers()[PeerAddrHeader])
 		version := string(ch.Underlay().Headers()[PeerVersionHeader])
-		ctrlListenAddr := string(ch.Underlay().Headers()[PeerCtrlListenAddrHeader])
 
 		if id == "" || addr == "" {
 			_ = ch.Close()
@@ -359,7 +335,6 @@ func (self *impl) AcceptUnderlay(underlay channel.Underlay) error {
 		peer.Address = addr
 		peer.Channel = ch
 		peer.Version = version
-		peer.CtrlListenAddr = ctrlListenAddr
 
 		peer.RaftConn = newRaftPeerConn(peer, self.netAddr)
 		binding.AddTypedReceiveHandler(peer)
@@ -398,10 +373,10 @@ func (self *impl) IsReadOnly() bool {
 
 func (self *impl) CtrlAddresses() []string {
 	ret := make([]string, 0)
-	ret = append(ret, self.ctrlListenAddr)
+	ret = append(ret, string(self.raftAddr))
 
 	for _, p := range self.Peers {
-		ret = append(ret, p.CtrlListenAddr)
+		ret = append(ret, p.Address)
 	}
 
 	return ret
