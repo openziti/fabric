@@ -53,7 +53,9 @@ type Config struct {
 	}
 }
 
-func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback func() error) (*Controller, error) {
+type RouterDispatchCallback func() error
+
+func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback RouterDispatchCallback) (*Controller, error) {
 	result := &Controller{
 		Id:                     id,
 		Config:                 config,
@@ -82,7 +84,7 @@ type Controller struct {
 	closeNotify            <-chan struct{}
 	indexTracker           IndexTracker
 	version                string
-	routerDispatchCallback func() error
+	routerDispatchCallback RouterDispatchCallback
 }
 
 // GetRaft returns the managed raft instance

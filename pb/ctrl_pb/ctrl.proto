@@ -215,4 +215,6 @@ message Listeners {
 
 message UpdateCtrlAddresses {
   repeated string addresses = 1;
+  uint64 index = 2;
+  bool isLeader = 3;
 }

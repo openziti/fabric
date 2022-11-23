@@ -31,7 +31,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, routerDispatchCallback func() error) *BoltDbFsm {
+func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, routerDispatchCallback RouterDispatchCallback) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:               decoders,
 		dbPath:                 path.Join(dataDir, "ctrl.db"),
@@ -48,7 +48,7 @@ type BoltDbFsm struct {
 	indexTracker IndexTracker
 
 	currentState           *raft.Configuration
-	routerDispatchCallback func() error
+	routerDispatchCallback RouterDispatchCallback
 }
 
 func (self *BoltDbFsm) Init() error {

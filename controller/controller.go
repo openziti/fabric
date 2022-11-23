@@ -408,6 +408,8 @@ func (c *Controller) routerDispatchCallback() error {
 		data := c.raftController.CtrlAddresses()
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
 			Addresses: data,
+			IsLeader:  c.raftController.IsLeader(),
+			Index:     c.raftController.GetRaft().LastIndex(),
 		}
 		var body []byte
 		var err error

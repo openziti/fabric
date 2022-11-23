@@ -12,7 +12,9 @@ type CtrlAddressUpdater interface {
 }
 
 type updateCtrlAddressesHandler struct {
-	CtrlAddressUpdater
+	callback CtrlAddressUpdater
+
+	currentVersion uint64
 }
 
 func (handler *updateCtrlAddressesHandler) ContentType() int32 {
@@ -26,13 +28,16 @@ func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, c
 		return
 	}
 
-	if err := handler.UpdateCtrlEndpoints(upd.Addresses); err != nil {
-		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("Unable to update ctrl addresses")
+	if upd.IsLeader || handler.currentVersion < upd.Index {
+		if err := handler.callback.UpdateCtrlEndpoints(upd.Addresses); err != nil {
+			pfxlog.ContextLogger(ch.Label()).WithError(err).Error("Unable to update ctrl addresses")
+		}
+		handler.currentVersion = upd.Index
 	}
 }
 
 func newUpdateCtrlAddressesHandler(callback CtrlAddressUpdater) channel.TypedReceiveHandler {
 	return &updateCtrlAddressesHandler{
-		callback,
+		callback: callback,
 	}
 }
