@@ -1,6 +1,6 @@
 module github.com/openziti/fabric
 
-go 1.18
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -29,11 +29,11 @@ require (
 	github.com/openziti/channel/v2 v2.0.19
 	github.com/openziti/foundation/v2 v2.0.8
 	github.com/openziti/identity v1.0.25
-	github.com/openziti/metrics v1.1.7
+	github.com/openziti/metrics v1.2.0
 	github.com/openziti/storage v0.1.28
 	github.com/openziti/transport/v2 v2.0.44
 	github.com/openziti/xweb/v2 v2.0.2
-	github.com/orcaman/concurrent-map/v2 v2.0.0
+	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/pflag v1.0.5
