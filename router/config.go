@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/michaelquigley/pfxlog"
@@ -318,13 +319,12 @@ func (c *UpdatableAddress) Store(address transport.Address) {
 }
 
 // MarshalYAML handles serialization for the YAML format
-func (c UpdatableAddress) MarshalYAML() (interface{}, error) {
+func (c *UpdatableAddress) MarshalYAML() (interface{}, error) {
 	return c.String(), nil
 }
 
 // UnmarshalYAML handled deserialization for the YAML format
 func (c *UpdatableAddress) UnmarshalYAML(value *yaml3.Node) error {
-	pfxlog.Logger().Info("I'm in updateableaddress UnmarshalYAML")
 	var yamlAddress string
 	err := value.Decode(&yamlAddress)
 	if err != nil {
@@ -487,7 +487,7 @@ func LoadConfig(path string) (*Config, error) {
 			if value, found := submap["dataDir"]; found {
 				cfg.Ctrl.DataDir = value.(string)
 			} else {
-				return nil, errors.Errorf("ctrl.dataDir configuration missing")
+				cfg.Ctrl.DataDir = filepath.Dir(cfg.path)
 			}
 		}
 	}

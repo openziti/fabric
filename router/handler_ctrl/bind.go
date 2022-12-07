@@ -102,7 +102,10 @@ func (self *bindHandler) BindChannel(binding channel.Binding) error {
 	binding.AddPeekHandler(trace.NewChannelPeekHandler(self.env.GetRouterId().Token, binding.GetChannel(), self.forwarder.TraceController()))
 	latency.AddLatencyProbeResponder(binding)
 
-	ctrl := self.env.GetNetworkControllers().Add(binding.GetChannel())
+	ctrl, err := self.env.GetNetworkControllers().Add(binding.GetChannel())
+	if err != nil {
+		return err
+	}
 
 	// make configurable. see fabric#507
 	channel.ConfigureHeartbeat(binding, 10*time.Second, time.Second, ctrl.HeartbeatCallback())

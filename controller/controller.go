@@ -23,8 +23,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	hcraft "github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/api_impl"
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/handler_ctrl"
@@ -49,7 +51,6 @@ import (
 	"github.com/openziti/storage/boltz"
 	"github.com/openziti/xweb/v2"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 )
 
 type Controller struct {
@@ -177,14 +178,9 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	logrus.Info("Adding router presence handler to send out ctrl addresses")
-	c.network.AddRouterPresenceHandler(&OnConnectCtrlAddressesUpdateHandler{
-		callback: func() []string {
-			if c.raftController != nil {
-				return c.raftController.CtrlAddresses()
-			}
-			return []string{c.config.Ctrl.Listener.String()}
-		},
-	})
+	c.network.AddRouterPresenceHandler(
+		NewOnConnectCtrlAddressesUpdateHandler(c.config.Ctrl.Listener.String(), c.raftController),
+	)
 
 	if err := c.showOptions(); err != nil {
 		return nil, err
@@ -403,23 +399,20 @@ func (c *Controller) GetEventDispatcher() event.Dispatcher {
 	return c.eventDispatcher
 }
 
-func (c *Controller) routerDispatchCallback() error {
+func (c *Controller) routerDispatchCallback(cfg *hcraft.Configuration) error {
 	if c.raftController != nil {
-		data := c.raftController.CtrlAddresses()
+		data := make([]string, 0)
+		for _, srvr := range cfg.Servers {
+			data = append(data, string(srvr.Address))
+		}
 		updMsg := &ctrl_pb.UpdateCtrlAddresses{
 			Addresses: data,
 			IsLeader:  c.raftController.IsLeader(),
 			Index:     c.raftController.GetRaft().LastIndex(),
 		}
-		var body []byte
-		var err error
-		if body, err = proto.Marshal(updMsg); err != nil {
-			return err
-		}
-		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateCtrlAddressesType), body)
 
 		for _, r := range c.network.AllConnectedRouters() {
-			if err := r.Control.Send(msg); err != nil {
+			if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
 				return err
 			}
 		}

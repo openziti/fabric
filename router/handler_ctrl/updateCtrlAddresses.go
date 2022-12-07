@@ -7,6 +7,8 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var updateCtrlAddressesHandlerInstance *updateCtrlAddressesHandler
+
 type CtrlAddressUpdater interface {
 	UpdateCtrlEndpoints(endpoints []string) error
 }
@@ -22,22 +24,27 @@ func (handler *updateCtrlAddressesHandler) ContentType() int32 {
 }
 
 func (handler *updateCtrlAddressesHandler) HandleReceive(msg *channel.Message, ch channel.Channel) {
+	log := pfxlog.ContextLogger(ch.Label())
 	upd := &ctrl_pb.UpdateCtrlAddresses{}
 	if err := proto.Unmarshal(msg.Body, upd); err != nil {
-		pfxlog.ContextLogger(ch.Label()).WithError(err).Error("error unmarshalling")
+		log.WithError(err).Error("error unmarshalling")
 		return
 	}
 
-	if upd.IsLeader || handler.currentVersion < upd.Index {
+	if upd.IsLeader || handler.currentVersion == 0 || handler.currentVersion < upd.Index {
 		if err := handler.callback.UpdateCtrlEndpoints(upd.Addresses); err != nil {
-			pfxlog.ContextLogger(ch.Label()).WithError(err).Error("Unable to update ctrl addresses")
+			log.WithError(err).Error("Unable to update ctrl addresses")
 		}
 		handler.currentVersion = upd.Index
+		log.Infof("updated to version %v", handler.currentVersion)
 	}
 }
 
 func newUpdateCtrlAddressesHandler(callback CtrlAddressUpdater) channel.TypedReceiveHandler {
-	return &updateCtrlAddressesHandler{
-		callback: callback,
+	if updateCtrlAddressesHandlerInstance == nil {
+		updateCtrlAddressesHandlerInstance = &updateCtrlAddressesHandler{
+			callback: callback,
+		}
 	}
+	return updateCtrlAddressesHandlerInstance
 }

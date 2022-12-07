@@ -369,14 +369,3 @@ func (self *impl) checkState() {
 func (self *impl) IsReadOnly() bool {
 	return self.readonly.Load()
 }
-
-func (self *impl) CtrlAddresses() []string {
-	ret := make([]string, 0)
-	ret = append(ret, string(self.raftAddr))
-
-	for _, p := range self.Peers {
-		ret = append(ret, p.Address)
-	}
-
-	return ret
-}

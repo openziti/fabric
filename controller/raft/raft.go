@@ -53,7 +53,7 @@ type Config struct {
 	}
 }
 
-type RouterDispatchCallback func() error
+type RouterDispatchCallback func(*raft.Configuration) error
 
 func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback RouterDispatchCallback) (*Controller, error) {
 	result := &Controller{
@@ -448,10 +448,11 @@ func (self *Controller) RemoveServer(id string) error {
 	return self.HandleRemove(req)
 }
 
-func (self *Controller) CtrlAddresses() []string {
+func (self *Controller) CtrlAddresses() (uint64, []string) {
 	ret := make([]string, 0)
-	for _, srvr := range self.Fsm.currentState.Servers {
+	index, cfg := self.Fsm.GetCurrentState(self.Raft)
+	for _, srvr := range cfg.Servers {
 		ret = append(ret, string(srvr.Address))
 	}
-	return ret
+	return index, ret
 }

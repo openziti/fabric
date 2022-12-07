@@ -3,7 +3,9 @@ package controller
 import (
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
+	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/controller/network"
+	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"google.golang.org/protobuf/proto"
 )
@@ -49,7 +51,15 @@ func (o OnConnectSettingsHandler) RouterConnected(r *network.Router) {
 }
 
 type OnConnectCtrlAddressesUpdateHandler struct {
-	callback func() []string
+	ctrlAddress string
+	raft        *raft.Controller
+}
+
+func NewOnConnectCtrlAddressesUpdateHandler(ctrlAddress string, raft *raft.Controller) *OnConnectCtrlAddressesUpdateHandler {
+	return &OnConnectCtrlAddressesUpdateHandler{
+		ctrlAddress: ctrlAddress,
+		raft:        raft,
+	}
 }
 
 func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *network.Router) {
@@ -57,25 +67,27 @@ func (o *OnConnectCtrlAddressesUpdateHandler) RouterDisconnected(r *network.Rout
 }
 
 func (o OnConnectCtrlAddressesUpdateHandler) RouterConnected(r *network.Router) {
-	pfxlog.Logger().Info("Router connected... syncing crtl addresses")
-	data := o.callback()
-	pfxlog.Logger().Info(data)
+	log := pfxlog.Logger().WithFields(map[string]interface{}{
+		"routerId": r.Id,
+		"channel":  r.Control.LogicalName(),
+	})
+	log.Info("Router connected... syncing crtl addresses")
+	index, data := o.getAddresses()
+	log.Info(data)
+
 	updMsg := &ctrl_pb.UpdateCtrlAddresses{
 		Addresses: data,
+		Index:     index,
 	}
 
-	if body, err := proto.Marshal(updMsg); err == nil {
-		msg := channel.NewMessage(int32(ctrl_pb.ContentType_UpdateCtrlAddressesType), body)
-		if err := r.Control.Send(msg); err != nil {
-			pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
-				"routerId": r.Id,
-				"channel":  r.Control.LogicalName(),
-			}).Error("error sending UpdateCtrlAddresses on router connect")
-		}
-	} else {
-		pfxlog.Logger().WithError(err).WithFields(map[string]interface{}{
-			"routerId": r.Id,
-			"channel":  r.Control.LogicalName(),
-		}).Error("unable to marshal UpdateCtrlAddresses message")
+	if err := protobufs.MarshalTyped(updMsg).Send(r.Control); err != nil {
+		log.WithError(err).Error("error sending UpdateCtrlAddresses on router connect")
 	}
+}
+
+func (o *OnConnectCtrlAddressesUpdateHandler) getAddresses() (uint64, []string) {
+	if o.raft != nil {
+		return o.raft.CtrlAddresses()
+	}
+	return 1, []string{o.ctrlAddress}
 }

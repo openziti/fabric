@@ -81,10 +81,19 @@ func (self *BoltDbFsm) GetDb() boltz.Db {
 	return self.db
 }
 
+func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configuration) {
+	if self.currentState == nil {
+		raft.GetConfiguration().Error()
+		cfg := raft.GetConfiguration().Configuration()
+		self.currentState = &cfg
+	}
+	return self.indexTracker.Index(), self.currentState
+}
+
 func (self *BoltDbFsm) StoreConfiguration(index uint64, configuration raft.Configuration) {
 	log := pfxlog.Logger()
 	self.currentState = &configuration
-	if err := self.routerDispatchCallback(); err != nil {
+	if err := self.routerDispatchCallback(&configuration); err != nil {
 		log.Errorf("Unable to dispatch router callback: %v", err)
 	}
 }

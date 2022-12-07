@@ -26,11 +26,14 @@ import (
 	"os"
 	"path"
 	"plugin"
+	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
 	gosundheit "github.com/AppsFlyer/go-sundheit"
 	"github.com/AppsFlyer/go-sundheit/checks"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/fabric/health"
@@ -85,7 +88,11 @@ type Router struct {
 	versionProvider versions.VersionProvider
 	debugOperations map[byte]func(c *bufio.ReadWriter) error
 
-	ctrlEndpoints ctrlEndpoints
+	ctrlEndpoints        ctrlEndpoints
+	controllersToConnect struct {
+		controllers map[*UpdatableAddress]bool
+		mtx         sync.Mutex
+	}
 
 	xwebs               []xweb.Instance
 	xwebFactoryRegistry xweb.Registry
@@ -165,6 +172,13 @@ func Create(config *Config, versionProvider versions.VersionProvider) *Router {
 		xwebFactoryRegistry: xweb.NewRegistryMap(),
 		xlinkRegistry:       NewLinkRegistry(ctrls),
 		ctrlEndpoints:       newCtrlEndpoints(),
+		controllersToConnect: struct {
+			controllers map[*UpdatableAddress]bool
+			mtx         sync.Mutex
+		}{
+			controllers: make(map[*UpdatableAddress]bool),
+			mtx:         sync.Mutex{},
+		},
 	}
 
 	var err error
@@ -501,6 +515,60 @@ func (self *Router) connectToController(addr *UpdatableAddress, localBinding str
 	return nil
 }
 
+func (self *Router) connectToControllerWithBackoff(addr *UpdatableAddress, localBinding string, maxTimeout *time.Duration) error {
+	self.controllersToConnect.mtx.Lock()
+	log := pfxlog.Logger()
+	defer func() {
+		self.controllersToConnect.mtx.Unlock()
+	}()
+	if _, exists := self.controllersToConnect.controllers[addr]; exists {
+		log.WithField("Controller Addr", addr).Info("Already atempting to connect")
+		return nil
+	}
+
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.InitialInterval = 50 * time.Millisecond
+	expBackoff.MaxInterval = 5 * time.Minute
+	expBackoff.MaxElapsedTime = 365 * 24 * time.Hour
+	if maxTimeout != nil {
+		expBackoff.MaxElapsedTime = *maxTimeout
+	}
+
+	operation := func() error {
+		err := self.connectToController(addr, localBinding)
+		if err != nil {
+			log.
+				WithField("Controller Addr", addr).
+				WithField("Local binding", localBinding).
+				WithError(err).
+				Error("Unable to connect controller")
+		}
+		return err
+	}
+
+	self.controllersToConnect.controllers[addr] = true
+	log.WithField("Controller Addr", addr).Info("Starting connection attempts")
+
+	go func() {
+		if err := backoff.Retry(operation, expBackoff); err != nil {
+			log.
+				WithField("Controller Addr", addr).
+				WithField("Local binding", localBinding).
+				WithError(err).
+				Error("Unable to connect controller. Stopping Retries.")
+		} else {
+			log.WithField("Controller Addr", addr).
+				WithField("Local binding", localBinding).
+				Info("Successfully connected to controller")
+		}
+		self.controllersToConnect.mtx.Lock()
+		delete(self.controllersToConnect.controllers, addr)
+		self.controllersToConnect.mtx.Unlock()
+	}()
+
+	return nil
+}
+
 func (self *Router) initializeHealthChecks() (gosundheit.Health, error) {
 	checkConfig := self.config.HealthChecks
 	logrus.Infof("starting health check with ctrl ping initially after %v, then every %v, timing out after %v",
@@ -573,35 +641,48 @@ func (self *Router) initializeCtrlEndpoints() error {
 }
 
 func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
-	pfxlog.Logger().Info("Recieved endpoints to update:")
-	pfxlog.Logger().Info(endpoints)
+	log := pfxlog.Logger()
 	save := false
 	newEps := make(map[string]bool)
 	for _, ep := range endpoints {
 		newEps[ep] = true
+	}
+	for knownep := range self.ctrlEndpoints.Items() {
+		if _, ok := newEps[knownep]; !ok {
+			log.WithField("endpoint", knownep).Info("Removing old ctrl endpoint")
+			save = true
+			parsed, err := transport.ParseAddress(knownep)
+			if err != nil {
+				return err
+			}
+			_, parsedAddr, _ := strings.Cut(parsed.String(), ":")
+			//Get cert ids
+			if ch := self.ctrls.CloseAndRemoveByAddress(parsedAddr); ch != nil {
+				log.WithField("endpoint", knownep).WithError(err).Error("Unable to close ctrl channel to controller")
+				return err
+			}
+			self.ctrlEndpoints.Remove(knownep)
+		}
+	}
+	for _, ep := range endpoints {
 		if !self.ctrlEndpoints.Has(ep) {
-			pfxlog.Logger().Info("Adding new endpoint")
+			log.WithField("endpoint", ep).Info("Adding new ctrl endpoint")
 			save = true
 			parsed, err := transport.ParseAddress(ep)
 			if err != nil {
 				return err
 			}
-			self.ctrlEndpoints.Set(ep, NewUpdatableAddress(parsed))
-		}
-	}
-
-	if len(self.ctrlEndpoints.ConcurrentMap) != len(endpoints) {
-		for knownep := range self.ctrlEndpoints.Items() {
-			if _, ok := newEps[knownep]; !ok {
-				pfxlog.Logger().Info("Removing old endpoint")
-				save = true
-				self.ctrlEndpoints.Remove(knownep)
+			upAddr := NewUpdatableAddress(parsed)
+			if err := self.connectToControllerWithBackoff(upAddr, self.config.Ctrl.LocalBinding, nil); err != nil {
+				log.WithError(err).Error("Unable to connect controller\n\n")
+				return err
 			}
+			self.ctrlEndpoints.Set(ep, upAddr)
 		}
 	}
 
 	if save {
-		pfxlog.Logger().Info("Attempting to save file")
+		log.WithField("filepath", self.config.Ctrl.DataDir).Info("Attempting to save file")
 		endpointsFile := path.Join(self.config.Ctrl.DataDir, "endpoints")
 		data, err := self.ctrlEndpoints.MarshalYAML()
 		if err != nil {
@@ -643,7 +724,7 @@ func (self *controllerPinger) PingContext(ctx context.Context) error {
 }
 
 type ctrlEndpoints struct {
-	cmap.ConcurrentMap[*UpdatableAddress] `yaml:"Endpoints"`
+	cmap.ConcurrentMap[string, *UpdatableAddress] `yaml:"Endpoints"`
 }
 
 func newCtrlEndpoints() ctrlEndpoints {
