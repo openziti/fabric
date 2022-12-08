@@ -83,7 +83,9 @@ func (self *BoltDbFsm) GetDb() boltz.Db {
 
 func (self *BoltDbFsm) GetCurrentState(raft *raft.Raft) (uint64, *raft.Configuration) {
 	if self.currentState == nil {
-		raft.GetConfiguration().Error()
+		if err := raft.GetConfiguration().Error(); err != nil {
+			pfxlog.Logger().WithError(err).Error("error getting configuration future")
+		}
 		cfg := raft.GetConfiguration().Configuration()
 		self.currentState = &cfg
 	}
