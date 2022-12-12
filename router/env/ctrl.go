@@ -193,10 +193,10 @@ func (self *networkControllers) Close() error {
 func (self *networkControllers) CloseAndRemoveByAddress(address string) error {
 	ctrlId, ch := self.GetCtrlChannelByAddress(address)
 	if ch != nil {
+		delete(self.ctrls.AsMap(), ctrlId)
 		if err := ch.Close(); err != nil {
 			return err
 		}
-		delete(self.ctrls.AsMap(), ctrlId)
 	}
 	return nil
 }

@@ -732,7 +732,7 @@ func newCtrlEndpoints() ctrlEndpoints {
 }
 
 // MarshalYAML handles serialization for the YAML format
-func (c ctrlEndpoints) MarshalYAML() (interface{}, error) {
+func (c *ctrlEndpoints) MarshalYAML() (interface{}, error) {
 	data := make([]*UpdatableAddress, 0)
 	for _, ep := range c.Items() {
 		data = append(data, ep)
