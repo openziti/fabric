@@ -522,7 +522,7 @@ func (self *Router) connectToControllerWithBackoff(addr *UpdatableAddress, local
 		self.controllersToConnect.mtx.Unlock()
 	}()
 	if _, exists := self.controllersToConnect.controllers[addr]; exists {
-		log.WithField("Controller Addr", addr).Info("Already atempting to connect")
+		log.WithField("Controller Addr", addr).Info("Already attempting to connect")
 		return nil
 	}
 
@@ -674,7 +674,7 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
 			}
 			upAddr := NewUpdatableAddress(parsed)
 			if err := self.connectToControllerWithBackoff(upAddr, self.config.Ctrl.LocalBinding, nil); err != nil {
-				log.WithError(err).Error("Unable to connect controller\n\n")
+				log.WithError(err).Error("Unable to connect controller")
 				return err
 			}
 			self.ctrlEndpoints.Set(ep, upAddr)
