@@ -535,6 +535,9 @@ func (self *Router) connectToControllerWithBackoff(addr *UpdatableAddress, local
 	}
 
 	operation := func() error {
+		if _, exists := self.controllersToConnect.controllers[addr]; !exists {
+			return backoff.Permanent(errors.New("controller removed before connection established"))
+		}
 		err := self.connectToController(addr, localBinding)
 		if err != nil {
 			log.
@@ -656,12 +659,15 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
 				return err
 			}
 			_, parsedAddr, _ := strings.Cut(parsed.String(), ":")
-			//Get cert ids
+
 			if ch := self.ctrls.CloseAndRemoveByAddress(parsedAddr); ch != nil {
 				log.WithField("endpoint", knownep).WithError(err).Error("Unable to close ctrl channel to controller")
 				return err
 			}
 			self.ctrlEndpoints.Remove(knownep)
+			self.controllersToConnect.mtx.Lock()
+			delete(self.controllersToConnect.controllers, NewUpdatableAddress(parsed))
+			self.controllersToConnect.mtx.Unlock()
 		}
 	}
 	for _, ep := range endpoints {
