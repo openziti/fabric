@@ -660,14 +660,15 @@ func (self *Router) UpdateCtrlEndpoints(endpoints []string) error {
 			}
 			_, parsedAddr, _ := strings.Cut(parsed.String(), ":")
 
-			if ch := self.ctrls.CloseAndRemoveByAddress(parsedAddr); ch != nil {
-				log.WithField("endpoint", knownep).WithError(err).Error("Unable to close ctrl channel to controller")
-				return err
-			}
 			self.ctrlEndpoints.Remove(knownep)
 			self.controllersToConnect.mtx.Lock()
 			delete(self.controllersToConnect.controllers, NewUpdatableAddress(parsed))
 			self.controllersToConnect.mtx.Unlock()
+
+			if ch := self.ctrls.CloseAndRemoveByAddress(parsedAddr); ch != nil {
+				log.WithField("endpoint", knownep).WithError(err).Error("Unable to close ctrl channel to controller")
+				return err
+			}
 		}
 	}
 	for _, ep := range endpoints {
