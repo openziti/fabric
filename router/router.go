@@ -535,6 +535,8 @@ func (self *Router) connectToControllerWithBackoff(addr *UpdatableAddress, local
 	}
 
 	operation := func() error {
+		self.controllersToConnect.mtx.Lock()
+		defer self.controllersToConnect.mtx.Unlock()
 		if _, exists := self.controllersToConnect.controllers[addr]; !exists {
 			return backoff.Permanent(errors.New("controller removed before connection established"))
 		}
