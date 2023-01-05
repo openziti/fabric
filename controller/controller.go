@@ -20,8 +20,12 @@ import (
 	"bufio"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/fabric/controller/db"
+	"github.com/pkg/errors"
 
 	hcraft "github.com/hashicorp/raft"
 	"github.com/michaelquigley/pfxlog"
@@ -128,13 +132,12 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if cfg.Raft != nil {
-		raftController, err := raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry, c.routerDispatchCallback)
-		if err != nil {
+		c.raftController = raft.NewController(cfg.Id, versionProvider.Version(), cfg.Raft, metricRegistry, c, c.routerDispatchCallback)
+		if err := c.raftController.Init(); err != nil {
 			log.WithError(err).Panic("error starting raft")
 		}
 
-		c.raftController = raftController
-		cfg.Db = raftController.GetDb()
+		cfg.Db = c.raftController.GetDb()
 	}
 
 	c.registerXts()
@@ -145,24 +148,9 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 		return nil, err
 	}
 
-	if cfg.SyncRaftToDb {
-		if c.raftController == nil {
-			log.Panic("cannot sync raft to database, as raft is not configured to run")
-		}
-
-		log.Info("waiting for raft cluster to settle before syncing raft to database")
-		start := time.Now()
-		for !c.raftController.IsLeader() {
-			time.Sleep(time.Second)
-			if time.Since(start) > time.Second*30 {
-				log.Panic("cannot sync raft to database, as current node is not the leader")
-			} else {
-				log.Info("waiting for raft controller to become leader to allow syncing db to raft")
-			}
-		}
-
-		if err := c.network.SnapshotToRaft(); err != nil {
-			log.WithError(err).Fatal("unable to sync database to raft")
+	if c.raftController != nil {
+		if err := c.raftController.Bootstrap(); err != nil {
+			log.WithError(err).Panic("error bootstrapping raft")
 		}
 	}
 
@@ -418,4 +406,62 @@ func (c *Controller) routerDispatchCallback(cfg *hcraft.Configuration) error {
 		}
 	}
 	return nil
+}
+
+func (c *Controller) TryInitializeRaftFromBoltDb() error {
+	val, found := c.config.src["db"]
+	if !found {
+		return nil
+	}
+
+	path := fmt.Sprintf("%v", val)
+	if _, err := os.Stat(path); err != nil {
+		if os.IsNotExist(err) {
+			return errors.Wrapf(err, "source db not found at [%v]", path)
+		}
+		return errors.Wrapf(err, "invalid db path [%v]", path)
+	}
+
+	return c.InitializeRaftFromBoltDb(path)
+}
+
+func (c *Controller) InitializeRaftFromBoltDb(sourceDbPath string) error {
+	log := pfxlog.Logger()
+
+	log.Info("waiting for raft cluster to settle before syncing raft to database")
+	start := time.Now()
+	for c.raftController.GetLeaderAddr() == "" {
+		if time.Since(start) > time.Second*30 {
+			log.Panic("cannot sync raft to database as cluster has not settled within timeout")
+		} else {
+			log.Info("waiting for raft cluster to elect a leader, to allow syncing db to raft")
+		}
+		time.Sleep(time.Second)
+	}
+
+	if _, err := os.Stat(sourceDbPath); err != nil {
+		if os.IsNotExist(err) {
+			return errors.Wrapf(err, "source db not found at [%v]", sourceDbPath)
+		}
+		return errors.Wrapf(err, "invalid db path [%v]", sourceDbPath)
+	}
+
+	sourceDb, err := db.Open(sourceDbPath)
+	if err != nil {
+		return err
+	}
+
+	log.Infof("initializing from bolt db [%v]", sourceDbPath)
+	snapshotId, snapshot, err := sourceDb.SnapshotToMemory()
+	if err != nil {
+		return err
+	}
+
+	cmd := &command.SyncSnapshotCommand{
+		SnapshotId:   snapshotId,
+		Snapshot:     snapshot,
+		SnapshotSink: c.network.RestoreSnapshot,
+	}
+
+	return c.raftController.Dispatch(cmd)
 }

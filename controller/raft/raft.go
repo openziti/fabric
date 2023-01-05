@@ -19,7 +19,6 @@ package raft
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/openziti/transport/v2"
 	"os"
 	"path"
 	"reflect"
@@ -27,6 +26,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/openziti/transport/v2"
 
 	"github.com/hashicorp/raft"
 	raftboltdb "github.com/hashicorp/raft-boltdb"
@@ -56,19 +57,17 @@ type Config struct {
 
 type RouterDispatchCallback func(*raft.Configuration) error
 
-func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, routerDispatchCallback RouterDispatchCallback) (*Controller, error) {
+func NewController(id *identity.TokenId, version string, config *Config, metricsRegistry metrics.Registry, migrationMgr MigrationManager, routerDispatchCallback RouterDispatchCallback) *Controller {
 	result := &Controller{
 		Id:                     id,
 		Config:                 config,
 		metricsRegistry:        metricsRegistry,
 		indexTracker:           NewIndexTracker(),
 		version:                version,
+		migrationMgr:           migrationMgr,
 		routerDispatchCallback: routerDispatchCallback,
 	}
-	if err := result.Init(); err != nil {
-		return nil, err
-	}
-	return result, nil
+	return result
 }
 
 // Controller manages RAFT related state and operations
@@ -85,6 +84,7 @@ type Controller struct {
 	closeNotify            <-chan struct{}
 	indexTracker           IndexTracker
 	version                string
+	migrationMgr           MigrationManager
 	routerDispatchCallback RouterDispatchCallback
 }
 
@@ -106,6 +106,10 @@ func (self *Controller) GetDb() boltz.Db {
 // IsLeader returns true if the current node is the RAFT leader
 func (self *Controller) IsLeader() bool {
 	return self.Raft.State() == raft.Leader
+}
+
+func (self *Controller) IsLeaderOrLeaderless() bool {
+	return self.IsLeader() || self.GetLeaderAddr() == ""
 }
 
 // GetLeaderAddr returns the current leader address, which may be blank if there is no leader currently
@@ -325,13 +329,6 @@ func (self *Controller) Init() error {
 		return err
 	}
 
-	/*
-		snapshotsDir := path.Join(raftConfig.DataDir, "snapshots")
-		if err = os.MkdirAll(snapshotsDir, 0700); err != nil {
-			logrus.WithField("snapshotDir", snapshotsDir).WithError(err).Errorf("failed to initialize snapshots directory: '%v'", snapshotsDir)
-			return err
-		}
-	*/
 	snapshotsDir := raftConfig.DataDir
 	snapshotStore, err := raft.NewFileSnapshotStoreWithLogger(snapshotsDir, 5, hclLogger)
 	if err != nil {
@@ -377,14 +374,18 @@ func (self *Controller) Init() error {
 	self.Fsm.initialized.Store(true)
 	self.Raft = r
 
-	if r.LastIndex() > 0 {
+	return nil
+}
+
+func (self *Controller) Bootstrap() error {
+	if self.Raft.LastIndex() > 0 {
 		logrus.Info("raft already bootstrapped")
 		self.bootstrapped.Store(true)
 	} else {
-		logrus.Infof("waiting for cluster size: %v", raftConfig.MinClusterSize)
+		logrus.Infof("waiting for cluster size: %v", self.Config.MinClusterSize)
 		req := &JoinRequest{
-			Addr:    string(localAddr),
-			Id:      string(conf.LocalID),
+			Addr:    string(self.Mesh.GetAdvertiseAddr()),
+			Id:      self.Id.Token,
 			IsVoter: true,
 		}
 		if err := self.Join(req); err != nil {
@@ -396,6 +397,7 @@ func (self *Controller) Init() error {
 
 // Join adds the given node to the raft cluster
 func (self *Controller) Join(req *JoinRequest) error {
+	log := pfxlog.Logger()
 	self.clusterLock.Lock()
 	defer self.clusterLock.Unlock()
 
@@ -459,11 +461,16 @@ func (self *Controller) Join(req *JoinRequest) error {
 	}
 
 	if votingCount >= self.Config.MinClusterSize {
+		log.Infof("min cluster member count met, bootstrapping cluster")
 		f := self.GetRaft().BootstrapCluster(raft.Configuration{Servers: self.servers})
 		if err := f.Error(); err != nil {
 			return errors.Wrapf(err, "failed to bootstrap cluster")
 		}
 		self.bootstrapped.Store(true)
+		log.Info("raft cluster bootstrap complete")
+		if err := self.migrationMgr.TryInitializeRaftFromBoltDb(); err != nil {
+			panic(err)
+		}
 	}
 
 	return nil
@@ -485,4 +492,9 @@ func (self *Controller) CtrlAddresses() (uint64, []string) {
 		ret = append(ret, string(srvr.Address))
 	}
 	return index, ret
+}
+
+type MigrationManager interface {
+	TryInitializeRaftFromBoltDb() error
+	InitializeRaftFromBoltDb(srcDb string) error
 }

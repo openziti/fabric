@@ -34,7 +34,7 @@ import (
 func NewFsm(dataDir string, decoders command.Decoders, indexTracker IndexTracker, routerDispatchCallback RouterDispatchCallback) *BoltDbFsm {
 	return &BoltDbFsm{
 		decoders:               decoders,
-		dbPath:                 path.Join(dataDir, "ctrl.db"),
+		dbPath:                 path.Join(dataDir, "ctrl-ha.db"),
 		indexTracker:           indexTracker,
 		routerDispatchCallback: routerDispatchCallback,
 	}

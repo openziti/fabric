@@ -31,7 +31,22 @@ func (self *Dispatcher) AddMetricsEventHandler(handler event.MetricsEventHandler
 }
 
 func (self *Dispatcher) RemoveMetricsEventHandler(handler event.MetricsEventHandler) {
-	self.metricsEventHandlers.Delete(handler)
+	self.metricsEventHandlers.DeleteIf(func(val event.MetricsEventHandler) bool {
+		if val == handler {
+			return true
+		}
+		if w, ok := val.(event.MetricsEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
+
+	self.metricsMsgEventHandlers.DeleteIf(func(val event.MetricsMessageHandler) bool {
+		if w, ok := val.(event.MetricsEventHandlerWrapper); ok {
+			return w.IsWrapping(handler)
+		}
+		return false
+	})
 }
 
 func (self *Dispatcher) AddMetricsMessageHandler(handler event.MetricsMessageHandler) {
@@ -69,7 +84,7 @@ func (self *Dispatcher) relayMessagesToEventsUnfiltered(msg *metrics_pb.MetricsM
 	}
 }
 
-func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[interface{}]interface{}) error {
+func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[string]interface{}) error {
 	handler, ok := val.(event.MetricsEventHandler)
 	if !ok {
 		return errors.Errorf("type %v doesn't implement github.com/openziti/fabric/event/MetricsEventHandler interface.", reflect.TypeOf(val))
@@ -109,6 +124,12 @@ func (self *Dispatcher) registerMetricsEventHandler(val interface{}, config map[
 	adapter := self.NewFilteredMetricsAdapter(sourceFilter, metricFilter, handler)
 	self.AddMetricsMessageHandler(adapter)
 	return nil
+}
+
+func (self *Dispatcher) unregisterMetricsEventHandler(val interface{}) {
+	if handler, ok := val.(event.MetricsEventHandler); ok {
+		self.RemoveMetricsEventHandler(handler)
+	}
 }
 
 func (self *Dispatcher) newMetricEvent(msg *metrics_pb.MetricsMessage, metricType string, name string, id string) *event.MetricsEvent {
@@ -245,6 +266,16 @@ type filteringMetricsMessageAdapter struct {
 	sourceFilter *regexp.Regexp
 	metricFilter *regexp.Regexp
 	handler      event.MetricsEventHandler
+}
+
+func (self *filteringMetricsMessageAdapter) IsWrapping(value event.MetricsEventHandler) bool {
+	if self.handler == value {
+		return true
+	}
+	if w, ok := self.handler.(event.MetricsEventHandlerWrapper); ok {
+		return w.IsWrapping(value)
+	}
+	return false
 }
 
 func (self *filteringMetricsMessageAdapter) AcceptMetricsMsg(msg *metrics_pb.MetricsMessage) {
