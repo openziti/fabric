@@ -175,18 +175,18 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 	//	return err
 	//}
 	// _, err := c.WriteString("success\n")
-
-	addr, found := m.GetStringHeader(AgentAddrHeader)
-	if !found {
-		handler_common.SendOpResult(m, ch, "raft.leave", "address not supplied", false)
-		return
-	}
+	var addr string
 
 	id, found := m.GetStringHeader(AgentIdHeader)
 	if !found {
+		addr, found = m.GetStringHeader(AgentAddrHeader)
+		if !found {
+			handler_common.SendOpResult(m, ch, "raft.leave", "address or id not supplied", false)
+			return
+		}
 		peerId, err := self.raftController.Mesh.GetPeerId(addr, 15*time.Second)
 		if err != nil {
-			errMsg := fmt.Sprintf("id not supplied and unable to retrieve [%v]", err.Error())
+			errMsg := fmt.Sprintf("id not supplied and unable to retrieve from %s [%v]", addr, err.Error())
 			handler_common.SendOpResult(m, ch, "raft.leave", errMsg, false)
 			return
 		}
