@@ -1,12 +1,13 @@
 package network
 
 import (
+	"testing"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/xt"
 	"github.com/openziti/fabric/controller/xt_smartrouting"
 	"github.com/openziti/fabric/ctrl_msg"
-	"testing"
 )
 
 func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(t *testing.T) {
@@ -16,7 +17,7 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -69,7 +70,7 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)

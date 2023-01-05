@@ -1,6 +1,9 @@
 package network
 
 import (
+	"testing"
+	"time"
+
 	"github.com/google/uuid"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
@@ -8,8 +11,6 @@ import (
 	"github.com/openziti/fabric/logcontext"
 	"github.com/openziti/transport/v2/tcp"
 	"github.com/stretchr/testify/assert"
-	"testing"
-	"time"
 )
 
 func TestSmartRerouteMinCostDelta(t *testing.T) {
@@ -21,7 +22,7 @@ func TestSmartRerouteMinCostDelta(t *testing.T) {
 	config.options.Smart.MinCostDelta = 15
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"

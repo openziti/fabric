@@ -1,12 +1,13 @@
 package network
 
 import (
+	"testing"
+
 	"github.com/openziti/fabric/controller/command"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/openziti/fabric/controller/models"
 	"github.com/openziti/fabric/pb/cmd_pb"
 	"github.com/stretchr/testify/require"
-	"testing"
 )
 
 func TestProtobufFactory(t *testing.T) {
@@ -18,7 +19,7 @@ func TestProtobufFactory(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	n, err := NewNetwork(config)
+	n, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	service := &Service{
@@ -55,7 +56,7 @@ func BenchmarkRegisterCommand(t *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	n, err := NewNetwork(config)
+	n, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	service := &Service{

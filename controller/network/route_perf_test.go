@@ -18,11 +18,12 @@ package network
 
 import (
 	"fmt"
+	"math/rand"
+	"testing"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/fabric/controller/db"
 	"github.com/sirupsen/logrus"
-	"math/rand"
-	"testing"
 )
 
 func TestShortestPathAgainstEstablished(t *testing.T) {
@@ -34,7 +35,7 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -160,7 +161,7 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -254,7 +255,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -328,7 +329,7 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)

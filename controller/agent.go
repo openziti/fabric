@@ -3,6 +3,10 @@ package controller
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"net"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -11,9 +15,6 @@ import (
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io"
-	"net"
-	"time"
 )
 
 const (
@@ -116,10 +117,12 @@ func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) 
 	result := &mgmt_pb.RaftMemberListResponse{}
 	for _, member := range members {
 		result.Members = append(result.Members, &mgmt_pb.RaftMember{
-			Id:       member.Id,
-			Addr:     member.Addr,
-			IsVoter:  member.Voter,
-			IsLeader: member.Leader,
+			Id:          member.Id,
+			Addr:        member.Addr,
+			IsVoter:     member.Voter,
+			IsLeader:    member.Leader,
+			Version:     member.Version,
+			IsConnected: member.Connected,
 		})
 	}
 
@@ -172,7 +175,33 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 	//	return err
 	//}
 	// _, err := c.WriteString("success\n")
-	handler_common.SendOpResult(m, ch, "raft.remove", "no yet implemented", false)
+
+	addr, found := m.GetStringHeader(AgentAddrHeader)
+	if !found {
+		handler_common.SendOpResult(m, ch, "raft.leave", "address not supplied", false)
+		return
+	}
+
+	id, found := m.GetStringHeader(AgentIdHeader)
+	if !found {
+		peerId, err := self.raftController.Mesh.GetPeerId(addr, 15*time.Second)
+		if err != nil {
+			errMsg := fmt.Sprintf("id not supplied and unable to retrieve [%v]", err.Error())
+			handler_common.SendOpResult(m, ch, "raft.leave", errMsg, false)
+			return
+		}
+		id = peerId
+	}
+
+	req := &raft.RemoveRequest{
+		Id: id,
+	}
+
+	if err := self.raftController.HandleRemove(req); err != nil {
+		handler_common.SendOpResult(m, ch, "raft.leave", err.Error(), false)
+		return
+	}
+	handler_common.SendOpResult(m, ch, "raft.leave", fmt.Sprintf("success, removed %v at %v from cluster", id, addr), true)
 }
 
 func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel) {

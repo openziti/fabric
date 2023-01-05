@@ -139,7 +139,7 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 
 	c.registerXts()
 
-	if n, err := network.NewNetwork(c); err == nil {
+	if n, err := network.NewNetwork(c, c.raftController); err == nil {
 		c.network = n
 	} else {
 		return nil, err

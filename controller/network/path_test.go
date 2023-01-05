@@ -37,7 +37,7 @@ func TestSimplePath2(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -100,7 +100,7 @@ func TestTransitPath2(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -201,7 +201,7 @@ func TestShortestPath(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -277,7 +277,7 @@ func TestShortestPathWithUntraversableRouter(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -353,7 +353,7 @@ func TestShortestPathWithOnlyUntraversableRouter(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -395,7 +395,7 @@ func TestShortestPathWithUntraversableEdgeRouters(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -437,7 +437,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndTraversableMiddle(t *testing
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -493,7 +493,7 @@ func TestShortestPathWithUntraversableEdgeRoutersAndUntraversableMiddle(t *testi
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -544,7 +544,7 @@ func TestRouterCost(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
@@ -601,7 +601,7 @@ func TestMinRouterCost(t *testing.T) {
 	defer close(config.closeNotify)
 
 	config.options.MinRouterCost = 10
-	network, err := NewNetwork(config)
+	network, err := NewNetwork(config, nil)
 	req.NoError(err)
 
 	addr := "tcp:0.0.0.0:0"
