@@ -17,7 +17,7 @@ func TestRouteSender_DestroysTerminatorWhenInvalidOnHandleRouteSendAndWeControl(
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -70,7 +70,7 @@ func TestRouteSender_SetPrecidenceToNilTerminatorWhenInvalidOnHandleRouteSendAnd
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)

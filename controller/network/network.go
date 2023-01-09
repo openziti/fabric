@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/openziti/fabric/controller/command"
-	"github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/event"
 	"github.com/openziti/foundation/v2/versions"
 
@@ -84,7 +83,6 @@ type Network struct {
 	lastSnapshot           time.Time
 	metricsRegistry        metrics.Registry
 	VersionProvider        versions.VersionProvider
-	raftController         *raft.Controller
 
 	serviceEventMetrics          metrics.UsageRegistry
 	serviceDialSuccessCounter    metrics.IntervalCounter
@@ -98,7 +96,7 @@ type Network struct {
 	serviceMisconfiguredTerminatorCounter     metrics.IntervalCounter
 }
 
-func NewNetwork(config Config, raftController *raft.Controller) (*Network, error) {
+func NewNetwork(config Config) (*Network, error) {
 	stores, err := db.InitStores(config.GetDb())
 	if err != nil {
 		return nil, err
@@ -123,7 +121,6 @@ func NewNetwork(config Config, raftController *raft.Controller) (*Network, error
 		lastSnapshot:          time.Now().Add(-time.Hour),
 		metricsRegistry:       config.GetMetricsRegistry(),
 		VersionProvider:       config.GetVersionProvider(),
-		raftController:        raftController,
 
 		serviceEventMetrics:          serviceEventMetrics,
 		serviceDialSuccessCounter:    serviceEventMetrics.IntervalCounter("service.dial.success", time.Minute),
@@ -231,10 +228,6 @@ func (network *Network) GetCircuit(circuitId string) (*Circuit, bool) {
 
 func (network *Network) GetAllCircuits() []*Circuit {
 	return network.circuitController.all()
-}
-
-func (network *Network) GetRaftController() *raft.Controller {
-	return network.raftController
 }
 
 func (network *Network) RouteResult(rs *RouteStatus) bool {

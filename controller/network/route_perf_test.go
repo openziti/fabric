@@ -35,7 +35,7 @@ func TestShortestPathAgainstEstablished(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -161,7 +161,7 @@ func BenchmarkShortestPathPerfWithRouterChanges(b *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -255,7 +255,7 @@ func BenchmarkShortestPathPerf(b *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)
@@ -329,7 +329,7 @@ func BenchmarkMoreRealisticShortestPathPerf(b *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	ctx.NoError(err)
 
 	entityHelper := newTestEntityHelper(ctx, network)

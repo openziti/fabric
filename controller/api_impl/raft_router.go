@@ -6,6 +6,7 @@ import (
 	"github.com/go-openapi/runtime/middleware"
 	"github.com/openziti/fabric/controller/api"
 	"github.com/openziti/fabric/controller/network"
+	nfraft "github.com/openziti/fabric/controller/raft"
 	"github.com/openziti/fabric/rest_model"
 	"github.com/openziti/fabric/rest_server/operations"
 	"github.com/openziti/fabric/rest_server/operations/raft"
@@ -32,7 +33,8 @@ func (r *RaftRouter) Register(fabricApi *operations.ZitiFabricAPI, wrapper Reque
 func (r *RaftRouter) ListMembers(n *network.Network, rc api.RequestContext) {
 	vals := make([]*rest_model.RaftMemberListValue, 0)
 
-	if rctrl := n.GetRaftController(); rctrl != nil {
+	if n.Dispatcher != nil {
+		rctrl := n.Dispatcher.(*nfraft.Controller)
 		members, err := rctrl.ListMembers()
 		if err != nil {
 			rc.Respond(rest_model.RaftMemberListResponse{}, http.StatusInternalServerError)

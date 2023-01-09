@@ -112,7 +112,7 @@ func TestCreateCircuit(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"

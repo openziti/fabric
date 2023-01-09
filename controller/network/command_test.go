@@ -19,7 +19,7 @@ func TestProtobufFactory(t *testing.T) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	n, err := NewNetwork(config, nil)
+	n, err := NewNetwork(config)
 	req.NoError(err)
 
 	service := &Service{
@@ -56,7 +56,7 @@ func BenchmarkRegisterCommand(t *testing.B) {
 	config := newTestConfig(ctx)
 	defer close(config.closeNotify)
 
-	n, err := NewNetwork(config, nil)
+	n, err := NewNetwork(config)
 	req.NoError(err)
 
 	service := &Service{

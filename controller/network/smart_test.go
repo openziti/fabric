@@ -22,7 +22,7 @@ func TestSmartRerouteMinCostDelta(t *testing.T) {
 	config.options.Smart.MinCostDelta = 15
 	defer close(config.closeNotify)
 
-	network, err := NewNetwork(config, nil)
+	network, err := NewNetwork(config)
 	assert.Nil(t, err)
 
 	addr := "tcp:0.0.0.0:0"
