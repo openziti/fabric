@@ -28,7 +28,7 @@ type EntityCreator[T models.Entity] interface {
 	EntityMarshaller[T]
 
 	// ApplyCreate creates the entity described by the given command
-	ApplyCreate(cmd *CreateEntityCommand[T]) error
+	ApplyCreate(index uint64, cmd *CreateEntityCommand[T]) error
 }
 
 // EntityUpdater instances can apply an update entity command to update entities of a given type
@@ -36,7 +36,7 @@ type EntityUpdater[T models.Entity] interface {
 	EntityMarshaller[T]
 
 	// ApplyUpdate updates the entity described by the given command
-	ApplyUpdate(cmd *UpdateEntityCommand[T]) error
+	ApplyUpdate(index uint64, cmd *UpdateEntityCommand[T]) error
 }
 
 // EntityDeleter instances can apply a delete entity command to delete entities of a given type
@@ -44,7 +44,7 @@ type EntityDeleter interface {
 	GetEntityTypeId() string
 
 	// ApplyDelete deletes the entity described by the given command
-	ApplyDelete(cmd *DeleteEntityCommand) error
+	ApplyDelete(index uint64, cmd *DeleteEntityCommand) error
 }
 
 // EntityManager instances can handle create, update and delete entities of a specific type
@@ -61,8 +61,8 @@ type CreateEntityCommand[T models.Entity] struct {
 	Flags          uint32
 }
 
-func (self *CreateEntityCommand[T]) Apply() error {
-	return self.Creator.ApplyCreate(self)
+func (self *CreateEntityCommand[T]) Apply(index uint64) error {
+	return self.Creator.ApplyCreate(index, self)
 }
 
 func (self *CreateEntityCommand[T]) Encode() ([]byte, error) {
@@ -85,8 +85,8 @@ type UpdateEntityCommand[T models.Entity] struct {
 	Flags         uint32
 }
 
-func (self *UpdateEntityCommand[T]) Apply() error {
-	return self.Updater.ApplyUpdate(self)
+func (self *UpdateEntityCommand[T]) Apply(index uint64) error {
+	return self.Updater.ApplyUpdate(index, self)
 }
 
 func (self *UpdateEntityCommand[T]) Encode() ([]byte, error) {
@@ -114,8 +114,8 @@ type DeleteEntityCommand struct {
 	Id      string
 }
 
-func (self *DeleteEntityCommand) Apply() error {
-	return self.Deleter.ApplyDelete(self)
+func (self *DeleteEntityCommand) Apply(index uint64) error {
+	return self.Deleter.ApplyDelete(index, self)
 }
 
 func (self *DeleteEntityCommand) Encode() ([]byte, error) {
@@ -128,11 +128,11 @@ func (self *DeleteEntityCommand) Encode() ([]byte, error) {
 type SyncSnapshotCommand struct {
 	SnapshotId   string
 	Snapshot     []byte
-	SnapshotSink func(cmd *SyncSnapshotCommand) error
+	SnapshotSink func(index uint64, cmd *SyncSnapshotCommand) error
 }
 
-func (self *SyncSnapshotCommand) Apply() error {
-	return self.SnapshotSink(self)
+func (self *SyncSnapshotCommand) Apply(index uint64) error {
+	return self.SnapshotSink(index, self)
 }
 
 func (self *SyncSnapshotCommand) Encode() ([]byte, error) {

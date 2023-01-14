@@ -80,6 +80,7 @@ const (
 	ClusterEventReadWrite        ClusterEvent = 1
 	ClusterEventLeadershipGained ClusterEvent = 2
 	ClusterEventLeadershipLost   ClusterEvent = 3
+	ClusterEventRaftInitialized  ClusterEvent = 4
 
 	isLeaderMask    = 0b01
 	isReadWriteMask = 0b10
@@ -451,12 +452,24 @@ func (self *Controller) Init() error {
 		return errors.Wrap(err, "failed to initialise raft")
 	}
 	self.Raft = r
-	self.ObserveLeaderChanges()
+	self.InitClusterEvents()
 
 	return nil
 }
 
-func (self *Controller) ObserveLeaderChanges() {
+func (self *Controller) InitClusterEvents() {
+	index := self.Raft.LastIndex()
+	go func() {
+		if err := self.Fsm.indexTracker.WaitForIndex(index, time.Now().Add(5*time.Minute)); err != nil {
+			panic(errors.Wrap(err, "timed out waiting for existing raft entries to be applied"))
+		}
+
+		self.clusterEvents <- raft.Observation{
+			Raft: self.Raft,
+			Data: ClusterEventRaftInitialized,
+		}
+	}()
+
 	self.Raft.RegisterObserver(raft.NewObserver(self.clusterEvents, true, func(o *raft.Observation) bool {
 		_, ok := o.Data.(raft.RaftState)
 		return ok
@@ -488,6 +501,8 @@ func (self *Controller) ObserveLeaderChanges() {
 					isReadWrite = false
 					self.handleClusterStateChange(ClusterEventReadOnly, newClusterState(self.isLeader.Load(), isReadWrite))
 				}
+			} else if evt, ok := observation.Data.(ClusterEvent); ok {
+				self.handleClusterStateChange(evt, newClusterState(self.isLeader.Load(), isReadWrite))
 			}
 
 			pfxlog.Logger().Tracef("raft observation processed: isLeader: %v, isReadWrite: %v", self.isLeader.Load(), isReadWrite)

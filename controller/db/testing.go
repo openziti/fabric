@@ -42,7 +42,7 @@ func (ctx *TestContext) Init() {
 	ctx.db, err = Open(ctx.GetDbFile().Name())
 	ctx.NoError(err)
 
-	ctx.stores, err = InitStores(ctx.GetDb())
+	ctx.stores, err = InitStores(ctx.GetDb(), true)
 	ctx.NoError(err)
 }
 

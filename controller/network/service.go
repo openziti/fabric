@@ -108,9 +108,9 @@ func (self *ServiceManager) Create(entity *Service) error {
 	return DispatchCreate[*Service](self, entity)
 }
 
-func (self *ServiceManager) ApplyCreate(cmd *command.CreateEntityCommand[*Service]) error {
+func (self *ServiceManager) ApplyCreate(index uint64, cmd *command.CreateEntityCommand[*Service]) error {
 	s := cmd.Entity
-	err := self.db.Update(func(tx *bbolt.Tx) error {
+	err := self.db.UpdateWithIndex(index, func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		if err := self.ValidateNameOnCreate(ctx, s); err != nil {
 			return err
@@ -131,8 +131,8 @@ func (self *ServiceManager) Update(entity *Service, updatedFields fields.Updated
 	return DispatchUpdate[*Service](self, entity, updatedFields)
 }
 
-func (self *ServiceManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Service]) error {
-	if err := self.updateGeneral(cmd.Entity, cmd.UpdatedFields); err != nil {
+func (self *ServiceManager) ApplyUpdate(index uint64, cmd *command.UpdateEntityCommand[*Service]) error {
+	if err := self.updateGeneral(index, cmd.Entity, cmd.UpdatedFields); err != nil {
 		return err
 	}
 	self.RemoveFromCache(cmd.Entity.Id)

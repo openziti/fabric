@@ -99,7 +99,12 @@ type Network struct {
 }
 
 func NewNetwork(config Config) (*Network, error) {
-	stores, err := db.InitStores(config.GetDb())
+	isDistributed := false
+	if config.GetCommandDispatcher() != nil && config.GetCommandDispatcher().IsDistributed() {
+		isDistributed = true
+	}
+
+	stores, err := db.InitStores(config.GetDb(), !isDistributed)
 	if err != nil {
 		return nil, err
 	}
@@ -1142,7 +1147,7 @@ func (network *Network) SnapshotDatabase() error {
 	return err
 }
 
-func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error {
+func (network *Network) RestoreSnapshot(index uint64, cmd *command.SyncSnapshotCommand) error {
 	log := pfxlog.Logger()
 	currentSnapshotId, err := network.getDb().GetSnapshotId()
 	if err != nil {
@@ -1160,28 +1165,10 @@ func (network *Network) RestoreSnapshot(cmd *command.SyncSnapshotCommand) error 
 	}
 
 	network.getDb().RestoreFromReader(reader)
-	return nil
-}
 
-func (network *Network) SnapshotToRaft() error {
-	buf := &bytes.Buffer{}
-	gzWriter := gzip.NewWriter(buf)
-	snapshotId, err := network.db.SnapshotToWriter(gzWriter)
-	if err != nil {
-		return err
-	}
-
-	if err = gzWriter.Close(); err != nil {
-		return errors.Wrap(err, "error finishing gz compression of migration snapshot")
-	}
-
-	cmd := &command.SyncSnapshotCommand{
-		SnapshotId:   snapshotId,
-		Snapshot:     buf.Bytes(),
-		SnapshotSink: network.RestoreSnapshot,
-	}
-
-	return network.Dispatch(cmd)
+	return network.getDb().UpdateWithIndex(index, func(tx *bbolt.Tx) error {
+		return nil // do nothing, UpdateWithIndex is already doing the work
+	})
 }
 
 type Cache interface {

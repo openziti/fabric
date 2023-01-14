@@ -27,7 +27,7 @@ import (
 // so they can be shipped from one controller for RAFT coordination
 type Command interface {
 	// Apply runs the commands
-	Apply() error
+	Apply(index uint64) error
 
 	// Encode returns a serialized representation of the command
 	Encode() ([]byte, error)
@@ -43,7 +43,9 @@ type Validatable interface {
 // system is the leader, apply it locally
 type Dispatcher interface {
 	Dispatch(command Command) error
+	IsReadOnlyMode() bool
 	IsLeaderOrLeaderless() bool
+	IsDistributed() bool
 }
 
 // LocalDispatcher should be used when running a non-clustered system
@@ -53,6 +55,14 @@ type LocalDispatcher struct {
 
 func (self *LocalDispatcher) IsLeaderOrLeaderless() bool {
 	return true
+}
+
+func (self *LocalDispatcher) IsReadOnlyMode() bool {
+	return false
+}
+
+func (self *LocalDispatcher) IsDistributed() bool {
+	return false
 }
 
 func (self *LocalDispatcher) Dispatch(command Command) error {
@@ -76,10 +86,10 @@ func (self *LocalDispatcher) Dispatch(command Command) error {
 		if err != nil {
 			return err
 		}
-		return cmd.Apply()
+		return cmd.Apply(0)
 	}
 
-	return command.Apply()
+	return command.Apply(0)
 }
 
 // Decoder instances know how to decode encoded commands

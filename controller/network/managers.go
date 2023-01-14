@@ -39,7 +39,7 @@ const (
 
 type Managers struct {
 	network     *Network
-	db          boltz.Db
+	db          *db.Db
 	stores      *db.Stores
 	Terminators *TerminatorManager
 	Routers     *RouterManager
@@ -50,7 +50,7 @@ type Managers struct {
 	Registry    ioc.Registry
 }
 
-func (self *Managers) getDb() boltz.Db {
+func (self *Managers) getDb() *db.Db {
 	return self.db
 }
 
@@ -148,10 +148,12 @@ func RegisterManagerDecoder[T models.Entity](managers *Managers, ctrl command.En
 	RegisterDeleteDecoder(managers, ctrl)
 }
 
-func NewManagers(network *Network, dispatcher command.Dispatcher, db boltz.Db, stores *db.Stores) *Managers {
+func NewManagers(network *Network, dispatcher command.Dispatcher, boltDb boltz.Db, stores *db.Stores) *Managers {
 	result := &Managers{
-		network:    network,
-		db:         db,
+		network: network,
+		db: &db.Db{
+			Db: boltDb,
+		},
 		stores:     stores,
 		Dispatcher: dispatcher,
 		Registry:   ioc.NewRegistry(),
@@ -213,8 +215,11 @@ func (self *baseEntityManager[T]) Delete(id string) error {
 	return self.Managers.Dispatch(cmd)
 }
 
-func (self *baseEntityManager[T]) ApplyDelete(cmd *command.DeleteEntityCommand) error {
+func (self *baseEntityManager[T]) ApplyDelete(index uint64, cmd *command.DeleteEntityCommand) error {
 	return self.db.Update(func(tx *bbolt.Tx) error {
+		if err := db.SetRaftIndex(tx, index); err != nil {
+			return err
+		}
 		ctx := boltz.NewMutateContext(tx)
 		return self.Store.DeleteById(ctx, cmd.Id)
 	})
@@ -298,8 +303,8 @@ type boltEntitySource interface {
 	toBolt() boltz.Entity
 }
 
-func (ctrl *baseEntityManager[T]) updateGeneral(modelEntity boltEntitySource, checker boltz.FieldChecker) error {
-	return ctrl.db.Update(func(tx *bbolt.Tx) error {
+func (ctrl *baseEntityManager[T]) updateGeneral(index uint64, modelEntity boltEntitySource, checker boltz.FieldChecker) error {
+	return ctrl.db.UpdateWithIndex(index, func(tx *bbolt.Tx) error {
 		ctx := boltz.NewMutateContext(tx)
 		existing := ctrl.GetStore().NewStoreEntity()
 		found, err := ctrl.GetStore().BaseLoadOneById(tx, modelEntity.GetId(), existing)

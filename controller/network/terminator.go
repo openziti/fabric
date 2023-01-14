@@ -134,8 +134,8 @@ func (self *TerminatorManager) Create(entity *Terminator) error {
 	return DispatchCreate[*Terminator](self, entity)
 }
 
-func (self *TerminatorManager) ApplyCreate(cmd *command.CreateEntityCommand[*Terminator]) error {
-	return self.db.Update(func(tx *bbolt.Tx) error {
+func (self *TerminatorManager) ApplyCreate(index uint64, cmd *command.CreateEntityCommand[*Terminator]) error {
+	return self.db.UpdateWithIndex(index, func(tx *bbolt.Tx) error {
 		self.checkBinding(cmd.Entity)
 		boltTerminator := cmd.Entity.toBolt()
 		err := self.GetStore().Create(cmd.Entity.NewMutateContext(tx), boltTerminator)
@@ -181,9 +181,9 @@ func (self *TerminatorManager) Update(entity *Terminator, updatedFields fields.U
 	return DispatchUpdate[*Terminator](self, entity, updatedFields)
 }
 
-func (self *TerminatorManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Terminator]) error {
+func (self *TerminatorManager) ApplyUpdate(index uint64, cmd *command.UpdateEntityCommand[*Terminator]) error {
 	terminator := cmd.Entity
-	return self.db.Update(func(tx *bbolt.Tx) error {
+	return self.db.UpdateWithIndex(index, func(tx *bbolt.Tx) error {
 		self.checkBinding(terminator)
 		return self.GetStore().Update(terminator.NewMutateContext(tx), terminator.toBolt(), cmd.UpdatedFields)
 	})

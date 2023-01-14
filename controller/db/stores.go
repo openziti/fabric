@@ -25,12 +25,13 @@ import (
 )
 
 type Stores struct {
-	Terminator TerminatorStore
-	Router     RouterStore
-	Service    ServiceStore
-	storeMap   map[string]boltz.CrudStore
-	lock       sync.Mutex
-	checkables []Checkable
+	Terminator     TerminatorStore
+	Router         RouterStore
+	Service        ServiceStore
+	storeMap       map[string]boltz.CrudStore
+	lock           sync.Mutex
+	checkables     []Checkable
+	internalStores *stores
 }
 
 type Checkable interface {
@@ -107,20 +108,21 @@ type stores struct {
 	service    *serviceStoreImpl
 }
 
-func InitStores(db boltz.Db) (*Stores, error) {
+func InitStores(db boltz.Db, tryMigrate bool) (*Stores, error) {
 	internalStores := &stores{}
 
 	internalStores.terminator = newTerminatorStore(internalStores)
 	internalStores.router = newRouterStore(internalStores)
 	internalStores.service = newServiceStore(internalStores)
 
-	stores := &Stores{
-		Terminator: internalStores.terminator,
-		Router:     internalStores.router,
-		Service:    internalStores.service,
+	publicStores := &Stores{
+		Terminator:     internalStores.terminator,
+		Router:         internalStores.router,
+		Service:        internalStores.service,
+		internalStores: internalStores,
 	}
 
-	stores.buildStoreMap()
+	publicStores.buildStoreMap()
 
 	internalStores.terminator.initializeLocal()
 	internalStores.router.initializeLocal()
@@ -131,9 +133,42 @@ func InitStores(db boltz.Db) (*Stores, error) {
 	internalStores.service.initializeLinked()
 
 	mm := boltz.NewMigratorManager(db)
-	if err := mm.Migrate("fabric", CurrentDbVersion, internalStores.migrate); err != nil {
+	fabricVersion, err := mm.GetComponentVersion("fabric")
+	if err != nil {
 		return nil, err
 	}
 
-	return stores, nil
+	if fabricVersion > CurrentDbVersion {
+		pfxlog.Logger().Fatalf("database version %v unsupported, max supported is: %v", fabricVersion, CurrentDbVersion)
+	}
+
+	if tryMigrate {
+		if fabricVersion < CurrentDbVersion {
+			if err := mm.Migrate("fabric", CurrentDbVersion, internalStores.migrate); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return publicStores, nil
+}
+
+func (self *Stores) MigrateIfNecessary(db boltz.Db) {
+	log := pfxlog.Logger()
+	log.Info("checking if fabric db migration is needed")
+	mm := boltz.NewMigratorManager(db)
+	fabricVersion, err := mm.GetComponentVersion("fabric")
+	if err != nil {
+		pfxlog.Logger().WithError(err).Fatal("unable to get fabric database version, exiting")
+	}
+
+	if fabricVersion > CurrentDbVersion {
+		pfxlog.Logger().Fatalf("fabric database version %v unsupported, max supported is: %v", fabricVersion, CurrentDbVersion)
+	}
+
+	if fabricVersion < CurrentDbVersion {
+		if err := mm.Migrate("fabric", CurrentDbVersion, self.internalStores.migrate); err != nil {
+			pfxlog.Logger().WithError(err).Fatalf("error migrating from fabric database version %v -> %v", fabricVersion, CurrentDbVersion)
+		}
+	}
 }

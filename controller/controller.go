@@ -149,6 +149,13 @@ func NewController(cfg *Config, versionProvider versions.VersionProvider) (*Cont
 	}
 
 	if c.raftController != nil {
+		c.raftController.RegisterClusterEventHandler(func(event raft.ClusterEvent, state raft.ClusterState) {
+			pfxlog.Logger().Debugf("handling cluster event: %v, state: %v", event, state)
+			if event == raft.ClusterEventRaftInitialized {
+				c.network.GetStores().MigrateIfNecessary(c.network.GetDb())
+			}
+		})
+
 		if err := c.raftController.Bootstrap(); err != nil {
 			log.WithError(err).Panic("error bootstrapping raft")
 		}
@@ -215,6 +222,7 @@ func (c *Controller) Run() error {
 	if err != nil {
 		pfxlog.Logger().Panicf("could not prepare version headers: %v", err)
 	}
+
 	headers := map[int32][]byte{
 		channel.HelloVersionHeader: versionHeader,
 	}
@@ -227,6 +235,7 @@ func (c *Controller) Run() error {
 		PoolConfigurator: fabricMetrics.GoroutinesPoolMetricsConfigF(c.network.GetMetricsRegistry(), "pool.listener.ctrl"),
 		Headers:          headers,
 	}
+
 	ctrlListener := channel.NewClassicListener(c.config.Id, c.config.Ctrl.Listener, ctrlChannelListenerConfig)
 	c.ctrlListener = ctrlListener
 	if err := c.ctrlListener.Listen(c.ctrlConnectHandler); err != nil {
@@ -344,7 +353,6 @@ func (c *Controller) registerXts() {
 
 func (c *Controller) registerComponents() error {
 	c.ctrlConnectHandler = handler_ctrl.NewConnectHandler(c.config.Id, c.network)
-
 	return nil
 }
 

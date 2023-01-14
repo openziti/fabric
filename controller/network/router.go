@@ -183,9 +183,9 @@ func (self *RouterManager) Create(entity *Router) error {
 	return DispatchCreate[*Router](self, entity)
 }
 
-func (self *RouterManager) ApplyCreate(cmd *command.CreateEntityCommand[*Router]) error {
+func (self *RouterManager) ApplyCreate(index uint64, cmd *command.CreateEntityCommand[*Router]) error {
 	router := cmd.Entity
-	err := self.db.Update(func(tx *bbolt.Tx) error {
+	err := self.db.UpdateWithIndex(index, func(tx *bbolt.Tx) error {
 		return self.store.Create(boltz.NewMutateContext(tx), router.toBolt())
 	})
 	if err != nil {
@@ -247,8 +247,8 @@ func (self *RouterManager) Update(entity *Router, updatedFields fields.UpdatedFi
 	return DispatchUpdate[*Router](self, entity, updatedFields)
 }
 
-func (self *RouterManager) ApplyUpdate(cmd *command.UpdateEntityCommand[*Router]) error {
-	return self.updateGeneral(cmd.Entity, cmd.UpdatedFields)
+func (self *RouterManager) ApplyUpdate(index uint64, cmd *command.UpdateEntityCommand[*Router]) error {
+	return self.updateGeneral(index, cmd.Entity, cmd.UpdatedFields)
 }
 
 func (self *RouterManager) HandleRouterDelete(id string) {
