@@ -1,8 +1,11 @@
 package controller
 
 import (
-	"bufio"
 	"fmt"
+	"io"
+	"net"
+	"time"
+
 	"github.com/michaelquigley/pfxlog"
 	"github.com/openziti/channel/v2"
 	"github.com/openziti/channel/v2/protobufs"
@@ -11,9 +14,6 @@ import (
 	"github.com/openziti/fabric/pb/mgmt_pb"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"io"
-	"net"
-	"time"
 )
 
 const (
@@ -24,16 +24,12 @@ const (
 	AgentIsVoterHeader = 12
 )
 
-func (self *Controller) RegisterAgentOpHandler(opId byte, f func(c *bufio.ReadWriter) error) {
-	self.agentHandlers[opId] = f
-}
-
 func (self *Controller) RegisterAgentBindHandler(bindHandler channel.BindHandler) {
 	self.agentBindHandlers = append(self.agentBindHandlers, bindHandler)
 }
 
 func (self *Controller) bindAgentChannel(binding channel.Binding) error {
-	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_SnapshotDbRequestType), self.agentOpAsyncSnapshotDb)
+	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_SnapshotDbRequestType), self.agentOpSnapshotDb)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftListMembersRequestType), self.agentOpRaftList)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftJoinRequestType), self.agentOpRaftJoin)
 	binding.AddReceiveHandlerF(int32(mgmt_pb.ContentType_RaftRemoveRequestType), self.agentOpRaftRemove)
@@ -45,34 +41,6 @@ func (self *Controller) bindAgentChannel(binding channel.Binding) error {
 		}
 	}
 	return nil
-}
-
-func (self *Controller) HandleCustomAgentOp(conn net.Conn) error {
-	logrus.Debug("received agent operation request")
-	bconn := bufio.NewReadWriter(bufio.NewReader(conn), bufio.NewWriter(conn))
-
-	appId, err := bconn.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if appId != AgentAppId {
-		logrus.WithField("appId", appId).Debug("invalid app id on agent request")
-		return errors.New("invalid operation for controller")
-	}
-
-	op, err := bconn.ReadByte()
-	if err != nil {
-		return err
-	}
-
-	if opF, ok := self.agentHandlers[op]; ok {
-		if err := opF(bconn); err != nil {
-			return err
-		}
-		return bconn.Flush()
-	}
-	return errors.Errorf("invalid operation %v", op)
 }
 
 func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
@@ -97,13 +65,13 @@ func (self *Controller) HandleCustomAgentAsyncOp(conn net.Conn) error {
 	return err
 }
 
-func (self *Controller) agentOpAsyncSnapshotDb(m *channel.Message, ch channel.Channel) {
+func (self *Controller) agentOpSnapshotDb(m *channel.Message, ch channel.Channel) {
 	log := pfxlog.Logger()
 	if err := self.network.SnapshotDatabase(); err != nil {
 		log.WithError(err).Error("failed to snapshot db")
 		handler_common.SendOpResult(m, ch, "db.snapshot", err.Error(), false)
 	} else {
-		handler_common.SendOpResult(m, ch, "db.snapshot", "success", true)
+		handler_common.SendOpResult(m, ch, "db.snapshot", "", true)
 	}
 }
 
@@ -116,10 +84,12 @@ func (self *Controller) agentOpRaftList(m *channel.Message, ch channel.Channel) 
 	result := &mgmt_pb.RaftMemberListResponse{}
 	for _, member := range members {
 		result.Members = append(result.Members, &mgmt_pb.RaftMember{
-			Id:       member.Id,
-			Addr:     member.Addr,
-			IsVoter:  member.Voter,
-			IsLeader: member.Leader,
+			Id:          member.Id,
+			Addr:        member.Addr,
+			IsVoter:     member.Voter,
+			IsLeader:    member.Leader,
+			Version:     member.Version,
+			IsConnected: member.Connected,
 		})
 	}
 
@@ -172,7 +142,33 @@ func (self *Controller) agentOpRaftRemove(m *channel.Message, ch channel.Channel
 	//	return err
 	//}
 	// _, err := c.WriteString("success\n")
-	handler_common.SendOpResult(m, ch, "raft.remove", "no yet implemented", false)
+	var addr string
+
+	id, found := m.GetStringHeader(AgentIdHeader)
+	if !found {
+		addr, found = m.GetStringHeader(AgentAddrHeader)
+		if !found {
+			handler_common.SendOpResult(m, ch, "raft.leave", "address or id not supplied", false)
+			return
+		}
+		peerId, err := self.raftController.Mesh.GetPeerId(addr, 15*time.Second)
+		if err != nil {
+			errMsg := fmt.Sprintf("id not supplied and unable to retrieve from %s [%v]", addr, err.Error())
+			handler_common.SendOpResult(m, ch, "raft.leave", errMsg, false)
+			return
+		}
+		id = peerId
+	}
+
+	req := &raft.RemoveRequest{
+		Id: id,
+	}
+
+	if err := self.raftController.HandleRemove(req); err != nil {
+		handler_common.SendOpResult(m, ch, "raft.leave", err.Error(), false)
+		return
+	}
+	handler_common.SendOpResult(m, ch, "raft.leave", fmt.Sprintf("success, removed %v at %v from cluster", id, addr), true)
 }
 
 func (self *Controller) agentOpInitFromDb(m *channel.Message, ch channel.Channel) {

@@ -1,6 +1,6 @@
 module github.com/openziti/fabric
 
-go 1.19
+go 1.18
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.10
 	github.com/openziti/identity v1.0.29
 	github.com/openziti/metrics v1.2.3
-	github.com/openziti/storage v0.1.31
+	github.com/openziti/storage v0.1.32
 	github.com/openziti/transport/v2 v2.0.49
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -42,7 +42,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.6
-	golang.org/x/net v0.4.0
+	golang.org/x/net v0.5.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -89,8 +89,8 @@ require (
 	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
 	golang.org/x/crypto v0.4.0 // indirect
-	golang.org/x/sys v0.3.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
+	golang.org/x/sys v0.4.0 // indirect
+	golang.org/x/term v0.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
