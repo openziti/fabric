@@ -5,6 +5,7 @@ go 1.18
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
 	github.com/Jeffail/gabs v1.4.0
+	github.com/cenkalti/backoff/v4 v4.2.0
 	github.com/ef-ds/deque v1.0.4
 	github.com/emirpasic/gods v1.18.1
 	github.com/fullsailor/pkcs7 v0.0.0-20190404230743-d7302db945fa
@@ -44,6 +45,7 @@ require (
 	golang.org/x/net v0.5.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 
 )
 
