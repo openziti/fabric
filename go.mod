@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.10
 	github.com/openziti/identity v1.0.30
 	github.com/openziti/metrics v1.2.3
-	github.com/openziti/storage v0.1.32
+	github.com/openziti/storage v0.1.33
 	github.com/openziti/transport/v2 v2.0.50
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -41,7 +41,7 @@ require (
 	github.com/stretchr/testify v1.8.1
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.etcd.io/bbolt v1.3.6
+	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.5.0
 	google.golang.org/protobuf v1.28.1
 	gopkg.in/yaml.v2 v2.4.0
@@ -91,7 +91,6 @@ require (
 	golang.org/x/crypto v0.4.0 // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/term v0.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
 require (
