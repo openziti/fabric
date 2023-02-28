@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.13
 	github.com/openziti/identity v1.0.33
 	github.com/openziti/metrics v1.2.6
-	github.com/openziti/storage v0.1.36
+	github.com/openziti/storage v0.1.37
 	github.com/openziti/transport/v2 v2.0.56
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -51,7 +51,7 @@ require (
 
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
-	github.com/andybalholm/brotli v1.0.4 // indirect
+	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
 	github.com/armon/go-metrics v0.3.8 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
