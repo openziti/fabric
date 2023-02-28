@@ -27,7 +27,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.9
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v2 v2.0.34
+	github.com/openziti/channel/v2 v2.0.35
 	github.com/openziti/foundation/v2 v2.0.13
 	github.com/openziti/identity v1.0.33
 	github.com/openziti/metrics v1.2.6
