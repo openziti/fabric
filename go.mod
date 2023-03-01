@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.14
 	github.com/openziti/identity v1.0.34
 	github.com/openziti/metrics v1.2.8
-	github.com/openziti/storage v0.1.38
+	github.com/openziti/storage v0.1.39
 	github.com/openziti/transport/v2 v2.0.58
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -70,7 +70,7 @@ require (
 	github.com/hashicorp/go-msgpack v0.5.5 // indirect
 	github.com/hashicorp/golang-lru v0.5.4 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
-	github.com/kataras/go-events v0.0.3-0.20201007151548-c411dc70c0a6 // indirect
+	github.com/kataras/go-events v0.0.3 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
