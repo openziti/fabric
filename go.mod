@@ -27,12 +27,12 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v2 v2.0.44
+	github.com/openziti/channel/v2 v2.0.49
 	github.com/openziti/foundation/v2 v2.0.18
-	github.com/openziti/identity v1.0.37
+	github.com/openziti/identity v1.0.41
 	github.com/openziti/metrics v1.2.14
 	github.com/openziti/storage v0.1.44
-	github.com/openziti/transport/v2 v2.0.63
+	github.com/openziti/transport/v2 v2.0.67
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -88,7 +88,7 @@ require (
 	go.mongodb.org/mongo-driver v1.10.0 // indirect
 	go.opentelemetry.io/otel v1.11.1 // indirect
 	go.opentelemetry.io/otel/trace v1.11.1 // indirect
-	golang.org/x/crypto v0.6.0 // indirect
+	golang.org/x/crypto v0.7.0 // indirect
 	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/term v0.6.0 // indirect
 )
