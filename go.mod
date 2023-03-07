@@ -25,7 +25,7 @@ require (
 	github.com/hashicorp/raft v1.3.11
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
 	github.com/jessevdk/go-flags v1.5.0
-	github.com/michaelquigley/pfxlog v0.6.9
+	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v2 v2.0.44
 	github.com/openziti/foundation/v2 v2.0.17
