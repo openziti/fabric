@@ -29,7 +29,7 @@ require (
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v2 v2.0.44
 	github.com/openziti/foundation/v2 v2.0.18
-	github.com/openziti/identity v1.0.37
+	github.com/openziti/identity v1.0.41
 	github.com/openziti/metrics v1.2.14
 	github.com/openziti/storage v0.1.44
 	github.com/openziti/transport/v2 v2.0.63

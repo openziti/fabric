@@ -413,8 +413,8 @@ github.com/openziti/channel/v2 v2.0.44 h1:+UHSZl2bZjGQ15wzqLaIYauUepr8YIMW8V29bx
 github.com/openziti/channel/v2 v2.0.44/go.mod h1:wPGzSoQxBrHjomugsvFPHJDiwI868QmMCmWSqUxTxpw=
 github.com/openziti/foundation/v2 v2.0.18 h1:ehXqKT7aEGLpjaAn5T+CnvCqz1DQIFa0Z2f+DzyGvzw=
 github.com/openziti/foundation/v2 v2.0.18/go.mod h1:lLIVb/foLtVQ1Gv0VnfVmnSg/vMKU1HslYMc6rEymf4=
-github.com/openziti/identity v1.0.37 h1:StwVW0AIPOvC5x6GH2aVrDE5xF+GMMt+Ssr6L+YckEs=
-github.com/openziti/identity v1.0.37/go.mod h1:N7LlrZD/nG0aUxkPfpcOnuBXl4RYxmlU/Vf/1FPzDcg=
+github.com/openziti/identity v1.0.41 h1:I+9eRVfNYgmLoUcoJxQIRS8fsIT9wZuz7Lwnf52hajU=
+github.com/openziti/identity v1.0.41/go.mod h1:c8HhqjWNvaT249uCSl4whVZApJigEn+1H3ztj5cjYYM=
 github.com/openziti/metrics v1.2.14 h1:Xb/8il3ohGtjavpLmm5lUnUtpvXoWwdA/8gcqTXLZkc=
 github.com/openziti/metrics v1.2.14/go.mod h1:uBkw/tcKmq4RLnw8DfKrJyIU1Nn88TYCDaI8kvunk2o=
 github.com/openziti/storage v0.1.44 h1:rXN4E5DXJLpy9PtRZw/GWaQKWTCAN2+oiTetfadP5IE=
