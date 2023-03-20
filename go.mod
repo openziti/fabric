@@ -22,7 +22,7 @@ require (
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.4.0
-	github.com/hashicorp/raft v1.3.11
+	github.com/hashicorp/raft v1.4.0
 	github.com/hashicorp/raft-boltdb v0.0.0-20220329195025-15018e9b97e0
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.10
@@ -53,7 +53,7 @@ require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
 	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
-	github.com/armon/go-metrics v0.3.8 // indirect
+	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20210307081110-f21760c49a8d // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
