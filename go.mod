@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.19
 	github.com/openziti/identity v1.0.42
 	github.com/openziti/metrics v1.2.17
-	github.com/openziti/storage v0.1.46
+	github.com/openziti/storage v0.1.47
 	github.com/openziti/transport/v2 v2.0.68
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
