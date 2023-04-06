@@ -32,7 +32,7 @@ require (
 	github.com/openziti/identity v1.0.45
 	github.com/openziti/metrics v1.2.18
 	github.com/openziti/storage v0.1.49
-	github.com/openziti/transport/v2 v2.0.70
+	github.com/openziti/transport/v2 v2.0.71
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
