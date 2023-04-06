@@ -30,7 +30,7 @@ require (
 	github.com/openziti/channel/v2 v2.0.56
 	github.com/openziti/foundation/v2 v2.0.21
 	github.com/openziti/identity v1.0.45
-	github.com/openziti/metrics v1.2.18
+	github.com/openziti/metrics v1.2.19
 	github.com/openziti/storage v0.1.49
 	github.com/openziti/transport/v2 v2.0.70
 	github.com/openziti/xweb/v2 v2.0.2
