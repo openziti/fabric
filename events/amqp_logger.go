@@ -154,7 +154,7 @@ func NewAMQPEventLogger(formatterFactory LoggingHandlerFactory, config map[inter
 				ch:    ch,
 			})
 		}
-		return nil, errors.New("invalid 'format' for event log output file")
+		return nil, errors.New("invalid 'format' for event amqp log")
 
 	}
 	return nil, errors.New("'format' must be specified for event handler")
