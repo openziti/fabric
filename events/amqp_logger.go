@@ -33,7 +33,7 @@ func (AMQPEventLoggerFactory) NewEventHandler(config map[interface{}]interface{}
 type amqpWriteCloser struct {
 	queue amqp.Queue
 	ch    *amqp.Channel
-	conn  amqp.Connection
+	conn  *amqp.Connection
 }
 
 func (wc amqpWriteCloser) Write(data []byte) (int, error) {
@@ -50,14 +50,18 @@ func (wc amqpWriteCloser) Write(data []byte) (int, error) {
 func (wc amqpWriteCloser) Close() error {
 	var retErr error
 	//TODO: Update to errors.Join on go 1.20 update
-	if err := wc.ch.Close(); err != nil {
-		retErr = err
-	}
-	if err := wc.conn.Close(); err != nil {
-		if retErr != nil {
-			retErr = fmt.Errorf("%w; %w", retErr, err)
-		} else {
+	if wc.ch != nil {
+		if err := wc.ch.Close(); err != nil {
 			retErr = err
+		}
+	}
+	if wc.conn != nil {
+		if err := wc.conn.Close(); err != nil {
+			if retErr != nil {
+				retErr = fmt.Errorf("%v; %w", retErr, err)
+			} else {
+				retErr = err
+			}
 		}
 	}
 	return retErr
@@ -152,6 +156,7 @@ func NewAMQPEventLogger(formatterFactory LoggingHandlerFactory, config map[inter
 			return formatterFactory.NewLoggingHandler(format, bufferSize, amqpWriteCloser{
 				queue: queue,
 				ch:    ch,
+				conn:  conn,
 			})
 		}
 		return nil, errors.New("invalid 'format' for event amqp log")
