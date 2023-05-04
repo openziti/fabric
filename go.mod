@@ -28,7 +28,7 @@ require (
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/natefinch/lumberjack v2.0.0+incompatible
 	github.com/openziti/channel/v2 v2.0.63
-	github.com/openziti/foundation/v2 v2.0.21
+	github.com/openziti/foundation/v2 v2.0.22
 	github.com/openziti/identity v1.0.47
 	github.com/openziti/metrics v1.2.19
 	github.com/openziti/storage v0.2.0
@@ -89,8 +89,8 @@ require (
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	golang.org/x/crypto v0.8.0 // indirect
-	golang.org/x/sys v0.7.0 // indirect
-	golang.org/x/term v0.7.0 // indirect
+	golang.org/x/sys v0.8.0 // indirect
+	golang.org/x/term v0.8.0 // indirect
 )
 
 require (
