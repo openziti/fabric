@@ -30,7 +30,7 @@ require (
 	github.com/openziti/channel/v2 v2.0.64
 	github.com/openziti/foundation/v2 v2.0.22
 	github.com/openziti/identity v1.0.48
-	github.com/openziti/metrics v1.2.20
+	github.com/openziti/metrics v1.2.21
 	github.com/openziti/storage v0.2.2
 	github.com/openziti/transport/v2 v2.0.77
 	github.com/openziti/xweb/v2 v2.0.2
@@ -43,7 +43,7 @@ require (
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
-	golang.org/x/net v0.9.0
+	golang.org/x/net v0.10.0
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -88,7 +88,7 @@ require (
 	go.mongodb.org/mongo-driver v1.11.3 // indirect
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
-	golang.org/x/crypto v0.8.0 // indirect
+	golang.org/x/crypto v0.9.0 // indirect
 	golang.org/x/sys v0.8.0 // indirect
 	golang.org/x/term v0.8.0 // indirect
 )
