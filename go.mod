@@ -1,6 +1,6 @@
 module github.com/openziti/fabric
 
-go 1.20
+go 1.19
 
 require (
 	github.com/AppsFlyer/go-sundheit v0.5.0
@@ -37,7 +37,8 @@ require (
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rabbitmq/amqp091-go v1.8.1
-	github.com/sirupsen/logrus v1.9.0
+	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
+	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/pflag v1.0.5
 	github.com/stretchr/testify v1.8.2
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
@@ -81,7 +82,6 @@ require (
 	github.com/opentracing/opentracing-go v1.2.0 // indirect
 	github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
 	github.com/speps/go-hashids v2.0.0+incompatible // indirect
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
