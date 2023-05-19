@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.22
 	github.com/openziti/identity v1.0.49
 	github.com/openziti/metrics v1.2.21
-	github.com/openziti/storage v0.2.2
+	github.com/openziti/storage v0.2.3
 	github.com/openziti/transport/v2 v2.0.78
 	github.com/openziti/xweb/v2 v2.0.2
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -40,7 +40,7 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475
 	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/pflag v1.0.5
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
