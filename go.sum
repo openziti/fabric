@@ -409,8 +409,8 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.13.0 h1:7lLHu94wT9Ij0o6EWWclhu0aOh32VxhkwEJvzuWPeak=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/openziti/channel/v2 v2.0.76 h1:/fopm40/Pu1BKXpSggumZ6FexqDEaS0de+UsNCnegbU=
-github.com/openziti/channel/v2 v2.0.76/go.mod h1:AG43uiANCWhVwM4BMYPJES9J4KCa3vHg9QPJjHDRqPI=
+github.com/openziti/channel/v2 v2.0.77 h1:ScS+XGCPt4vTN9aw9/eJJEYcC1uQk/GAoVO58rsKO1s=
+github.com/openziti/channel/v2 v2.0.77/go.mod h1:Kllg9zSTNdUF8+cwyL0S/dLJUCv7t/uFa9qwiQKkT/8=
 github.com/openziti/foundation/v2 v2.0.24 h1:cNJCbh4o9E+7mtSUDo7ZBuMoPjJAilDWgr7X8ntRz/Q=
 github.com/openziti/foundation/v2 v2.0.24/go.mod h1:H0w/ldKyE0ynwpIwt68k2rhMwt874IVxPQcimMuHJ3s=
 github.com/openziti/identity v1.0.53 h1:w28wBcuiT8RlLjfcVgcqz0povQgfibj7zwS6OeLGSpI=
@@ -419,8 +419,8 @@ github.com/openziti/metrics v1.2.25 h1:acD/J/DcWgfbhmKS/s3HDvpt/1WS3QBZPeeGBZHbj
 github.com/openziti/metrics v1.2.25/go.mod h1:s2r1FS+wUdJ3LXp1qJK6777iQ8gPWXE2HFfDsiJo1/Y=
 github.com/openziti/storage v0.2.6 h1:/pbIRzDwrczMWRVkN75PfwAXFbArplIqhpRsUrsUOBc=
 github.com/openziti/storage v0.2.6/go.mod h1:JnjCofrnPcajwn6VIB2CgI7pVVUFBL7evbezIsQ4AgA=
-github.com/openziti/transport/v2 v2.0.86 h1:IU53/XCpEUES7TabMrWrYPHsiDD5AzBxeSZk3nO1SI8=
-github.com/openziti/transport/v2 v2.0.86/go.mod h1:ausyIxIQ4u+XeezXLo/nqJYQxO1AEf0APDrW0G1Hp6c=
+github.com/openziti/transport/v2 v2.0.87 h1:tQlf6noAbwS2TK0XsW9EwpsDdI/p+Fb3GONzMUvNgus=
+github.com/openziti/transport/v2 v2.0.87/go.mod h1:ausyIxIQ4u+XeezXLo/nqJYQxO1AEf0APDrW0G1Hp6c=
 github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0cU=
 github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
