@@ -91,22 +91,24 @@ func newAMQPWriteCloser(config *amqpConfig) amqpWriteCloser {
 }
 
 func (wc *amqpWriteCloser) sendMessage(message []byte) {
-	select {
-	case <-wc.ctx.Done():
-		return
-	default:
-	}
-	err := wc.ch.PublishWithContext(context.Background(), "", wc.queue.Name, false, false, amqp.Publishing{
-		ContentType: "application/json",
-		Body:        message,
-	})
-	if errors.Is(err, amqp.ErrClosed) {
-		logrus.Info("Need to attempt reconnect")
-		wc.connect()
-		wc.sendMessage(message)
-		return
-	}
-	if err != nil {
+	for {
+		select {
+		case <-wc.ctx.Done():
+			return
+		default:
+		}
+		err := wc.ch.PublishWithContext(context.Background(), "", wc.queue.Name, false, false, amqp.Publishing{
+			ContentType: "application/json",
+			Body:        message,
+		})
+		if err == nil {
+			return
+		}
+		if errors.Is(err, amqp.ErrClosed) {
+			logrus.Info("Need to attempt reconnect")
+			wc.connect()
+			continue
+		}
 		logrus.WithField("body", string(message)).Error("error sending message to amqp")
 	}
 }
