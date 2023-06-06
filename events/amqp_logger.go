@@ -19,9 +19,12 @@ package events
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/cenkalti/backoff/v4"
 	"github.com/pkg/errors"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/sirupsen/logrus"
 )
 
 type AMQPEventLoggerFactory struct{}
@@ -31,40 +34,123 @@ func (AMQPEventLoggerFactory) NewEventHandler(config map[interface{}]interface{}
 }
 
 type amqpWriteCloser struct {
-	queue amqp.Queue
-	ch    *amqp.Channel
-	conn  *amqp.Connection
+	queue    amqp.Queue
+	ch       *amqp.Channel
+	conn     *amqp.Connection
+	ctx      context.Context
+	cancel   context.CancelFunc
+	messages chan []byte
+}
+
+func newAMQPWriteCloser(config *amqpConfig) amqpWriteCloser {
+	ctx, cancel := context.WithCancel(context.Background())
+	ret := amqpWriteCloser{
+		ctx:      ctx,
+		cancel:   cancel,
+		messages: make(chan []byte, config.bufferSize),
+	}
+	go func() {
+		ret.connect(config)
+		for {
+			select {
+			case m := <-ret.messages:
+				{
+					err := ret.ch.PublishWithContext(context.Background(), "", ret.queue.Name, false, false, amqp.Publishing{
+						ContentType: "application/json",
+						Body:        m,
+					})
+					if errors.Is(err, amqp.ErrClosed) {
+						logrus.Info("Need to attempt reconnect")
+						ret.connect(config)
+						ret.Write(m)
+						continue
+					}
+					if err != nil {
+						logrus.WithField("body", m).Errorf("error sending message to amqp")
+					}
+				}
+			case <-ret.ctx.Done():
+				{
+					var retErr error
+					//TODO: Update to errors.Join on go 1.20 update
+					if ret.ch != nil {
+						if err := ret.ch.Close(); err != nil {
+							retErr = err
+						}
+					}
+					if ret.conn != nil {
+						if err := ret.conn.Close(); err != nil {
+							if retErr != nil {
+								retErr = fmt.Errorf("%v; %w", retErr, err)
+							} else {
+								retErr = err
+							}
+						}
+					}
+					if retErr != nil {
+						logrus.Errorf("error closing amqp connections: %v", retErr)
+						return
+					}
+					logrus.Info("closed connection to amqp server")
+				}
+			}
+		}
+	}()
+
+	return ret
+}
+
+func (wc *amqpWriteCloser) connect(config *amqpConfig) {
+	expBackoff := backoff.NewExponentialBackOff()
+	expBackoff.InitialInterval = 1 * time.Second
+	expBackoff.MaxInterval = 5 * time.Minute
+	expBackoff.MaxElapsedTime = 0
+
+	operation := func() error {
+		select {
+		case <-wc.ctx.Done():
+			return backoff.Permanent(nil)
+		default:
+		}
+		conn, err := amqp.Dial(config.url)
+		if err != nil {
+			logrus.Errorf("unable to dial amqp server at %s: %v", config.url, err)
+			return err
+		}
+		wc.conn = conn
+		ch, err := conn.Channel()
+		if err != nil {
+			logrus.Errorf("error getting amqp channel: %v", err)
+			return err
+		}
+		wc.ch = ch
+		queue, err := ch.QueueDeclare(config.queueName, config.durable, config.autoDelete, config.exclusive, config.noWait, nil)
+		if err != nil {
+			logrus.Errorf("error declaring queue: %v", err)
+			return err
+		}
+		wc.queue = queue
+		return nil
+	}
+	if err := backoff.Retry(operation, expBackoff); err != nil {
+		logrus.Errorf("amqp connection failed after exponential backoff: %v", err)
+		return
+	}
+	logrus.Infof("connected to amqp server at: %s", config.url)
 }
 
 func (wc amqpWriteCloser) Write(data []byte) (int, error) {
-	err := wc.ch.PublishWithContext(context.Background(), "", wc.queue.Name, false, false, amqp.Publishing{
-		ContentType: "application/json",
-		Body:        data,
-	})
-	if err != nil {
-		return 0, err
+	select {
+	case wc.messages <- data:
+		return len(data), nil
+	default:
+		return 0, fmt.Errorf("amqp queue full. Message: %s", string(data))
 	}
-	return len(data), err
 }
 
 func (wc amqpWriteCloser) Close() error {
-	var retErr error
-	//TODO: Update to errors.Join on go 1.20 update
-	if wc.ch != nil {
-		if err := wc.ch.Close(); err != nil {
-			retErr = err
-		}
-	}
-	if wc.conn != nil {
-		if err := wc.conn.Close(); err != nil {
-			if retErr != nil {
-				retErr = fmt.Errorf("%v; %w", retErr, err)
-			} else {
-				retErr = err
-			}
-		}
-	}
-	return retErr
+	wc.cancel()
+	return nil
 }
 
 type amqpConfig struct {
@@ -74,11 +160,13 @@ type amqpConfig struct {
 	autoDelete bool
 	exclusive  bool
 	noWait     bool
+	bufferSize int
 }
 
 func parseAMQPConfig(config map[interface{}]interface{}) (*amqpConfig, error) {
 	ret := &amqpConfig{
-		durable: true,
+		durable:    true,
+		bufferSize: 50,
 	}
 	if value, found := config["url"]; !found {
 		return nil, fmt.Errorf("missing amqp url")
@@ -120,6 +208,12 @@ func parseAMQPConfig(config map[interface{}]interface{}) (*amqpConfig, error) {
 		}
 	}
 
+	if value, found := config["bufferSize"]; found {
+		if u, ok := value.(int); ok {
+			ret.bufferSize = u
+		}
+	}
+
 	return ret, nil
 }
 
@@ -136,28 +230,9 @@ func NewAMQPEventLogger(formatterFactory LoggingHandlerFactory, config map[inter
 		return nil, errors.Wrap(err, "unable to parse amqp config")
 	}
 
-	conn, err := amqp.Dial(conf.url)
-	if err != nil {
-		return nil, errors.Wrapf(err, "unable to dial amqp server at %s", conf.url)
-	}
-
-	ch, err := conn.Channel()
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting amqp channel")
-	}
-
-	queue, err := ch.QueueDeclare(conf.queueName, conf.durable, conf.autoDelete, conf.exclusive, conf.noWait, nil)
-	if err != nil {
-		return nil, errors.Wrap(err, "error declaring queue")
-	}
-
 	if value, found := config["format"]; found {
 		if format, ok := value.(string); ok {
-			return formatterFactory.NewLoggingHandler(format, bufferSize, amqpWriteCloser{
-				queue: queue,
-				ch:    ch,
-				conn:  conn,
-			})
+			return formatterFactory.NewLoggingHandler(format, bufferSize, newAMQPWriteCloser(conf))
 		}
 		return nil, errors.New("invalid 'format' for event amqp log")
 
