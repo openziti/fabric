@@ -37,6 +37,7 @@ type amqpWriteCloser struct {
 	queue    amqp.Queue
 	ch       *amqp.Channel
 	conn     *amqp.Connection
+	config   *amqpConfig
 	ctx      context.Context
 	cancel   context.CancelFunc
 	messages chan []byte
@@ -45,29 +46,18 @@ type amqpWriteCloser struct {
 func newAMQPWriteCloser(config *amqpConfig) amqpWriteCloser {
 	ctx, cancel := context.WithCancel(context.Background())
 	ret := amqpWriteCloser{
+		config:   config,
 		ctx:      ctx,
 		cancel:   cancel,
 		messages: make(chan []byte, config.bufferSize),
 	}
 	go func() {
-		ret.connect(config)
+		ret.connect()
 		for {
 			select {
 			case m := <-ret.messages:
 				{
-					err := ret.ch.PublishWithContext(context.Background(), "", ret.queue.Name, false, false, amqp.Publishing{
-						ContentType: "application/json",
-						Body:        m,
-					})
-					if errors.Is(err, amqp.ErrClosed) {
-						logrus.Info("Need to attempt reconnect")
-						ret.connect(config)
-						ret.Write(m)
-						continue
-					}
-					if err != nil {
-						logrus.WithField("body", m).Errorf("error sending message to amqp")
-					}
+					ret.sendMessage(m)
 				}
 			case <-ret.ctx.Done():
 				{
@@ -100,7 +90,28 @@ func newAMQPWriteCloser(config *amqpConfig) amqpWriteCloser {
 	return ret
 }
 
-func (wc *amqpWriteCloser) connect(config *amqpConfig) {
+func (wc *amqpWriteCloser) sendMessage(message []byte) {
+	select {
+	case <-wc.ctx.Done():
+		return
+	default:
+	}
+	err := wc.ch.PublishWithContext(context.Background(), "", wc.queue.Name, false, false, amqp.Publishing{
+		ContentType: "application/json",
+		Body:        message,
+	})
+	if errors.Is(err, amqp.ErrClosed) {
+		logrus.Info("Need to attempt reconnect")
+		wc.connect()
+		wc.sendMessage(message)
+		return
+	}
+	if err != nil {
+		logrus.WithField("body", string(message)).Error("error sending message to amqp")
+	}
+}
+
+func (wc *amqpWriteCloser) connect() {
 	expBackoff := backoff.NewExponentialBackOff()
 	expBackoff.InitialInterval = 1 * time.Second
 	expBackoff.MaxInterval = 5 * time.Minute
@@ -112,9 +123,9 @@ func (wc *amqpWriteCloser) connect(config *amqpConfig) {
 			return backoff.Permanent(nil)
 		default:
 		}
-		conn, err := amqp.Dial(config.url)
+		conn, err := amqp.Dial(wc.config.url)
 		if err != nil {
-			logrus.Errorf("unable to dial amqp server at %s: %v", config.url, err)
+			logrus.Errorf("unable to dial amqp server at %s: %v", wc.config.url, err)
 			return err
 		}
 		wc.conn = conn
@@ -124,7 +135,7 @@ func (wc *amqpWriteCloser) connect(config *amqpConfig) {
 			return err
 		}
 		wc.ch = ch
-		queue, err := ch.QueueDeclare(config.queueName, config.durable, config.autoDelete, config.exclusive, config.noWait, nil)
+		queue, err := ch.QueueDeclare(wc.config.queueName, wc.config.durable, wc.config.autoDelete, wc.config.exclusive, wc.config.noWait, nil)
 		if err != nil {
 			logrus.Errorf("error declaring queue: %v", err)
 			return err
@@ -136,7 +147,7 @@ func (wc *amqpWriteCloser) connect(config *amqpConfig) {
 		logrus.Errorf("amqp connection failed after exponential backoff: %v", err)
 		return
 	}
-	logrus.Infof("connected to amqp server at: %s", config.url)
+	logrus.Infof("connected to amqp server at: %s", wc.config.url)
 }
 
 func (wc amqpWriteCloser) Write(data []byte) (int, error) {
