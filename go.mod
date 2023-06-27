@@ -27,7 +27,7 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v2 v2.0.81
+	github.com/openziti/channel/v2 v2.0.82
 	github.com/openziti/foundation/v2 v2.0.26
 	github.com/openziti/identity v1.0.57
 	github.com/openziti/metrics v1.2.27
@@ -45,7 +45,7 @@ require (
 	github.com/xeipuuv/gojsonschema v1.2.0
 	go.etcd.io/bbolt v1.3.7
 	golang.org/x/net v0.11.0
-	google.golang.org/protobuf v1.30.0
+	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v2 v2.4.0
 	gopkg.in/yaml.v3 v3.0.1
 
