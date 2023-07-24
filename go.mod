@@ -33,7 +33,7 @@ require (
 	github.com/openziti/metrics v1.2.30
 	github.com/openziti/storage v0.2.11
 	github.com/openziti/transport/v2 v2.0.96
-	github.com/openziti/xweb/v2 v2.0.2
+	github.com/openziti/xweb/v2 v2.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
 	github.com/rabbitmq/amqp091-go v1.8.1
