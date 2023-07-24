@@ -421,8 +421,8 @@ github.com/openziti/storage v0.2.11 h1:Ws23any7NtbEKQroFJt6DJmeEFGMPjZqjAK2/Re9L
 github.com/openziti/storage v0.2.11/go.mod h1:M46XIxPYwTDTgaamI6o9cyEJkYvUYfhJjwvZtQu4tUQ=
 github.com/openziti/transport/v2 v2.0.96 h1:onLHb0oNS+xzmqnAVYHDGb00qtLODzyPVubq+2h5SoY=
 github.com/openziti/transport/v2 v2.0.96/go.mod h1:L0MZ3LZsJ9Jheg05Bp6QYJBfuq4fDtjoL9stcTSmtko=
-github.com/openziti/xweb/v2 v2.0.2 h1:XYlVFriTq/U1wcUrc+XPnWJGhXh9NJPhtQ7+r3aC0cU=
-github.com/openziti/xweb/v2 v2.0.2/go.mod h1:KQOOlnJk08EZT3TWkvDj/pbIUEVbgG0IrrNzl8gsi40=
+github.com/openziti/xweb/v2 v2.1.0 h1:Xhh3C2pZkq/Prr65V+SfFSibLDYteoc4f62KQCcTZF4=
+github.com/openziti/xweb/v2 v2.1.0/go.mod h1:wPkjm5y45RYCV8AafjcAXP/ZM4DBOofXhRwSGgjF8w8=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
 github.com/orcaman/concurrent-map/v2 v2.0.1/go.mod h1:9Eq3TG2oBe5FirmYWQfYO5iH1q0Jv47PLaNK++uCdOM=
 github.com/parallaxsecond/parsec-client-go v0.0.0-20221025095442-f0a77d263cf9 h1:mOvehYivJ4Aqu2CPe3D3lv8jhqOI9/1o0THxJHBE0qw=
