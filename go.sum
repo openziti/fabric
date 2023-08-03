@@ -409,8 +409,8 @@ github.com/onsi/gomega v1.10.5/go.mod h1:gza4q3jKQJijlu05nKWRCW/GavJumGt8aNRxWg7
 github.com/onsi/gomega v1.13.0 h1:7lLHu94wT9Ij0o6EWWclhu0aOh32VxhkwEJvzuWPeak=
 github.com/opentracing/opentracing-go v1.2.0 h1:uEJPy/1a5RIPAJ0Ov+OIO8OxWu77jEv+1B0VhjKrZUs=
 github.com/opentracing/opentracing-go v1.2.0/go.mod h1:GxEUsuufX4nBwe+T+Wl9TAgYrxe9dPLANfrWvHYVTgc=
-github.com/openziti/channel/v2 v2.0.87 h1:+54diAb1NjwnQ3qADptq76gq3IFF+hW+uLD5st5ULAo=
-github.com/openziti/channel/v2 v2.0.87/go.mod h1:GggAVKAlOf2ezo8VvgQ2yRK5Gokp6wlvS4kBhmoKn1g=
+github.com/openziti/channel/v2 v2.0.88 h1:s5yQZUlDtySFoLC4PwDhSsHdzBQIb80jlPPWjmAaRJw=
+github.com/openziti/channel/v2 v2.0.88/go.mod h1:GggAVKAlOf2ezo8VvgQ2yRK5Gokp6wlvS4kBhmoKn1g=
 github.com/openziti/foundation/v2 v2.0.28 h1:AAdHhtUj1tCIXollSpbDlKwPKRasNAgADpTZAF1WCOQ=
 github.com/openziti/foundation/v2 v2.0.28/go.mod h1:psKxxQw/zRo5+oKN7AR+MKYaeR3mbBPhb65qq8rqB0U=
 github.com/openziti/identity v1.0.59 h1:YShXqxa9nTbCnPtIAji10hx7BG1nQukg4ddUJExNXa8=
