@@ -18,6 +18,7 @@ package network
 
 import (
 	"github.com/openziti/fabric/controller/idgen"
+	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/foundation/v2/info"
 	"github.com/orcaman/concurrent-map/v2"
 	"math"
@@ -145,15 +146,16 @@ func (linkController *linkController) missingLinks(routers []*Router, pendingTim
 
 	missingLinks := make([]*Link, 0)
 	for _, srcR := range routers {
+		if srcR.HasCapability(ctrl_pb.RouterCapability_LinkManagement) {
+			continue
+		}
+
 		for _, dstR := range routers {
 			if srcR != dstR && len(dstR.Listeners) > 0 {
 				for _, listener := range dstR.Listeners {
-					if !linkController.hasLink(srcR, dstR, listener.Protocol(), pendingLimit) {
-						id, err := idgen.NewUUIDString()
-						if err != nil {
-							return nil, err
-						}
-						link := newLink(id, listener.Protocol(), listener.AdvertiseAddress(), linkController.initialLatency)
+					if !linkController.hasLink(srcR, dstR, listener.GetProtocol(), pendingLimit) {
+						id := idgen.NewUUIDString()
+						link := newLink(id, listener.GetProtocol(), listener.GetAddress(), linkController.initialLatency)
 						link.Src = srcR
 						link.Dst = dstR
 						missingLinks = append(missingLinks, link)

@@ -37,6 +37,12 @@ const (
 	DefaultNetworkOptionsSmartRerouteCap          = 4
 	DefaultNetworkOptionsInitialLinkLatency       = 65 * time.Second
 	DefaultNetworkOptionsMetricsReportInterval    = time.Minute
+	DefaultNetworkOptionsRouterCommQueueSize      = 100
+	DefaultNetworkOptionsRouterCommMaxWorkers     = 100
+	DefaultNetworkOptionsEnableLegacyLinkMgmt     = true
+
+	NetworkOptionsRouterCommMaxQueueSize = 1_000_000
+	NetworkOptionsRouterCommMaxWorkers   = 10_000
 )
 
 type Options struct {
@@ -55,6 +61,11 @@ type Options struct {
 	InitialLinkLatency      time.Duration
 	MetricsReportInterval   time.Duration
 	IntervalAgeThreshold    time.Duration
+	RouterComm              struct {
+		QueueSize  uint32
+		MaxWorkers uint32
+	}
+	EnableLegacyLinkMgmt bool
 }
 
 func DefaultOptions() *Options {
@@ -77,6 +88,14 @@ func DefaultOptions() *Options {
 		RouterConnectChurnLimit: DefaultNetworkOptionsRouterConnectChurnLimit,
 		InitialLinkLatency:      DefaultNetworkOptionsInitialLinkLatency,
 		MetricsReportInterval:   DefaultNetworkOptionsMetricsReportInterval,
+		RouterComm: struct {
+			QueueSize  uint32
+			MaxWorkers uint32
+		}{
+			QueueSize:  DefaultNetworkOptionsRouterCommQueueSize,
+			MaxWorkers: DefaultNetworkOptionsRouterCommMaxWorkers,
+		},
+		EnableLegacyLinkMgmt: DefaultNetworkOptionsEnableLegacyLinkMgmt,
 	}
 	return options
 }
@@ -149,6 +168,41 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 		}
 	}
 
+	if value, found := src["routerMessaging"]; found {
+		if submap, ok := value.(map[interface{}]interface{}); ok {
+			if value, found := submap["queueSize"]; found {
+				if queueSize, ok := value.(int); ok {
+					if queueSize < 0 {
+						return nil, errors.New("invalid value for 'routerMessaging.queueSize', must be greater than or equal to 0")
+					}
+					if queueSize > NetworkOptionsRouterCommMaxQueueSize {
+						return nil, errors.Errorf("invalid value for 'routerMessaging.queueSize', must be less than or equal to %v", NetworkOptionsRouterCommMaxQueueSize)
+					}
+					options.RouterComm.QueueSize = uint32(queueSize)
+				} else {
+					return nil, errors.New("invalid value for 'routerMessaging.queueSize'")
+				}
+			}
+
+			if value, found := submap["maxWorkers"]; found {
+				if maxWorkers, ok := value.(int); ok {
+					if maxWorkers < 1 {
+						return nil, errors.New("invalid value for 'routerMessaging.maxWorkers', must be greater than 0")
+					}
+					if maxWorkers > NetworkOptionsRouterCommMaxWorkers {
+						return nil, errors.Errorf("invalid value for 'routerMessaging.maxWorkers', must be less than or equal to %v", NetworkOptionsRouterCommMaxWorkers)
+					}
+
+					options.RouterComm.MaxWorkers = uint32(maxWorkers)
+				} else {
+					return nil, errors.New("invalid value for 'routerMessaging.maxWorkers'")
+				}
+			}
+		} else {
+			logrus.Errorf("invalid 'routerMessaging' stanza")
+		}
+	}
+
 	if value, found := src["pendingLinkTimeoutSeconds"]; found {
 		if pendingLinkTimeoutSeconds, ok := value.(int); ok {
 			options.PendingLinkTimeout = time.Duration(pendingLinkTimeoutSeconds) * time.Second
@@ -213,6 +267,14 @@ func LoadOptions(src map[interface{}]interface{}) (*Options, error) {
 			options.IntervalAgeThreshold = val
 		} else {
 			return nil, errors.New("invalid value for 'intervalAgeThreshold'")
+		}
+	}
+
+	if value, found := src["enableLegacyLinkMgmt"]; found {
+		if bval, ok := value.(bool); ok {
+			options.EnableLegacyLinkMgmt = bval
+		} else {
+			return nil, errors.New("invalid value for 'enableLegacyLinkMgmt'")
 		}
 	}
 

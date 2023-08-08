@@ -28,6 +28,7 @@ import (
 
 type splitImpl struct {
 	id              string
+	key             string
 	payloadCh       channel.Channel
 	ackCh           channel.Channel
 	routerId        string
@@ -36,10 +37,15 @@ type splitImpl struct {
 	dialAddress     string
 	closeNotified   atomic.Bool
 	droppedMsgMeter metrics.Meter
+	dialed          bool
 }
 
 func (self *splitImpl) Id() string {
 	return self.id
+}
+
+func (self *splitImpl) Key() string {
+	return self.key
 }
 
 func (self *splitImpl) Init(metricsRegistry metrics.Registry) error {
@@ -125,6 +131,10 @@ func (self *splitImpl) IsClosed() bool {
 	return self.payloadCh.IsClosed() || self.ackCh.IsClosed()
 }
 
+func (self *splitImpl) IsDialed() bool {
+	return self.dialed
+}
+
 func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 	detail.LinkDetails[self.id] = self.InspectLink()
 }
@@ -132,11 +142,13 @@ func (self *splitImpl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 func (self *splitImpl) InspectLink() *inspect.LinkInspectDetail {
 	return &inspect.LinkInspectDetail{
 		Id:          self.Id(),
+		Key:         self.key,
 		Split:       true,
 		Protocol:    self.LinkProtocol(),
 		DialAddress: self.DialAddress(),
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
+		Dialed:      self.dialed,
 	}
 }
 

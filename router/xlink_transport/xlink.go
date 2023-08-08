@@ -27,6 +27,7 @@ import (
 
 type impl struct {
 	id              string
+	key             string
 	ch              channel.Channel
 	routerId        string
 	routerVersion   string
@@ -34,10 +35,15 @@ type impl struct {
 	dialAddress     string
 	closeNotified   atomic.Bool
 	droppedMsgMeter metrics.Meter
+	dialed          bool
 }
 
 func (self *impl) Id() string {
 	return self.id
+}
+
+func (self *impl) Key() string {
+	return self.key
 }
 
 func (self *impl) Init(metricsRegistry metrics.Registry) error {
@@ -97,6 +103,10 @@ func (self *impl) DialAddress() string {
 	return self.dialAddress
 }
 
+func (self *impl) IsDialed() bool {
+	return self.dialed
+}
+
 func (self *impl) HandleCloseNotification(f func()) {
 	if self.closeNotified.CompareAndSwap(false, true) {
 		f()
@@ -114,11 +124,13 @@ func (self *impl) InspectCircuit(detail *inspect.CircuitInspectDetail) {
 func (self *impl) InspectLink() *inspect.LinkInspectDetail {
 	return &inspect.LinkInspectDetail{
 		Id:          self.Id(),
+		Key:         self.key,
 		Split:       false,
 		Protocol:    self.LinkProtocol(),
 		DialAddress: self.DialAddress(),
 		Dest:        self.DestinationId(),
 		DestVersion: self.DestVersion(),
+		Dialed:      self.dialed,
 	}
 }
 

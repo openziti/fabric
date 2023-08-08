@@ -22,29 +22,17 @@ import (
 	"github.com/openziti/channel/v2/protobufs"
 	"github.com/openziti/fabric/pb/ctrl_pb"
 	"github.com/openziti/fabric/router/env"
-	"github.com/openziti/fabric/router/xlink"
-	"github.com/openziti/foundation/v2/goroutines"
-	"github.com/openziti/identity"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
 )
 
 type dialHandler struct {
-	id       *identity.TokenId
-	ch       channel.Channel
-	dialers  []xlink.Dialer
-	registry xlink.Registry
-	pool     goroutines.Pool
+	env env.RouterEnv
 }
 
-func newDialHandler(ch channel.Channel, env env.RouterEnv, pool goroutines.Pool) *dialHandler {
+func newDialHandler(env env.RouterEnv) *dialHandler {
 	handler := &dialHandler{
-		id:       env.GetRouterId(),
-		ch:       ch,
-		dialers:  env.GetXlinkDialer(),
-		pool:     pool,
-		registry: env.GetXlinkRegistry(),
+		env: env,
 	}
 
 	return handler
@@ -61,79 +49,23 @@ func (self *dialHandler) HandleReceive(msg *channel.Message, ch channel.Channel)
 		return
 	}
 
-	err := self.pool.QueueOrError(func() {
-		self.handle(dial, ch)
-	})
+	log := self.getLogger(dial)
 
-	if err != nil {
-		self.getLogger(dial).WithError(err).Error("error queuing link dial to pool")
-	}
-}
-
-func (self *dialHandler) handle(dialMsg *ctrl_pb.Dial, _ channel.Channel) {
-	log := self.getLogger(dialMsg)
-	dial := &dial{
-		Dial:   dialMsg,
-		ctrlId: self.ch.Id(),
-	}
-
-	if len(self.dialers) != 1 {
+	if len(self.env.GetXlinkDialers()) == 0 {
 		log.Errorf("invalid Xlink dialers configuration")
-		if err := self.sendLinkFault(dial.LinkId); err != nil {
-			log.WithError(err).Error("error sending link fault")
-		}
+		go self.sendLinkFault(dial, ch)
 		return
 	}
 
-	link, lockAcquired := self.registry.GetDialLock(dial)
-	if link != nil && link.Id() != dial.LinkId {
-		log.WithField("existingLinkId", link.Id()).Info("existing link found")
-		if err := self.sendLinkFault(dial.LinkId); err != nil {
-			log.WithError(err).Error("error sending link fault")
-		}
-		return
-	}
-
-	if lockAcquired {
-		log.Info("dialing link")
-		if link, err := self.dialers[0].Dial(dial); err == nil {
-			if existingLink, success := self.registry.DialSucceeded(link); success {
-				log.Info("link registered")
-				if err := self.sendLinkMessage(link); err != nil {
-					log.WithError(err).Error("error sending link message ")
-				}
-			} else if existingLink != nil {
-				log.WithField("existingLinkId", existingLink.Id()).Info("existing link found, new link closed")
-			}
-		} else {
-			log.WithError(err).Error("link dialing failed")
-			self.registry.DialFailed(dial)
-			if err := self.sendLinkFault(dial.LinkId); err != nil {
-				log.WithError(err).Error("error sending fault")
-			}
-		}
-	} else {
-		log.Info("unable to dial, dial already in progress")
-	}
+	self.env.GetXlinkRegistry().DialRequested(ch, dial)
+	go self.sendLinkFault(dial, ch)
 }
 
-func (self *dialHandler) sendLinkMessage(link xlink.Xlink) error {
-	linkMsg := &ctrl_pb.LinkConnected{
-		Id:    link.Id(),
-		Conns: link.GetAddresses(),
+func (self *dialHandler) sendLinkFault(dial *ctrl_pb.Dial, ch channel.Channel) {
+	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: dial.LinkId}
+	if err := protobufs.MarshalTyped(fault).Send(ch); err != nil {
+		self.getLogger(dial).WithError(err).Error("error sending link fault")
 	}
-	if err := protobufs.MarshalTyped(linkMsg).Send(self.ch); err != nil {
-		return errors.Wrap(err, "error sending link message")
-	}
-	return nil
-}
-
-func (self *dialHandler) sendLinkFault(linkId string) error {
-	fault := &ctrl_pb.Fault{Subject: ctrl_pb.FaultSubject_LinkFault, Id: linkId}
-	if err := protobufs.MarshalTyped(fault).Send(self.ch); err != nil {
-		return errors.Wrap(err, "error sending fault")
-	}
-	return nil
 }
 
 func (self *dialHandler) getLogger(dial *ctrl_pb.Dial) *logrus.Entry {
@@ -145,13 +77,4 @@ func (self *dialHandler) getLogger(dial *ctrl_pb.Dial) *logrus.Entry {
 			"linkProtocol":  dial.LinkProtocol,
 			"routerVersion": dial.RouterVersion,
 		})
-}
-
-type dial struct {
-	*ctrl_pb.Dial
-	ctrlId string
-}
-
-func (self *dial) GetCtrlId() string {
-	return self.ctrlId
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"github.com/cenkalti/backoff/v4"
 	"github.com/michaelquigley/pfxlog"
+	"github.com/openziti/foundation/v2/versions"
 	"github.com/openziti/transport/v2"
 	cmap "github.com/orcaman/concurrent-map/v2"
 	"github.com/pkg/errors"
@@ -36,6 +37,7 @@ type NetworkControllers interface {
 	GetAll() map[string]NetworkController
 	GetNetworkController(ctrlId string) NetworkController
 	AnyCtrlChannel() channel.Channel
+	AllResponsiveCtrlChannels() []channel.Channel
 	AnyValidCtrlChannel() channel.Channel
 	GetCtrlChannel(ctrlId string) channel.Channel
 	DefaultRequestTimeout() time.Duration
@@ -144,6 +146,17 @@ func (self *networkControllers) Add(address string, ch channel.Channel) error {
 		address:          address,
 		heartbeatOptions: self.heartbeatOptions,
 	}
+
+	if versionValue, found := ch.Underlay().Headers()[channel.HelloVersionHeader]; found {
+		if versionInfo, err := versions.StdVersionEncDec.Decode(versionValue); err == nil {
+			ctrl.versionInfo = versionInfo
+		} else {
+			return errors.Wrap(err, "could not parse version info from controller hello, closing connection")
+		}
+	} else {
+		return errors.New("no version header provided")
+	}
+
 	if existing := self.ctrls.Get(ch.Id()); existing != nil {
 		if !existing.Channel().IsClosed() {
 			return fmt.Errorf("duplicate channel with id %v", ctrl.Channel().Id())
@@ -168,6 +181,16 @@ func (self *networkControllers) AnyCtrlChannel() channel.Channel {
 		return nil
 	}
 	return current.Channel()
+}
+
+func (self *networkControllers) AllResponsiveCtrlChannels() []channel.Channel {
+	var channels []channel.Channel
+	for _, ctrl := range self.ctrls.AsMap() {
+		if !ctrl.IsUnresponsive() {
+			channels = append(channels, ctrl.Channel())
+		}
+	}
+	return channels
 }
 
 func (self *networkControllers) AnyValidCtrlChannel() channel.Channel {
