@@ -266,8 +266,8 @@ github.com/google/pprof v0.0.0-20210226084205-cbba55b83ad5/go.mod h1:kpwsk12EmLe
 github.com/google/renameio v0.1.0/go.mod h1:KWCgfxg9yswjAJkECMjeO8J8rahYeXnNhOm40UhjYkI=
 github.com/google/uuid v1.1.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
-github.com/google/uuid v1.3.0 h1:t6JiXgmwXMjEs8VusXIJk2BXHsn+wx8BZdTaoZ5fu7I=
-github.com/google/uuid v1.3.0/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/google/uuid v1.3.1 h1:KjJaJ9iWZ3jOFZIf1Lqf4laDRCasjl0BCmnEGxkdLb4=
+github.com/google/uuid v1.3.1/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
 github.com/googleapis/gax-go/v2 v2.0.4/go.mod h1:0Wqv26UfaUD9n4G6kQubkQ+KchISgw+vpHVxEJEs9eg=
 github.com/googleapis/gax-go/v2 v2.0.5/go.mod h1:DWXyrwAJ9X0FpwwEdw+IPEYBICEFu5mhpdKc/us6bOk=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
@@ -419,8 +419,8 @@ github.com/openziti/metrics v1.2.31 h1:nEO9FAqCnpfuvxGYfy9/W46p2SaEcZ6vlRyz4fcip
 github.com/openziti/metrics v1.2.31/go.mod h1:SU2w3WW36O+ocVy+ka2UHA0cweTg3T8CQiqz4ZT4Umc=
 github.com/openziti/storage v0.2.12 h1:ghQkt3SCLwRuiTeRLOUWgNL69XQNp9Gx8K3eVw0QTQY=
 github.com/openziti/storage v0.2.12/go.mod h1:RxWIe9FyQg9LZQFZ4FuUROf0lhnfUW2XeWfTbHAMGeY=
-github.com/openziti/transport/v2 v2.0.100-0.20230817155726-81f734f95088 h1:RKypM7rB/oaT8FU3XZgDoJ7KkqhaDp14e/jyQnZXPU8=
-github.com/openziti/transport/v2 v2.0.100-0.20230817155726-81f734f95088/go.mod h1:TJ40/WVvFGYlrKoJd4euK38Ay5wQ0rkiR1OxQ0IYLxI=
+github.com/openziti/transport/v2 v2.0.100 h1:RAJoquVuHATdLp4aA9zIxp5IbGbr4VROAymB7ZviuHM=
+github.com/openziti/transport/v2 v2.0.100/go.mod h1:TJ40/WVvFGYlrKoJd4euK38Ay5wQ0rkiR1OxQ0IYLxI=
 github.com/openziti/xweb/v2 v2.1.0 h1:Xhh3C2pZkq/Prr65V+SfFSibLDYteoc4f62KQCcTZF4=
 github.com/openziti/xweb/v2 v2.1.0/go.mod h1:wPkjm5y45RYCV8AafjcAXP/ZM4DBOofXhRwSGgjF8w8=
 github.com/orcaman/concurrent-map/v2 v2.0.1 h1:jOJ5Pg2w1oeB6PeDurIYf6k9PQ+aTITr/6lP/L/zp6c=
