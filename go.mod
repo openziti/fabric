@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.31
 	github.com/openziti/identity v1.0.62
 	github.com/openziti/metrics v1.2.34
-	github.com/openziti/storage v0.2.15
+	github.com/openziti/storage v0.2.16
 	github.com/openziti/transport/v2 v2.0.106
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
@@ -54,7 +54,7 @@ require (
 require (
 	github.com/BurntSushi/toml v0.4.1 // indirect
 	github.com/andybalholm/brotli v1.0.5 // indirect
-	github.com/antlr/antlr4/runtime/Go/antlr v0.0.0-20211106181442-e4c1a74c66bd // indirect
+	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/armon/go-metrics v0.4.1 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20230301143203-a9d515a09cc2 // indirect
 	github.com/boltdb/bolt v1.3.1 // indirect
@@ -89,6 +89,7 @@ require (
 	go.opentelemetry.io/otel v1.14.0 // indirect
 	go.opentelemetry.io/otel/trace v1.14.0 // indirect
 	golang.org/x/crypto v0.13.0 // indirect
+	golang.org/x/exp v0.0.0-20230515195305-f3d0a9c9a5cc // indirect
 	golang.org/x/sys v0.12.0 // indirect
 	golang.org/x/term v0.12.0 // indirect
 )
