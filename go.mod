@@ -43,7 +43,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/teris-io/shortid v0.0.0-20201117134242-e59966efd125
 	github.com/xeipuuv/gojsonschema v1.2.0
-	go.etcd.io/bbolt v1.3.7
+	go.etcd.io/bbolt v1.3.8
 	golang.org/x/net v0.15.0
 	google.golang.org/protobuf v1.31.0
 	gopkg.in/yaml.v2 v2.4.0
