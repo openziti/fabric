@@ -27,12 +27,12 @@ require (
 	github.com/jessevdk/go-flags v1.5.0
 	github.com/michaelquigley/pfxlog v0.6.10
 	github.com/natefinch/lumberjack v2.0.0+incompatible
-	github.com/openziti/channel/v2 v2.0.102
+	github.com/openziti/channel/v2 v2.0.103
 	github.com/openziti/foundation/v2 v2.0.33
-	github.com/openziti/identity v1.0.65
+	github.com/openziti/identity v1.0.66
 	github.com/openziti/metrics v1.2.36
 	github.com/openziti/storage v0.2.23
-	github.com/openziti/transport/v2 v2.0.110
+	github.com/openziti/transport/v2 v2.0.111
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
 	github.com/pkg/errors v0.9.1
@@ -62,7 +62,7 @@ require (
 	github.com/docker/go-units v0.5.0 // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/felixge/httpsnoop v1.0.1 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.7.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-openapi/analysis v0.21.4 // indirect
