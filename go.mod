@@ -18,7 +18,7 @@ require (
 	github.com/go-openapi/validate v0.22.1
 	github.com/go-resty/resty/v2 v2.8.0
 	github.com/google/go-cmp v0.5.9
-	github.com/google/uuid v1.3.1
+	github.com/google/uuid v1.4.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/websocket v1.5.0
 	github.com/hashicorp/go-hclog v1.5.0
@@ -31,7 +31,7 @@ require (
 	github.com/openziti/foundation/v2 v2.0.33
 	github.com/openziti/identity v1.0.65
 	github.com/openziti/metrics v1.2.36
-	github.com/openziti/storage v0.2.19
+	github.com/openziti/storage v0.2.21
 	github.com/openziti/transport/v2 v2.0.110
 	github.com/openziti/xweb/v2 v2.1.0
 	github.com/orcaman/concurrent-map/v2 v2.0.1
